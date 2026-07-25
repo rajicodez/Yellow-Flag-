@@ -28,7 +28,7 @@ export default function Journey() {
                   <article className="relative rounded-[1.75rem] border border-white/10 bg-black/40 p-6 backdrop-blur-xl md:p-7">
                     <span className="absolute -left-[1.65rem] top-8 hidden h-4 w-4 rounded-full border-4 border-black bg-yellow-400 shadow-[0_0_18px_rgba(250,204,21,0.8)] md:block md:-translate-x-1/2 md:left-1/2" />
                     <p className="text-xs font-bold uppercase tracking-[0.28em] text-yellow-300">Checkpoint {item.year}</p>
-                    <h3 className="mt-2 font-display text-2xl font-black uppercase text-white">{item.title}</h3>
+                    <h3 className="mt-2 font-display text-2xl font-black uppercase tracking-[0.03em] text-white">{item.title}</h3>
                     <p className="mt-3 text-base leading-7 text-zinc-300">{item.text}</p>
                   </article>
                 </div>

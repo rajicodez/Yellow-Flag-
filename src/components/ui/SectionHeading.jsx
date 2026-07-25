@@ -10,7 +10,7 @@ export default function SectionHeading({ eyebrow, title, description, align = 'c
         {eyebrow}
         <span className="h-px w-6 bg-yellow-400/60" />
       </div>
-      <h2 className="font-display text-3xl font-black uppercase leading-none tracking-tight text-white md:text-5xl">
+      <h2 className="font-display text-3xl font-black uppercase leading-none tracking-[0.02em] text-white md:text-5xl">
         {title}
       </h2>
       {description && (

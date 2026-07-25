@@ -39,7 +39,7 @@ function GameCard({ icon: Icon, title, description, playable, onPlay }) {
         <Icon className="h-7 w-7" strokeWidth={1.75} />
       </div>
 
-      <h3 className="mt-5 font-display text-xl font-black uppercase tracking-tight text-white">
+      <h3 className="mt-5 font-display text-xl font-black uppercase tracking-[0.02em] text-white">
         {title}
       </h3>
       <p className="mt-2 flex-1 text-sm leading-6 text-zinc-300">{description}</p>

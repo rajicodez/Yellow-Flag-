@@ -59,7 +59,7 @@ export default function Contact() {
           <Reveal delay={0.12}>
             <div className="flex h-full flex-col justify-between rounded-[2rem] border border-yellow-400/15 bg-gradient-to-br from-yellow-400/10 via-black/40 to-transparent p-8">
               <div>
-                <h3 className="font-display text-2xl font-black uppercase text-white">Connect On Social</h3>
+                <h3 className="font-display text-2xl font-black uppercase tracking-[0.03em] text-white">Connect On Social</h3>
                 <p className="mt-3 text-base leading-7 text-zinc-300">
                   Follow Yellow Flag for race reactions, podcast drops, and community updates across every platform.
                 </p>

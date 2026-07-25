@@ -54,25 +54,42 @@ export default function Navbar({ activeSection }) {
   return (
     <header
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
-        scrolled ? 'border-b border-white/10 bg-black/75 backdrop-blur-xl' : 'bg-transparent'
+        // A hard border-b read as a bright hairline against the dark page. A soft
+        // downward shadow separates the bar from the content without an edge.
+        scrolled
+          ? 'bg-black/75 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.9)] backdrop-blur-xl'
+          : 'bg-transparent'
       }`}
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
         <button
           type="button"
           onClick={() => handleNav('home')}
-          className="group flex items-center gap-3 text-left"
+          className="group flex items-center text-left"
         >
           <img
             src="/logo.jpeg"
             alt="Yellow Flag logo"
-            className="h-10 w-10 rounded-xl border border-yellow-400/30 object-cover shadow-[0_0_24px_rgba(250,204,21,0.2)]"
+            className="h-10 w-10 shrink-0 rounded-xl border border-yellow-400/30 object-cover shadow-[0_0_24px_rgba(250,204,21,0.2)]"
           />
-          <span>
-            <span className="block font-display text-lg font-black uppercase tracking-[0.18em] text-white transition group-hover:text-yellow-300">
+          {/*
+            The wordmark repeats the hero headline, so it stays collapsed over the
+            hero and slides out once you scroll past it. Collapsing max-width (not
+            just opacity) keeps it from occupying dead space while hidden; the
+            left padding sits on the inner spans so the clip can reach a true 0.
+            It stays in the DOM throughout, so the button keeps its accessible name.
+          */}
+          <span
+            className={`overflow-hidden transition-all duration-300 ${
+              scrolled ? 'max-w-[240px] opacity-100' : 'max-w-0 opacity-0'
+            }`}
+          >
+            <span className="block whitespace-nowrap pl-3 font-display text-lg font-black uppercase tracking-[0.18em] text-white transition group-hover:text-yellow-300">
               {BRAND.name}
             </span>
-            <span className="block text-[10px] uppercase tracking-[0.35em] text-zinc-400">Sinhala F1 Podcast</span>
+            <span className="block whitespace-nowrap pl-3 text-[10px] uppercase tracking-[0.35em] text-zinc-400">
+              Sinhala F1 Podcast
+            </span>
           </span>
         </button>
 

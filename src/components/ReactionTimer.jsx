@@ -176,7 +176,7 @@ export default function ReactionTimer({ onExit }) {
         >
           {phase === 'idle' && (
             <>
-              <p className="font-display text-3xl font-black uppercase tracking-tight text-white md:text-4xl">
+              <p className="font-display text-3xl font-black uppercase tracking-[0.02em] text-white md:text-4xl">
                 Tap to Start
               </p>
               <p className="max-w-sm text-sm leading-6 text-zinc-400">
@@ -202,7 +202,7 @@ export default function ReactionTimer({ onExit }) {
               initial={{ scale: 0.7, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.1 }}
-              className="font-display text-5xl font-black uppercase tracking-tight text-green-400 drop-shadow-[0_0_30px_rgba(34,197,94,0.5)] md:text-6xl"
+              className="font-display text-5xl font-black uppercase tracking-[0.02em] text-green-400 drop-shadow-[0_0_30px_rgba(34,197,94,0.5)] md:text-6xl"
             >
               GO!
             </motion.p>
@@ -214,7 +214,7 @@ export default function ReactionTimer({ onExit }) {
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.15 }}
-                className="font-display text-3xl font-black uppercase tracking-tight text-red-500 drop-shadow-[0_0_24px_rgba(239,68,68,0.5)] md:text-5xl"
+                className="font-display text-3xl font-black uppercase tracking-[0.02em] text-red-500 drop-shadow-[0_0_24px_rgba(239,68,68,0.5)] md:text-5xl"
               >
                 Jump Start!
               </motion.p>
@@ -231,7 +231,7 @@ export default function ReactionTimer({ onExit }) {
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-                className="font-display text-6xl font-black tracking-tight text-white md:text-7xl"
+                className="font-display text-6xl font-black tracking-[0.02em] text-white md:text-7xl"
               >
                 {result.toFixed(3)}
                 <span className="text-3xl text-zinc-400 md:text-4xl">s</span>

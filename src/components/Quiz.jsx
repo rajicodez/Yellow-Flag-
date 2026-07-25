@@ -77,7 +77,7 @@ export function DifficultySelect({ onSelect, onBack }) {
     <motion.div {...viewMotion}>
       <div className="mb-8 flex flex-col items-center gap-4 text-center">
         <BackButton onClick={onBack} />
-        <h3 className="font-display text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
+        <h3 className="font-display text-2xl font-black uppercase tracking-[0.02em] text-white md:text-3xl">
           Choose Your Compound
         </h3>
         <p className="max-w-md text-sm leading-6 text-zinc-400">
@@ -215,7 +215,7 @@ export function QuizResults({ score, total, difficulty, onPlayAgain, onBack }) {
           <p className="text-xs font-bold uppercase tracking-[0.3em] text-zinc-400">
             <span className={difficulty.text}>{difficulty.label} Compound</span> — Race Complete
           </p>
-          <h3 className="mt-3 font-display text-4xl font-black uppercase tracking-tight text-white md:text-5xl">
+          <h3 className="mt-3 font-display text-4xl font-black uppercase tracking-[0.02em] text-white md:text-5xl">
             You scored {score}/{total}
           </h3>
           <p className="mt-3 text-sm leading-6 text-zinc-300">{verdict}</p>

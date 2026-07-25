@@ -730,7 +730,7 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
           <motion.p
             initial={{ opacity: 0, scale: 0.6 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="pointer-events-none absolute inset-0 flex items-center justify-center font-display text-6xl font-black uppercase text-yellow-400 drop-shadow-[0_0_30px_rgba(250,204,21,0.6)]"
+            className="pointer-events-none absolute inset-0 flex items-center justify-center font-display text-6xl font-black uppercase tracking-[0.02em] text-yellow-400 drop-shadow-[0_0_30px_rgba(250,204,21,0.6)]"
           >
             Lights Out!
           </motion.p>
@@ -759,7 +759,7 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
                 {result.victory ? <Trophy className="h-6 w-6" /> : <Flag className="h-6 w-6" />}
               </div>
               <div>
-                <h3 className="font-display text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
+                <h3 className="font-display text-2xl font-black uppercase tracking-[0.02em] text-white md:text-3xl">
                   {result.victory ? 'Victory!' : 'Game Over!'}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-zinc-300">
@@ -861,7 +861,7 @@ function ChampionshipCalendar({ unlocked, results, onPick, onExit, onReset }) {
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to Games
         </button>
-        <h3 className="font-display text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
+        <h3 className="font-display text-2xl font-black uppercase tracking-[0.02em] text-white md:text-3xl">
           World Championship
         </h3>
         <p className="max-w-md text-sm leading-6 text-zinc-400">
@@ -938,7 +938,7 @@ function ChampionshipCalendar({ unlocked, results, onPick, onExit, onReset }) {
 
               <div>
                 <h4
-                  className={`truncate font-display text-sm font-black uppercase tracking-tight ${
+                  className={`truncate font-display text-sm font-black uppercase tracking-[0.02em] ${
                     isUnlocked ? 'text-white' : 'text-zinc-600'
                   }`}
                 >

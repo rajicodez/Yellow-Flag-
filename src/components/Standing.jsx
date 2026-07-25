@@ -143,7 +143,7 @@ function ConstructorStandingsTable({ items, season }) {
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className="mb-8 text-center">
-        <h3 className="font-display text-3xl font-black uppercase italic leading-none tracking-tight text-white md:text-5xl">
+        <h3 className="font-display text-3xl font-black uppercase italic leading-none tracking-[0.02em] text-white md:text-5xl">
           <span className="text-white">Championship </span>
           <span className="text-red-600">Grid</span>
         </h3>
@@ -249,7 +249,7 @@ function StartingGridView({ items, mode, season }) {
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className="mb-8 text-center">
-        <h3 className="font-display text-3xl font-black uppercase italic leading-none tracking-tight text-white md:text-5xl">
+        <h3 className="font-display text-3xl font-black uppercase italic leading-none tracking-[0.02em] text-white md:text-5xl">
           <span className="text-white">Championship </span>
           <span className="text-red-600">Grid</span>
         </h3>

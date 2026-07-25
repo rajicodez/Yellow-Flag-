@@ -29,7 +29,7 @@ function HostCard({ host }) {
 
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.28em] text-yellow-300">{host.role}</p>
-          <h3 className="mt-2 font-display text-3xl font-black uppercase text-white">{host.name}</h3>
+          <h3 className="mt-2 font-display text-3xl font-black uppercase tracking-[0.03em] text-white">{host.name}</h3>
           <div className="mt-4 space-y-3 text-base leading-7 text-zinc-300">
             {visibleParagraphs.map((paragraph, paragraphIndex) => (
               <p key={paragraphIndex}>{paragraph}</p>

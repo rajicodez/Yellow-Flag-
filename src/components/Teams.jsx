@@ -150,7 +150,7 @@ function DriverCard({ driverName, teamColor }) {
         <span className="inline-flex rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] text-yellow-200">
           Main Driver
         </span>
-        <p className="mt-1.5 truncate font-display text-base font-black uppercase text-white">{driverName}</p>
+        <p className="mt-1.5 truncate font-display text-base font-black uppercase tracking-[0.03em] text-white">{driverName}</p>
         {!imageSrc && (
           <p className="mt-1 text-[10px] font-semibold text-zinc-500">Driver Image Coming Soon</p>
         )}
