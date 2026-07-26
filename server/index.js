@@ -64,11 +64,17 @@ app.post('/api/chat', async (req, res) => {
   }
 });
 
+export default app;
+
+// Local dev only — on Vercel the app is imported by api/index.js and the
+// platform owns the listener.
 const PORT = Number(process.env.PORT) || 8787;
-app.listen(PORT, () => {
-  console.log(`Yellow Flag assistant API listening on http://localhost:${PORT}`);
-  console.log(`  chat model : ${CHAT_MODEL}`);
-  console.log(`  auth mode  : ${getAuthMode() === 'vertex' ? 'Vertex AI (Google Cloud service account)' : 'AI Studio (API key)'}`);
-  console.log(`  gemini     : ${isGeminiConfigured() ? 'configured' : 'NOT configured — see .env.example'}`);
-  console.log(`  rag/qdrant : ${isRagEnabled() ? 'enabled' : 'disabled (set QDRANT_URL to enable)'}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Yellow Flag assistant API listening on http://localhost:${PORT}`);
+    console.log(`  chat model : ${CHAT_MODEL}`);
+    console.log(`  auth mode  : ${getAuthMode() === 'vertex' ? 'Vertex AI (Google Cloud service account)' : 'AI Studio (API key)'}`);
+    console.log(`  gemini     : ${isGeminiConfigured() ? 'configured' : 'NOT configured — see .env.example'}`);
+    console.log(`  rag/qdrant : ${isRagEnabled() ? 'enabled' : 'disabled (set QDRANT_URL to enable)'}`);
+  });
+}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { FaPlay, FaXmark } from 'react-icons/fa6';
+import { FaArrowRight, FaXmark } from 'react-icons/fa6';
 import { getDriverAvatar } from '../data/driverAvatars';
 import { f1Teams2026, teamsIntro } from '../data/teams';
 import ExpandableGrid from './ui/ExpandableGrid';
@@ -261,21 +261,26 @@ function TeamCard({ team, index, onSelect }) {
               {team.name}
             </h3>
             <p className="mt-2 text-sm text-gray-400">{team.engine}</p>
-            <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 transition group-hover:text-yellow-300">
-              Click for team details
-            </p>
           </div>
         </div>
 
+        {/*
+          The whole card opens the modal, but this stays a real button so the
+          card is reachable by keyboard and announces what it does. It carries
+          the "click for details" cue on its own, so the body no longer repeats it.
+        */}
         <div className="border-t border-white/5 bg-[#111111] p-4 md:p-5">
-          <a
-            href="#episodes"
-            onClick={(e) => e.stopPropagation()}
-            className="inline-flex w-full items-center justify-center gap-3 rounded-full border border-white/10 bg-[#1a1a1a] py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-all hover:bg-zinc-900"
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(team);
+            }}
+            className="inline-flex w-full items-center justify-center gap-3 rounded-full border border-white/10 bg-[#1a1a1a] py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-white transition-all hover:border-yellow-400/30 hover:bg-zinc-900 hover:text-yellow-300 group-hover:border-yellow-400/30 group-hover:text-yellow-300"
           >
-            <FaPlay className="h-3 w-3" />
-            Podcast Preview
-          </a>
+            Click for Team Details
+            <FaArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+          </button>
         </div>
       </motion.article>
     </Reveal>

@@ -9,6 +9,8 @@ export const teamsIntro =
   'All 11 teams on the 2026 Formula 1 grid — full team names, driver lineups, and power units.';
 
 const WIKI = 'https://upload.wikimedia.org/wikipedia/commons';
+// Some team marks are non-free and live on the English Wikipedia rather than Commons.
+const WIKI_EN = 'https://upload.wikimedia.org/wikipedia/en';
 const SI = 'https://cdn.jsdelivr.net/npm/simple-icons@v11/icons';
 
 export const f1Teams2026 = [
@@ -98,8 +100,10 @@ export const f1Teams2026 = [
     name: 'Visa Cash App Racing Bulls',
     drivers: ['Liam Lawson', 'Arvid Lindblad'], // 2025: Lawson P14; Lindblad — rookie
     engine: 'Red Bull Ford Power Unit',
-    logoUrl: `${SI}/redbull.svg`,
-    invertLogo: true,
+    // The sister team has its own mark — the plain Red Bull bull belongs to
+    // Oracle Red Bull Racing. This one is full-colour, so it must not invert.
+    logoUrl: `${WIKI_EN}/2/2b/VCARB_F1_logo.svg`,
+    invertLogo: false,
     description:
       'Born from the plucky Minardi outfit in Faenza and formerly racing as Toro Rosso and AlphaTauri, Red Bull\u2019s sister team is famous for developing young talent — and for Sebastian Vettel\u2019s fairytale maiden win at Monza in 2008. Liam Lawson leads highly-rated rookie Arvid Lindblad in 2026.',
     country: 'Italy (Faenza)',

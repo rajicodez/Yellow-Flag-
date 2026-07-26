@@ -23,24 +23,48 @@ function HomePage() {
   const location = useLocation();
 
   useEffect(() => {
-    const sections = navItems
-      .filter((item) => !item.path)
-      .map((item) => document.getElementById(item.id))
-      .filter(Boolean);
+    // IntersectionObserver measures its threshold against the target's own area,
+    // so a section taller than the detection band never reports as intersecting
+    // and the pill sticks on the previous item. Reading scroll position instead
+    // works the same for a short hero and a very tall standings table.
+    const ids = navItems.filter((item) => !item.path).map((item) => item.id);
+    let frame = 0;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id);
-          }
-        });
-      },
-      { rootMargin: '-40% 0px -45% 0px', threshold: 0.05 }
-    );
+    const update = () => {
+      frame = 0;
+      // The marker line sits below the fixed header, roughly a third down the
+      // viewport: whichever section has crossed it last is the one being read.
+      const marker = window.scrollY + window.innerHeight * 0.35;
+      let current = ids[0];
 
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
+      ids.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const top = el.getBoundingClientRect().top + window.scrollY;
+        if (top <= marker) current = id;
+      });
+
+      // The final section is usually shorter than a screen, so it can never
+      // reach the marker on its own — bottom of the page always belongs to it.
+      const atBottom =
+        window.innerHeight + window.scrollY >= document.body.scrollHeight - 2;
+      if (atBottom) current = ids[ids.length - 1];
+
+      setActiveSection(current);
+    };
+
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
   }, []);
 
   useEffect(() => {
