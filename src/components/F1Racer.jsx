@@ -115,7 +115,7 @@ function nearestWpIdx(x, y, wps) {
 // is stroked directly from the authentic SVG Path2D, so the visible tarmac is
 // the exact real-world circuit shape.
 function buildTrackLayer(track, dpr) {
-  const { pts, path2d } = getTrackGeometry(track);
+  const { pts, path2d, crossoverZone } = getTrackGeometry(track);
   const canvas = document.createElement('canvas');
   canvas.width = CANVAS_W * dpr;
   canvas.height = CANVAS_H * dpr;
@@ -135,22 +135,42 @@ function buildTrackLayer(track, dpr) {
 
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
-  ctx.strokeStyle = '#e4e4e7';
-  ctx.lineWidth = track.borderWidth;
-  ctx.stroke(path);
-  ctx.setLineDash([16, 16]);
-  ctx.strokeStyle = '#dc2626';
-  ctx.lineWidth = track.kerbWidth;
-  ctx.stroke(path);
-  ctx.setLineDash([]);
-  ctx.strokeStyle = '#26272c';
-  ctx.lineWidth = track.visualRoadWidth;
-  ctx.stroke(path);
-  ctx.setLineDash([12, 16]);
-  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-  ctx.lineWidth = 2;
-  ctx.stroke(path);
-  ctx.setLineDash([]);
+
+  if (track.id === 'monaco' && trackGeometry.monacoSegments) {
+    const renderLayer = (strokeStyle, baseWidth, dashArray) => {
+      ctx.strokeStyle = strokeStyle;
+      if (dashArray) ctx.setLineDash(dashArray);
+      else ctx.setLineDash([]);
+      
+      for (let i = 0; i < trackGeometry.monacoSegments.length; i++) {
+        ctx.lineWidth = baseWidth * trackGeometry.monacoWidthScale[i];
+        ctx.stroke(trackGeometry.monacoSegments[i]);
+      }
+    };
+    
+    renderLayer('#e4e4e7', track.borderWidth, null);
+    renderLayer('#dc2626', track.kerbWidth, [16, 16]);
+    renderLayer('#26272c', track.visualRoadWidth, null);
+    renderLayer('rgba(255,255,255,0.07)', 2, [12, 16]);
+    ctx.setLineDash([]);
+  } else {
+    ctx.strokeStyle = '#e4e4e7';
+    ctx.lineWidth = track.borderWidth;
+    ctx.stroke(path);
+    ctx.setLineDash([16, 16]);
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = track.kerbWidth;
+    ctx.stroke(path);
+    ctx.setLineDash([]);
+    ctx.strokeStyle = '#26272c';
+    ctx.lineWidth = track.visualRoadWidth;
+    ctx.stroke(path);
+    ctx.setLineDash([12, 16]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 2;
+    ctx.stroke(path);
+    ctx.setLineDash([]);
+  }
 
   // Chequered start/finish strip perpendicular to the racing direction.
   const p0 = pts[0];
@@ -171,11 +191,14 @@ function buildTrackLayer(track, dpr) {
   ctx.restore();
 
   // Draw Suzuka bridge mask and visual overpass
-  if (track.id === 'suzuka') {
+  if (crossoverZone) {
     const bridgePath = new Path2D();
-    const { scale, tx, ty } = getTrackGeometry(track).transform;
-    bridgePath.moveTo(790 * scale + tx, 120 * scale + ty);
-    bridgePath.lineTo(480 * scale + tx, 380 * scale + ty);
+    const [start, end] = crossoverZone.overpassSegmentRange;
+    for (let k = start; k <= end; k++) {
+      const p = pts[((k % pts.length) + pts.length) % pts.length];
+      if (k === start) bridgePath.moveTo(p.x, p.y);
+      else bridgePath.lineTo(p.x, p.y);
+    }
     
     // Mask
     ctx.strokeStyle = '#0b0e11'; 
@@ -385,7 +408,26 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
     collisionCtx.lineWidth = track.collisionWidth || track.width;
     collisionCtx.lineJoin = 'round';
     collisionCtx.lineCap = 'round';
-    const isOnTrack = (x, y) => collisionCtx.isPointInStroke(path2d, x, y);
+    
+    let isOnTrack;
+    if (track.id === 'monaco' && geometry.monacoSegments) {
+      isOnTrack = (x, y) => {
+        // Fast fail: if not even in the widest un-scaled boundary, skip exact check
+        collisionCtx.lineWidth = track.collisionWidth || track.width;
+        if (!collisionCtx.isPointInStroke(path2d, x, y)) return false;
+        
+        // Exact check with dynamic width
+        for (let i = 0; i < geometry.monacoSegments.length; i++) {
+          collisionCtx.lineWidth = (track.collisionWidth || track.width) * geometry.monacoWidthScale[i];
+          if (collisionCtx.isPointInStroke(geometry.monacoSegments[i], x, y)) {
+            return true;
+          }
+        }
+        return false;
+      };
+    } else {
+      isOnTrack = (x, y) => collisionCtx.isPointInStroke(path2d, x, y);
+    }
 
     // AI difficulty scales with championship progress. Pace is high enough to
     // punish any player mistake; the apex-hugging racing line means the AI
@@ -421,6 +463,7 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
         segIdx: idx,
         lastS: idx,
         totalProgress: idx - n,
+        nextCheckpoint: 0,
         offTrack: false,
         finished: false,
         finishOrder: 0,
@@ -468,7 +511,9 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
     };
 
     const updateProgress = (car) => {
-      const near = nearestSegment(pts, car.x, car.y, car.segIdx, 15);
+      // Restrict search window in Mexico to completely prevent jumping across esses
+      const windowSize = track.id === 'mexico' ? 5 : 15;
+      const near = nearestSegment(pts, car.x, car.y, car.segIdx, windowSize);
       // Boundary check — two modes depending on the track:
       //
       // Albert Park (waypoints defined): the player's distance from the
@@ -505,13 +550,39 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
       let delta = s - car.lastS;
       if (delta > n / 2) delta -= n;
       else if (delta < -n / 2) delta += n;
+      
+      // Prevent physically impossible jumps in one frame
+      if (track.id === 'mexico') {
+         delta = clamp(delta, -windowSize, windowSize);
+      }
+      
       car.lastS = s;
       if (car.finished) return;
       car.totalProgress += delta;
-      if (car.totalProgress >= finishLine) {
-        car.finished = true;
-        car.finishOrder = ++finishCounterRef.current;
-        if (car.isPlayer) endRace(car.finishOrder);
+
+      // Ensure laps only count when making valid forward progress
+      // Checkpoints spaced out across the lap
+      if (track.id === 'mexico') {
+        const lap = Math.floor(car.totalProgress / n);
+        const normalizedProgress = car.totalProgress - (lap * n);
+        const expectedCheckpoint = car.nextCheckpoint;
+        const checkpointSpacing = n / 10; // 10 checkpoints around the track
+        
+        if (normalizedProgress >= expectedCheckpoint * checkpointSpacing && normalizedProgress < (expectedCheckpoint + 1.5) * checkpointSpacing) {
+           car.nextCheckpoint++;
+        }
+        
+        if (car.totalProgress >= finishLine && car.nextCheckpoint >= 10 * track.laps - 1) {
+          car.finished = true;
+          car.finishOrder = ++finishCounterRef.current;
+          if (car.isPlayer) endRace(car.finishOrder);
+        }
+      } else {
+        if (car.totalProgress >= finishLine) {
+          car.finished = true;
+          car.finishOrder = ++finishCounterRef.current;
+          if (car.isPlayer) endRace(car.finishOrder);
+        }
       }
     };
 

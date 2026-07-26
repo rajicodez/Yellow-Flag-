@@ -1,72 +1,52 @@
 import fs from 'fs';
 
-const {w, h, mask} = JSON.parse(fs.readFileSync('monaco_mask_clean.json', 'utf8'));
+const {pts, minX, minY, maxX, maxY} = JSON.parse(fs.readFileSync('monaco_loop_v2.json', 'utf8'));
 
-// Find a starting pixel on the outer boundary.
-// We can scan from left to right, middle height, to find the first pixel.
-let startX = -1;
-let startY = -1;
-for (let y = Math.floor(h / 2); y < h; y++) {
-  for (let x = 0; x < w; x++) {
-    if (mask[y * w + x] === 1) {
-      startX = x;
-      startY = y;
-      break;
-    }
-  }
-  if (startX !== -1) break;
-}
+const loop = [];
+const visited = new Array(pts.length).fill(false);
 
-console.log(`Start tracing from x=${startX}, y=${startY}`);
-
-// Moore neighborhood tracing
-// Directions: 0: up, 1: up-right, 2: right, 3: down-right, 4: down, 5: down-left, 6: left, 7: up-left
-const dirs = [
-  {x: 0, y: -1}, {x: 1, y: -1}, {x: 1, y: 0}, {x: 1, y: 1},
-  {x: 0, y: 1}, {x: -1, y: 1}, {x: -1, y: 0}, {x: -1, y: -1}
-];
-
-let currX = startX;
-let currY = startY;
-let currDir = 0;
-
-const boundary = [];
-const visitedStr = new Set();
-
-while (true) {
-  boundary.push({x: currX, y: currY});
-  visitedStr.add(`${currX},${currY}`);
-  
-  // Search for the next boundary pixel
-  // Start from the direction we came from, minus 2 (so we check "left" of forward direction)
-  let found = false;
-  let searchDir = (currDir + 6) % 8; // Turn left 90 degrees
-  
-  for (let i = 0; i < 8; i++) {
-    const dir = (searchDir + i) % 8;
-    const nx = currX + dirs[dir].x;
-    const ny = currY + dirs[dir].y;
-    
-    if (nx >= 0 && nx < w && ny >= 0 && ny < h && mask[ny * w + nx] === 1) {
-      currX = nx;
-      currY = ny;
-      currDir = dir;
-      found = true;
-      break;
-    }
-  }
-  
-  if (!found) {
-    console.log("No next pixel found, stuck!");
-    break;
-  }
-  
-  if (currX === startX && currY === startY) {
-    break;
+let bestStart = 0;
+let bestDist = Infinity;
+for (let i = 0; i < pts.length; i++) {
+  const d = Math.hypot(pts[i].x - 350, pts[i].y - 350);
+  if (d < bestDist) {
+    bestDist = d;
+    bestStart = i;
   }
 }
 
-console.log(`Traced boundary of size ${boundary.length}`);
+let curr = bestStart;
+visited[curr] = true;
+loop.push(pts[curr]);
+
+for (let step = 1; step < pts.length; step++) {
+  let next = -1;
+  let minDist = Infinity;
+  for (let i = 0; i < pts.length; i++) {
+    if (!visited[i]) {
+      const d = Math.hypot(pts[curr].x - pts[i].x, pts[curr].y - pts[i].y);
+      if (d < minDist) {
+        minDist = d;
+        next = i;
+      }
+    }
+  }
+  
+  if (next !== -1) {
+    if (minDist > 10) {
+      console.log(`Large jump ${minDist} at step ${step}.`);
+      break;
+    }
+    visited[next] = true;
+    loop.push(pts[next]);
+    curr = next;
+  }
+}
+
+console.log('NN loop size:', loop.length);
+
+const d = Math.hypot(loop[0].x - loop[loop.length-1].x, loop[0].y - loop[loop.length-1].y);
+console.log('Distance between start and end:', d);
 
 function rdp(points, epsilon) {
   if (points.length < 3) return points;
@@ -98,13 +78,21 @@ function rdp(points, epsilon) {
   }
 }
 
-// Subsample before RDP
-const subsampled = [];
-for (let i = 0; i < boundary.length; i+=3) {
-  subsampled.push(boundary[i]);
+let area = 0;
+for (let i = 0; i < loop.length; i++) {
+  const a = loop[i];
+  const b = loop[(i + 1) % loop.length];
+  area += (b.x - a.x) * (b.y + a.y);
+}
+if (area < 0) {
+  console.log('Reversing to clockwise');
+  loop.reverse();
 }
 
-const simplified = rdp(subsampled.concat([subsampled[0]]), 2.5);
+const subsampled = [];
+for (let i = 0; i < loop.length; i+=2) subsampled.push(loop[i]);
+
+const simplified = rdp(subsampled.concat([subsampled[0]]), 1.5);
 simplified.pop(); // remove duplicate closing point
 
 console.log(`Simplified to ${simplified.length} points`);
