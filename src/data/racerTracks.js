@@ -17,53 +17,7 @@ const APEX_GAIN = 16;
 const SLOW_GAIN = 0.5;
 const MIN_SPEED_FACTOR = 0.55;
 
-// ── Albert Park (Australia) manual racing-line waypoints ────────────────────
-// Defined in SVG path-space (viewBox 0 0 800 600). getTrackGeometry() applies
-// the same fitTransform used for pts/racingLine, so the points snap exactly
-// onto the rendered tarmac regardless of canvas DPI or margin changes.
-// 48 points tracing the 2022-present 14-turn layout (clockwise, pit-straight
-// is index 0, same winding as the SVG path).
-const AUSTRALIA_WAYPOINTS_SVG = [
-  // ── Pit straight (east / left→right at top of canvas) ──────────────────
-  { x: 390, y: 95 },  { x: 450, y: 90 },  { x: 510, y: 92 },
-  // ── T1 (sharp right-hander) ─────────────────────────────────────────────
-  { x: 548, y: 104 }, { x: 548, y: 132 },
-  // ── T2 (left) ───────────────────────────────────────────────────────────
-  { x: 520, y: 158 }, { x: 495, y: 174 },
-  // ── T3-T4 (right-left complex) ──────────────────────────────────────────
-  { x: 452, y: 192 }, { x: 448, y: 220 }, { x: 462, y: 246 },
-  // ── T5-T6 high-speed kink (chicane removed 2022) ────────────────────────
-  { x: 490, y: 256 }, { x: 538, y: 244 }, { x: 570, y: 226 },
-  // ── T7 (right-hander) ───────────────────────────────────────────────────
-  { x: 606, y: 218 }, { x: 628, y: 236 }, { x: 626, y: 268 },
-  // ── T8 right hairpin (slowest corner) ───────────────────────────────────
-  { x: 614, y: 290 }, { x: 598, y: 338 },
-  // ── Back straight (heading south-east) ──────────────────────────────────
-  { x: 602, y: 368 }, { x: 608, y: 402 },
-  // ── T9 (right) ──────────────────────────────────────────────────────────
-  { x: 594, y: 432 }, { x: 568, y: 450 },
-  // ── T10 (right, lake section) ───────────────────────────────────────────
-  { x: 508, y: 452 }, { x: 484, y: 432 },
-  // ── T11 (left) ──────────────────────────────────────────────────────────
-  { x: 432, y: 442 }, { x: 412, y: 460 },
-  // ── T12 hairpin ─────────────────────────────────────────────────────────
-  { x: 393, y: 500 }, { x: 388, y: 528 }, { x: 372, y: 556 },
-  // ── T13 (left exit) ─────────────────────────────────────────────────────
-  { x: 348, y: 562 }, { x: 318, y: 532 },
-  // ── West loop approach ──────────────────────────────────────────────────
-  { x: 316, y: 504 }, { x: 286, y: 460 }, { x: 258, y: 456 },
-  // ── T14 (left-hander) ───────────────────────────────────────────────────
-  { x: 220, y: 412 }, { x: 218, y: 378 }, { x: 242, y: 348 },
-  // ── Inner northwest section ──────────────────────────────────────────────
-  { x: 262, y: 332 }, { x: 282, y: 320 },
-  { x: 292, y: 278 }, { x: 280, y: 254 },
-  // ── North approach ──────────────────────────────────────────────────────
-  { x: 238, y: 218 }, { x: 213, y: 215 }, { x: 180, y: 182 },
-  // ── North hairpin ────────────────────────────────────────────────────────
-  { x: 176, y: 158 }, { x: 202, y: 114 }, { x: 228, y: 108 },
-  // ── Pit straight entry ───────────────────────────────────────────────────
-  { x: 280, y: 118 }, { x: 348, y: 102 }, { x: 380, y: 92 },
-];
+
 
 // Vite statically analyses import.meta.glob at bundle time – the call MUST be a
 // literal at module top level with no runtime guards wrapping it, otherwise Vite
@@ -362,9 +316,9 @@ const CALENDAR = [
   { id: 'cota', name: 'United States', circuit: 'Circuit of the Americas' },
   { id: 'mexico', name: 'Mexico', circuit: 'Autodromo Hermanos Rodriguez' },
   { id: 'brazil', name: 'Brazil', circuit: 'Interlagos', hasCrossover: false },
-  { id: 'las-vegas', name: 'Las Vegas', circuit: 'Las Vegas Strip Circuit' },
-  { id: 'qatar', name: 'Qatar', circuit: 'Lusail' },
-  { id: 'abu-dhabi', name: 'Abu Dhabi', circuit: 'Yas Marina' }
+  { id: 'las-vegas', name: 'Las Vegas', circuit: 'Las Vegas Strip Circuit', hasCrossover: false },
+  { id: 'lusail', name: 'Qatar', circuit: 'Lusail International Circuit', hasCrossover: false },
+  { id: 'abu-dhabi', name: 'Abu Dhabi', circuit: 'Yas Marina', hasCrossover: false }
 ];
 
 const TRACK_WIDTHS = {
@@ -395,6 +349,7 @@ const COLLISION_WIDTHS = {
   cota: 72, // Generous runoff
   mexico: 70,
   suzuka: 68,
+  brazil: 68,
 };
 
 const VISUAL_ROAD_WIDTHS = {
@@ -410,6 +365,7 @@ const VISUAL_ROAD_WIDTHS = {
   cota: 60,
   mexico: 58,
   suzuka: 56,
+  brazil: 56,
 };
 
 const BORDER_WIDTHS = {
@@ -425,6 +381,7 @@ const BORDER_WIDTHS = {
   cota: 70,
   mexico: 68,
   suzuka: 66,
+  brazil: 66,
 };
 
 const KERB_WIDTHS = {
@@ -440,6 +397,7 @@ const KERB_WIDTHS = {
   cota: 70,
   mexico: 68,
   suzuka: 66,
+  brazil: 66,
 };
 
 // Pure-math geometry (no DOM APIs), computed once per track at module load.
@@ -561,11 +519,7 @@ function getBaseGeometry(id, width) {
     // The visual road width is 58, which fits safely. But the generic collision width of 70 is too wide 
     // for the stadium and would throw a false positive here. We clamp the check to 60.
     const maxSafeCollisionCheck = 60;
-    if (id === 'mexico') {
-      console.log(`[DEBUG] Collision fail indexes i=${failI}, j=${failJ}`);
-      console.log('[DEBUG] pts[i]=', pts[failI]);
-      console.log('[DEBUG] pts[j]=', pts[failJ]);
-    }
+
     if (minCanvasDist < maxSafeCollisionCheck) {
       throw new Error(`Mexico collision regions overlap! Distance ${minCanvasDist} < ${maxSafeCollisionCheck}`);
     }
@@ -597,16 +551,19 @@ export const TRACKS = CALENDAR.map((entry, index) => {
   let allowSelfIntersection = entry.id === 'suzuka';
   let routeLayers = null;
 
+  let aiSpeedMultiplier = 1;
+
   if (entry.id === 'mexico') {
     hasCrossover = false;
     allowSelfIntersection = false;
     routeLayers = null;
+    aiSpeedMultiplier = 0.88;
   }
 
   return {
     ...entry,
     round: index + 1,
-    laps: perimeter > 2000 ? 3 : perimeter > 1600 ? 4 : 5,
+    laps: entry.id === 'mexico' ? 3 : (perimeter > 2000 ? 3 : perimeter > 1600 ? 4 : 5),
     width,
     collisionWidth,
     visualRoadWidth,
@@ -615,6 +572,7 @@ export const TRACKS = CALENDAR.map((entry, index) => {
     hasCrossover,
     allowSelfIntersection,
     routeLayers,
+    aiSpeedMultiplier,
   };
 });
 
@@ -633,43 +591,5 @@ export function getTrackGeometry(track) {
     path2dCache.set(track.id, path);
   }
 
-  // Monaco requires dynamic width scaling around the hairpin to prevent overlap
-  let monacoSegments = null;
-  let monacoWidthScale = null;
-  if (track.id === 'monaco') {
-    monacoSegments = [];
-    monacoWidthScale = [];
-    const n = base.pts.length;
-    for (let i = 0; i < n; i++) {
-      const p1 = base.pts[i];
-      const p2 = base.pts[(i + 1) % n];
-      const seg = new Path2D();
-      seg.moveTo(p1.x, p1.y);
-      seg.lineTo(p2.x, p2.y);
-      monacoSegments.push(seg);
-      
-      // The Hairpin is exactly at index 119.
-      // Pinch the road width down smoothly between 85 (Mirabeau entry) and 155 (Portier exit).
-      let wRatio = 1.0;
-      if (i >= 85 && i <= 155) {
-        if (i < 105) wRatio = 1.0 - 0.45 * ((i - 85) / 20); // Ramp down to 0.55
-        else if (i <= 135) wRatio = 0.55; // Hold at 0.55 through hairpin
-        else wRatio = 0.55 + 0.45 * ((i - 135) / 20); // Ramp back up to 1.0
-      }
-      monacoWidthScale.push(wRatio);
-    }
-  }
-
-  // For Australia, expose the hand-placed racing-line waypoints in canvas
-  // space. The same scale/tx/ty as pts ensures they align with the tarmac.
-  let waypoints = null;
-  if (track.id === 'australia') {
-    const { scale, tx, ty } = base.transform;
-    waypoints = AUSTRALIA_WAYPOINTS_SVG.map(({ x, y }) => ({
-      x: x * scale + tx,
-      y: y * scale + ty,
-    }));
-  }
-
-  return { ...base, path2d: path2dCache.get(track.id), waypoints, monacoSegments, monacoWidthScale };
+  return { ...base, path2d: path2dCache.get(track.id) };
 }

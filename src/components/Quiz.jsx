@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, RotateCcw, Trophy } from 'lucide-react';
 
@@ -108,29 +108,47 @@ export function DifficultySelect({ onSelect, onBack }) {
 }
 
 export function QuizPlaying({ question, index, total, score, difficulty, onAnswer, onQuit }) {
-  const [selected, setSelected] = useState(null);
+  const EMPTY_ANSWER_STATE = {
+    questionIndex: null,
+    selectedOption: null,
+    revealed: false,
+  };
+  const [answerState, setAnswerState] = useState(EMPTY_ANSWER_STATE);
+  const transitionTimerRef = useRef(null);
 
   useEffect(() => {
-    setSelected(null);
-  }, [index]);
+    return () => window.clearTimeout(transitionTimerRef.current);
+  }, []);
 
-  useEffect(() => {
-    if (selected === null) return undefined;
-    const timer = window.setTimeout(() => onAnswer(selected === question.answer), 750);
-    return () => window.clearTimeout(timer);
-  }, [selected, question.answer, onAnswer]);
+  const handleSelect = (option) => {
+    if (answerState.revealed) return;
+
+    setAnswerState({
+      questionIndex: index,
+      selectedOption: option,
+      revealed: true,
+    });
+
+    clearTimeout(transitionTimerRef.current);
+    transitionTimerRef.current = window.setTimeout(() => {
+      setAnswerState(EMPTY_ANSWER_STATE);
+      onAnswer(option === question.answer);
+    }, 750);
+  };
+
+  const canShowFeedback = answerState.revealed && answerState.questionIndex === index;
 
   const optionClass = (option) => {
     const base =
       'w-full rounded-xl border px-5 py-4 text-left text-sm font-medium leading-6 transition-all duration-200 md:text-base';
 
-    if (selected === null) {
+    if (!canShowFeedback) {
       return `${base} border-white/10 bg-white/5 text-zinc-200 backdrop-blur-md hover:bg-white/10 hover:border-white/20`;
     }
     if (option === question.answer) {
       return `${base} border-green-500/60 bg-green-500/15 text-green-300`;
     }
-    if (option === selected) {
+    if (option === answerState.selectedOption) {
       return `${base} border-red-500/60 bg-red-500/15 text-red-300`;
     }
     return `${base} border-white/5 bg-white/[0.02] text-zinc-500`;
@@ -167,7 +185,7 @@ export function QuizPlaying({ question, index, total, score, difficulty, onAnswe
         </div>
 
         <motion.div
-          key={index}
+          key={question.question}
           initial={{ opacity: 0, x: 24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
@@ -181,8 +199,8 @@ export function QuizPlaying({ question, index, total, score, difficulty, onAnswe
               <button
                 key={option}
                 type="button"
-                disabled={selected !== null}
-                onClick={() => setSelected(option)}
+                disabled={answerState.revealed}
+                onClick={() => handleSelect(option)}
                 className={optionClass(option)}
               >
                 {option}

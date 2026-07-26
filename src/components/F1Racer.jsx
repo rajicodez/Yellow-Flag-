@@ -12,6 +12,8 @@ import silverstone from '../assets/tracks/silverstone.svg';
 import singapore from '../assets/tracks/singapore.svg';
 import mexico from '../assets/tracks/mexico.svg';
 import brazil from '../assets/tracks/brazil.svg';
+import lasVegas from '../assets/tracks/las-vegas.svg';
+import lusail from '../assets/tracks/lusail.svg';
 import { TRACKS, getTrackGeometry } from '../data/racerTracks';
 
 const CANVAS_W = 960;
@@ -29,6 +31,8 @@ const TRACK_SVGS = {
   singapore,
   mexico,
   brazil,
+  'las-vegas': lasVegas,
+  lusail,
 };
 const UNLOCKED_KEY = 'yf-racer-unlocked';
 const RESULTS_KEY = 'yf-racer-results';
@@ -117,7 +121,8 @@ function nearestWpIdx(x, y, wps) {
 // is stroked directly from the authentic SVG Path2D, so the visible tarmac is
 // the exact real-world circuit shape.
 function buildTrackLayer(track, dpr) {
-  const { pts, path2d, crossoverZone } = getTrackGeometry(track);
+  const trackGeometry = getTrackGeometry(track);
+  const { pts, path2d, crossoverZone } = trackGeometry;
   const canvas = document.createElement('canvas');
   canvas.width = CANVAS_W * dpr;
   canvas.height = CANVAS_H * dpr;
@@ -138,27 +143,9 @@ function buildTrackLayer(track, dpr) {
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
 
-  if (track.id === 'monaco' && trackGeometry.monacoSegments) {
-    const renderLayer = (strokeStyle, baseWidth, dashArray) => {
-      ctx.strokeStyle = strokeStyle;
-      if (dashArray) ctx.setLineDash(dashArray);
-      else ctx.setLineDash([]);
-      
-      for (let i = 0; i < trackGeometry.monacoSegments.length; i++) {
-        ctx.lineWidth = baseWidth * trackGeometry.monacoWidthScale[i];
-        ctx.stroke(trackGeometry.monacoSegments[i]);
-      }
-    };
-    
-    renderLayer('#e4e4e7', track.borderWidth, null);
-    renderLayer('#dc2626', track.kerbWidth, [16, 16]);
-    renderLayer('#26272c', track.visualRoadWidth, null);
-    renderLayer('rgba(255,255,255,0.07)', 2, [12, 16]);
-    ctx.setLineDash([]);
-  } else {
-    ctx.strokeStyle = '#e4e4e7';
-    ctx.lineWidth = track.borderWidth;
-    ctx.stroke(path);
+  ctx.strokeStyle = '#e4e4e7';
+  ctx.lineWidth = track.borderWidth;
+  ctx.stroke(path);
     ctx.setLineDash([16, 16]);
     ctx.strokeStyle = '#dc2626';
     ctx.lineWidth = track.kerbWidth;
@@ -172,7 +159,6 @@ function buildTrackLayer(track, dpr) {
     ctx.lineWidth = 2;
     ctx.stroke(path);
     ctx.setLineDash([]);
-  }
 
   // Chequered start/finish strip perpendicular to the racing direction.
   const p0 = pts[0];
@@ -394,7 +380,7 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
   // Game engine: init cars, run simulation + render loop.
   useEffect(() => {
     const geometry = getTrackGeometry(track);
-    const { pts, n, racingLine, speedFactor, path2d, waypoints } = geometry;
+    const { pts, n, racingLine, speedFactor, path2d } = geometry;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     const canvas = canvasRef.current;
@@ -411,25 +397,7 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
     collisionCtx.lineJoin = 'round';
     collisionCtx.lineCap = 'round';
     
-    let isOnTrack;
-    if (track.id === 'monaco' && geometry.monacoSegments) {
-      isOnTrack = (x, y) => {
-        // Fast fail: if not even in the widest un-scaled boundary, skip exact check
-        collisionCtx.lineWidth = track.collisionWidth || track.width;
-        if (!collisionCtx.isPointInStroke(path2d, x, y)) return false;
-        
-        // Exact check with dynamic width
-        for (let i = 0; i < geometry.monacoSegments.length; i++) {
-          collisionCtx.lineWidth = (track.collisionWidth || track.width) * geometry.monacoWidthScale[i];
-          if (collisionCtx.isPointInStroke(geometry.monacoSegments[i], x, y)) {
-            return true;
-          }
-        }
-        return false;
-      };
-    } else {
-      isOnTrack = (x, y) => collisionCtx.isPointInStroke(path2d, x, y);
-    }
+    let isOnTrack = (x, y) => collisionCtx.isPointInStroke(path2d, x, y);
 
     // AI difficulty scales with championship progress. Pace is high enough to
     // punish any player mistake; the apex-hugging racing line means the AI
@@ -469,8 +437,6 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
         offTrack: false,
         finished: false,
         finishOrder: 0,
-        // Waypoint index for the Albert Park AI path (null on other tracks).
-        wpIdx: waypoints && !spec.isPlayer ? nearestWpIdx(startX, startY, waypoints) : 0,
       };
     });
 
@@ -519,15 +485,8 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
       // Boundary check — two modes depending on the track:
       //
       // Albert Park (waypoints defined): the player's distance from the
-      // waypoint polyline (i.e., the racing centerline) must stay within
-      // half the track width + a small grace buffer (40 px). Breaching that
-      // fires the 45% one-time speed cut. AI cars use their own boundary
-      // management via the existing maxOffset clamp.
-      //
-      // All other tracks: the original SVG stroke hit-test + maxOffset clamp.
-      const outside = waypoints
-        ? car.isPlayer && nearestDistToPolyline(car.x, car.y, waypoints) > 40
-        : !isOnTrack(car.x, car.y);
+      // Player collision checks against the canonical centerline.
+      const outside = !isOnTrack(car.x, car.y);
 
       if (outside || near.dist > maxOffset) {
         if (near.dist > maxOffset) {
@@ -567,10 +526,10 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
       if (track.id === 'mexico') {
         const lap = Math.floor(car.totalProgress / n);
         const normalizedProgress = car.totalProgress - (lap * n);
-        const expectedCheckpoint = car.nextCheckpoint;
+        const expectedCheckpointInLap = car.nextCheckpoint % 10;
         const checkpointSpacing = n / 10; // 10 checkpoints around the track
         
-        if (normalizedProgress >= expectedCheckpoint * checkpointSpacing && normalizedProgress < (expectedCheckpoint + 1.5) * checkpointSpacing) {
+        if (normalizedProgress >= expectedCheckpointInLap * checkpointSpacing && normalizedProgress < (expectedCheckpointInLap + 1.5) * checkpointSpacing) {
            car.nextCheckpoint++;
         }
         
@@ -623,46 +582,8 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
           car.speed *= Math.pow(0.988, dt);
           if (Math.abs(car.speed) < 0.02 && !keys.up && !keys.down) car.speed = 0;
         } else {
-          // AI steering — two modes:
-          //
-          // Albert Park (waypoints defined): chase the explicit waypoint
-          // array. Capture within 20 px advances to the next point. A
-          // 3-step look-ahead keeps steering smooth through high-speed
-          // sections. Speed control still uses speedFactor via segIdx so the
-          // AI brakes correctly for every corner apex.
-          //
-          // All other tracks: classic look-ahead on the computed racingLine.
-          if (waypoints) {
-            // Advance waypoint index when car enters capture radius.
-            const wp = waypoints[car.wpIdx];
-            if (Math.hypot(wp.x - car.x, wp.y - car.y) < 20) {
-              car.wpIdx = (car.wpIdx + 1) % waypoints.length;
-            }
-            // Target 3 waypoints ahead for smoother cornering.
-            const lookWp = waypoints[(car.wpIdx + 3) % waypoints.length];
-            const diff = normalizeAngle(
-              Math.atan2(lookWp.y - car.y, lookWp.x - car.x) - car.heading
-            );
-            car.heading += clamp(diff, -car.turnClamp * dt, car.turnClamp * dt);
-
-            // Speed: brake for the tightest upcoming corner (same as before).
-            let cornerGrip = 1;
-            for (let a = 2; a <= 12; a++) {
-              const sf = speedFactor[(car.segIdx + a) % n];
-              if (sf < cornerGrip) cornerGrip = sf;
-            }
-            const target =
-              car.maxSpeed *
-              aiBoost *
-              Math.max(0.6, cornerGrip) *
-              (1 - Math.min(0.25, Math.abs(diff) * 0.7));
-            car.speed =
-              car.speed < target
-                ? Math.min(target, car.speed + car.accel * aiBoost * dt)
-                : Math.max(target, car.speed - 0.12 * dt);
-          } else {
-            // Classic racingLine look-ahead for all other tracks.
-            const lookIdx = (car.segIdx + 5) % n;
+          // Classic racingLine look-ahead for all tracks (waypoints removed).
+          const lookIdx = (car.segIdx + 5) % n;
             const lp = racingLine[lookIdx];
             const lq = racingLine[(lookIdx + 1) % n];
             const tangent = Math.atan2(lq.y - lp.y, lq.x - lp.x);
@@ -682,12 +603,12 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
               car.maxSpeed *
               aiBoost *
               Math.max(0.6, cornerGrip) *
-              (1 - Math.min(0.25, Math.abs(diff) * 0.7));
+              (1 - Math.min(0.25, Math.abs(diff) * 0.7)) *
+              (track.aiSpeedMultiplier || 1);
             car.speed =
               car.speed < target
                 ? Math.min(target, car.speed + car.accel * aiBoost * dt)
                 : Math.max(target, car.speed - 0.12 * dt);
-          }
         }
 
         car.x += Math.cos(car.heading) * car.speed * dt;
@@ -750,8 +671,8 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
         if (playerCar) {
           const progress = playerCar.segIdx / pts.length;
           let tunnelFactor = 0;
-          const start = 0.33;
-          const end = 0.62;
+          const start = 0.50;
+          const end = 0.69;
           const fade = 0.02;
           if (progress > start && progress < end) {
             if (progress < start + fade) tunnelFactor = (progress - start) / fade;
@@ -759,8 +680,13 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
             else tunnelFactor = 1;
           }
           if (tunnelFactor > 0) {
+            ctx.save();
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.filter = 'none';
             ctx.fillStyle = `rgba(15, 23, 42, ${tunnelFactor * 0.75})`;
             ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+            ctx.restore();
           }
         }
       }
