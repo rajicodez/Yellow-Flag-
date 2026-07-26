@@ -303,7 +303,7 @@ function loadResults() {
 
 /* ----------------------------- Race screen ----------------------------- */
 
-function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackToSelect }) {
+function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackToSelect, onResetChampionship }) {
   const canvasRef = useRef(null);
   const carsRef = useRef([]);
   const keysRef = useRef({ up: false, down: false, left: false, right: false });
@@ -796,89 +796,136 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
 
         {/* Post-race overlay */}
         {raceState === 'finished' && result && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="absolute inset-0 flex items-center justify-center overflow-y-auto bg-black/75 p-4 backdrop-blur-sm"
-          >
+          isLastTrack && result.victory ? (
             <motion.div
-              initial={{ opacity: 0, y: 24, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              className="flex w-full max-w-md flex-col items-center gap-5 rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-md md:p-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/90 p-4 backdrop-blur-md"
             >
-              <div
-                className={`flex h-14 w-14 items-center justify-center rounded-full border ${
-                  result.victory
-                    ? 'border-yellow-400/30 bg-yellow-400/10 text-yellow-300 shadow-[0_0_32px_rgba(250,204,21,0.3)]'
-                    : 'border-red-500/30 bg-red-500/10 text-red-400 shadow-[0_0_32px_rgba(239,68,68,0.25)]'
-                }`}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="flex w-full max-w-2xl flex-col items-center gap-6 rounded-3xl border border-yellow-500/30 bg-black/80 p-8 text-center shadow-[0_0_80px_rgba(250,204,21,0.2)] backdrop-blur-xl md:p-12"
               >
-                {result.victory ? <Trophy className="h-6 w-6" /> : <Flag className="h-6 w-6" />}
-              </div>
-              <div>
-                <h3 className="font-display text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
-                  {result.victory ? 'Victory!' : 'Game Over!'}
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-zinc-300">
-                  {ORDINALS[result.position - 1]} at {track.circuit} —{' '}
-                  <span className="font-bold text-yellow-400">+{result.points} pts</span>.{' '}
-                  {result.victory
-                    ? isLastTrack
-                      ? `Championship complete — you conquered all ${TOTAL_ROUNDS} rounds!`
-                      : 'Next race unlocked!'
-                    : 'Finish on the podium (top 3) to advance. Try again!'}
-                </p>
-              </div>
+                <div className="flex h-24 w-24 items-center justify-center rounded-full border border-yellow-400/40 bg-yellow-400/10 text-yellow-400 shadow-[0_0_40px_rgba(250,204,21,0.4)]">
+                  <Trophy className="h-12 w-12" />
+                </div>
+                
+                <div>
+                  <h2 className="font-display text-3xl font-black uppercase tracking-tight text-white md:text-5xl lg:text-5xl drop-shadow-lg">
+                    YOU WIN THE WORLD CHAMPIONSHIP!
+                  </h2>
+                  <p className="mt-4 text-sm font-bold tracking-[0.25em] text-yellow-400 md:text-base">
+                    SEASON COMPLETE — {TOTAL_ROUNDS}/{TOTAL_ROUNDS} RACES
+                  </p>
+                </div>
 
-              {/* Race classification */}
-              <div className="w-full rounded-xl border border-white/10 bg-black/40 p-3">
-                {result.standings.map((row, i) => (
-                  <div
-                    key={row.name}
-                    className={`flex items-center gap-3 rounded-lg px-2 py-1 text-xs font-bold uppercase tracking-widest ${
-                      row.isPlayer ? 'bg-yellow-400/10 text-yellow-400' : 'text-zinc-300'
-                    }`}
-                  >
-                    <span className="w-8 text-left text-zinc-500">P{i + 1}</span>
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
-                    <span className="flex-1 text-left">{row.name}</span>
-                    <span className="text-zinc-500">+{POINTS_TABLE[i]}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex w-full flex-col gap-3 sm:flex-row">
-                {result.victory && !isLastTrack ? (
+                <div className="mt-6 flex w-full flex-col gap-4 sm:flex-row">
                   <button
                     type="button"
-                    onClick={onNextRace}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-yellow-500/50 bg-yellow-400/10 py-2.5 text-sm font-semibold uppercase tracking-widest text-yellow-400 transition-all hover:bg-yellow-400/20"
-                  >
-                    <Flag className="h-4 w-4" />
-                    Continue to Next Race
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onRetry}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-yellow-500/50 bg-yellow-400/10 py-2.5 text-sm font-semibold uppercase tracking-widest text-yellow-400 transition-all hover:bg-yellow-400/20"
+                    onClick={onResetChampionship}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-yellow-500/50 bg-yellow-400/20 py-3.5 text-sm font-bold uppercase tracking-widest text-yellow-400 transition-all hover:bg-yellow-400/30"
                   >
                     <RotateCcw className="h-4 w-4" />
-                    {result.victory ? 'Race Again' : 'Try Again'}
+                    PLAY AGAIN
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={onBackToSelect}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/10 bg-[#1a1a1a] py-2.5 text-sm font-semibold uppercase tracking-widest text-zinc-200 transition-all hover:border-yellow-500/50 hover:text-yellow-500"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Calendar
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={onBackToSelect}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 py-3.5 text-sm font-bold uppercase tracking-widest text-white transition-all hover:bg-white/20 hover:border-white/40"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    BACK TO HOME
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute inset-0 flex items-center justify-center overflow-y-auto bg-black/75 p-4 backdrop-blur-sm"
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 24, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                className="flex w-full max-w-md flex-col items-center gap-5 rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-md md:p-8"
+              >
+                <div
+                  className={`flex h-14 w-14 items-center justify-center rounded-full border ${
+                    result.victory
+                      ? 'border-yellow-400/30 bg-yellow-400/10 text-yellow-300 shadow-[0_0_32px_rgba(250,204,21,0.3)]'
+                      : 'border-red-500/30 bg-red-500/10 text-red-400 shadow-[0_0_32px_rgba(239,68,68,0.25)]'
+                  }`}
+                >
+                  {result.victory ? <Trophy className="h-6 w-6" /> : <Flag className="h-6 w-6" />}
+                </div>
+                <div>
+                  <h3 className="font-display text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
+                    {result.victory ? 'Victory!' : 'Game Over!'}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-zinc-300">
+                    {ORDINALS[result.position - 1]} at {track.circuit} —{' '}
+                    <span className="font-bold text-yellow-400">+{result.points} pts</span>.{' '}
+                    {result.victory
+                      ? isLastTrack
+                        ? `Championship complete — you conquered all ${TOTAL_ROUNDS} rounds!`
+                        : 'Next race unlocked!'
+                      : 'Finish on the podium (top 3) to advance. Try again!'}
+                  </p>
+                </div>
+
+                {/* Race classification */}
+                <div className="w-full rounded-xl border border-white/10 bg-black/40 p-3">
+                  {result.standings.map((row, i) => (
+                    <div
+                      key={row.name}
+                      className={`flex items-center gap-3 rounded-lg px-2 py-1 text-xs font-bold uppercase tracking-widest ${
+                        row.isPlayer ? 'bg-yellow-400/10 text-yellow-400' : 'text-zinc-300'
+                      }`}
+                    >
+                      <span className="w-8 text-left text-zinc-500">P{i + 1}</span>
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
+                      <span className="flex-1 text-left">{row.name}</span>
+                      <span className="text-zinc-500">+{POINTS_TABLE[i]}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex w-full flex-col gap-3 sm:flex-row">
+                  {result.victory && !isLastTrack ? (
+                    <button
+                      type="button"
+                      onClick={onNextRace}
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-yellow-500/50 bg-yellow-400/10 py-2.5 text-sm font-semibold uppercase tracking-widest text-yellow-400 transition-all hover:bg-yellow-400/20"
+                    >
+                      <Flag className="h-4 w-4" />
+                      Continue to Next Race
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={onRetry}
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-yellow-500/50 bg-yellow-400/10 py-2.5 text-sm font-semibold uppercase tracking-widest text-yellow-400 transition-all hover:bg-yellow-400/20"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      {result.victory ? 'Race Again' : 'Try Again'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={onBackToSelect}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/10 bg-[#1a1a1a] py-2.5 text-sm font-semibold uppercase tracking-widest text-zinc-200 transition-all hover:border-yellow-500/50 hover:text-yellow-500"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Calendar
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )
         )}
       </div>
 
@@ -1093,6 +1140,12 @@ export default function F1Racer({ onExit }) {
         setAttempt((a) => a + 1);
       }}
       onBackToSelect={() => setScreen('select')}
+      onResetChampionship={() => {
+        setUnlocked(1);
+        setResults({});
+        setTrackIndex(0);
+        setAttempt((a) => a + 1);
+      }}
     />
   );
 }

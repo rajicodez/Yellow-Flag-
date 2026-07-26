@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, Timer } from 'lucide-react';
 
 const BEST_KEY = 'yf-reaction-best';
-const LIGHTS_OUT_SOUND = 'https://www.myinstants.com/media/sounds/f1-lights-out.mp3';
+const LIGHTS_OUT_SOUND = '/audio/f1-lights-out.mp3';
 
 const viewMotion = {
   initial: { opacity: 0, y: 16 },
@@ -28,6 +28,66 @@ function loadBest() {
   }
 }
 
+let sharedAudioCtx = null;
+let sharedAudioBuffer = null;
+let sharedGainNode = null;
+let audioInitPromise = null;
+
+function initWebAudio() {
+  if (!sharedAudioCtx) {
+    console.log('[ReactionAudio] AudioContext created');
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      sharedAudioCtx = new AudioContext();
+      sharedGainNode = sharedAudioCtx.createGain();
+      sharedGainNode.gain.value = 0.5;
+      sharedGainNode.connect(sharedAudioCtx.destination);
+    } catch (err) {
+      console.error('[ReactionAudio] AudioContext creation failed:', err);
+      return Promise.resolve(); // fallback
+    }
+  }
+
+  let resumePromise = Promise.resolve();
+  console.log('[ReactionAudio] AudioContext state before resume:', sharedAudioCtx.state);
+  if (sharedAudioCtx.state === 'suspended') {
+    resumePromise = sharedAudioCtx.resume().then(() => {
+      console.log('[ReactionAudio] AudioContext state after resume:', sharedAudioCtx.state);
+    });
+  } else {
+    console.log('[ReactionAudio] AudioContext state after resume:', sharedAudioCtx.state);
+  }
+
+  if (sharedAudioBuffer) {
+    return resumePromise;
+  }
+
+  if (!audioInitPromise) {
+    const resolvedUrl = new URL(LIGHTS_OUT_SOUND, window.location.origin).href;
+    console.log('[ReactionAudio] Sound asset request started:', resolvedUrl);
+    audioInitPromise = fetch(LIGHTS_OUT_SOUND)
+      .then((res) => {
+        console.log('[ReactionAudio] HTTP status:', res.status, 'Content type:', res.headers.get('content-type'));
+        if (!res.ok) throw new Error(`HTTP ${res.status} for ${resolvedUrl}`);
+        return res.arrayBuffer();
+      })
+      .then((arrayBuffer) => {
+        console.log('[ReactionAudio] Audio data loaded, bytes:', arrayBuffer.byteLength);
+        return sharedAudioCtx.decodeAudioData(arrayBuffer);
+      })
+      .then((audioBuffer) => {
+        sharedAudioBuffer = audioBuffer;
+        console.log('[ReactionAudio] Audio decoded, duration:', audioBuffer.duration);
+      })
+      .catch((err) => {
+        console.error('[ReactionAudio] Sound asset request failed:', err);
+        audioInitPromise = null; // allow retry on failure
+      });
+  }
+  
+  return resumePromise.then(() => audioInitPromise);
+}
+
 export default function ReactionTimer({ onExit }) {
   // idle -> running (lights building + random hold) -> go -> result | jump
   const [phase, setPhase] = useState('idle');
@@ -38,7 +98,9 @@ export default function ReactionTimer({ onExit }) {
   const phaseRef = useRef('idle');
   const timeoutsRef = useRef([]);
   const goTimeRef = useRef(0);
-  const audioRef = useRef(null);
+  const attemptRef = useRef(0);
+  const activeSourceRef = useRef(null);
+  const animationRef = useRef(null);
 
   const setPhaseSafe = (next) => {
     phaseRef.current = next;
@@ -46,46 +108,152 @@ export default function ReactionTimer({ onExit }) {
   };
 
   const clearTimers = () => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
     timeoutsRef.current.forEach((id) => window.clearTimeout(id));
     timeoutsRef.current = [];
   };
 
-  // Clear all pending timeouts on unmount so nothing leaks or fires late.
-  useEffect(() => clearTimers, []);
-
-  const playLightsOutSound = () => {
-    try {
-      if (!audioRef.current) audioRef.current = new Audio(LIGHTS_OUT_SOUND);
-      audioRef.current.currentTime = 0;
-      audioRef.current.play().catch(() => {
-        // Autoplay/network restrictions — the game works fine without sound.
-      });
-    } catch {
-      // Audio unsupported — ignore.
+  const stopAudio = () => {
+    if (activeSourceRef.current) {
+      try {
+        activeSourceRef.current.stop();
+      } catch (e) {
+        // ignore if already stopped
+      }
+      activeSourceRef.current.disconnect();
+      activeSourceRef.current = null;
     }
   };
 
-  const startSequence = () => {
-    clearTimers();
-    setResult(null);
-    setLitCount(0);
-    setPhaseSafe('running');
+  // Clear all pending timeouts on unmount so nothing leaks or fires late.
+  useEffect(() => {
+    console.log('[ReactionAudio] Reaction Timer component mounted');
+    console.log('[ReactionAudio] Sound asset URL resolved:', LIGHTS_OUT_SOUND);
+    return () => {
+      clearTimers();
+      stopAudio();
+    };
+  }, []);
 
-    // One new red light every second.
-    for (let i = 1; i <= 5; i++) {
-      timeoutsRef.current.push(window.setTimeout(() => setLitCount(i), i * 1000));
+  const playLightsOutSound = (expectedAttempt) => {
+    console.log('[ReactionAudio] Sound playback function called');
+    console.log('[ReactionAudio] Attempt ID validated:', attemptRef.current === expectedAttempt);
+    if (attemptRef.current !== expectedAttempt) return;
+    
+    if (!sharedAudioCtx || !sharedAudioBuffer) {
+      console.error('[ReactionAudio] Playback failed: AudioContext or AudioBuffer not ready');
+      return;
     }
 
-    // After all five are lit, hold for a random 0.5s - 3.0s, then lights out.
-    const holdDelay = 500 + Math.random() * 2500;
-    timeoutsRef.current.push(
-      window.setTimeout(() => {
+    try {
+      console.log('[ReactionAudio] Audio source created');
+      const source = sharedAudioCtx.createBufferSource();
+      source.buffer = sharedAudioBuffer;
+      console.log('[ReactionAudio] Gain/volume value:', sharedGainNode.gain.value);
+      console.log('[ReactionAudio] Audio source connected to destination');
+      source.connect(sharedGainNode);
+      
+      console.log('[ReactionAudio] source.start() called');
+      source.start();
+      activeSourceRef.current = source;
+      
+      source.onended = () => {
+        console.log('[ReactionAudio] Playback completed');
+      };
+    } catch (err) {
+      console.error('[ReactionAudio] Playback failed:', err);
+    }
+  };
+
+  const LIGHT_CUE_MS = [1000, 2000, 3000, 4000, 5000];
+  const LIGHTS_OUT_MS = 6000;
+
+  const startSequence = async () => {
+    clearTimers();
+    stopAudio();
+    setResult(null);
+    setLitCount(0);
+    
+    attemptRef.current += 1;
+    const currentAttempt = attemptRef.current;
+    
+    console.log('[ReactionAudio] START button clicked');
+    
+    await initWebAudio();
+    if (attemptRef.current !== currentAttempt) return;
+    
+    setPhaseSafe('running');
+    
+    // Start audio at sequence time 0
+    playLightsOutSound(currentAttempt);
+
+    const startTime = performance.now();
+    let loggedCues = { 1: false, 2: false, 3: false, 4: false, 5: false, out: false };
+
+    const tick = () => {
+      if (phaseRef.current !== 'running' || attemptRef.current !== currentAttempt) return;
+      
+      const elapsed = performance.now() - startTime;
+      
+      let nextLitCount = 0;
+      if (elapsed >= LIGHTS_OUT_MS) {
+        if (!loggedCues.out) {
+            console.log(`[ReactionSync] Lights-out expected=${LIGHTS_OUT_MS} actual=${Math.round(elapsed)} drift=${Math.round(elapsed - LIGHTS_OUT_MS)}ms`);
+            loggedCues.out = true;
+        }
+        
+        console.log('[ReactionAudio] Lights changed to off');
         setLitCount(0);
+        console.log('[ReactionAudio] Reaction start timestamp recorded');
         goTimeRef.current = performance.now();
         setPhaseSafe('go');
-        playLightsOutSound();
-      }, 5000 + holdDelay)
-    );
+        
+        stopAudio(); // cut trailing silence
+        return;
+      } else if (elapsed >= LIGHT_CUE_MS[4]) {
+        if (!loggedCues[5]) {
+            console.log(`[ReactionSync] Light 5 expected=${LIGHT_CUE_MS[4]} actual=${Math.round(elapsed)} drift=${Math.round(elapsed - LIGHT_CUE_MS[4])}ms`);
+            loggedCues[5] = true;
+        }
+        nextLitCount = 5;
+      } else if (elapsed >= LIGHT_CUE_MS[3]) {
+        if (!loggedCues[4]) {
+            console.log(`[ReactionSync] Light 4 expected=${LIGHT_CUE_MS[3]} actual=${Math.round(elapsed)} drift=${Math.round(elapsed - LIGHT_CUE_MS[3])}ms`);
+            loggedCues[4] = true;
+        }
+        nextLitCount = 4;
+      } else if (elapsed >= LIGHT_CUE_MS[2]) {
+        if (!loggedCues[3]) {
+            console.log(`[ReactionSync] Light 3 expected=${LIGHT_CUE_MS[2]} actual=${Math.round(elapsed)} drift=${Math.round(elapsed - LIGHT_CUE_MS[2])}ms`);
+            loggedCues[3] = true;
+        }
+        nextLitCount = 3;
+      } else if (elapsed >= LIGHT_CUE_MS[1]) {
+        if (!loggedCues[2]) {
+            console.log(`[ReactionSync] Light 2 expected=${LIGHT_CUE_MS[1]} actual=${Math.round(elapsed)} drift=${Math.round(elapsed - LIGHT_CUE_MS[1])}ms`);
+            loggedCues[2] = true;
+        }
+        nextLitCount = 2;
+      } else if (elapsed >= LIGHT_CUE_MS[0]) {
+        if (!loggedCues[1]) {
+            console.log(`[ReactionSync] Light 1 expected=${LIGHT_CUE_MS[0]} actual=${Math.round(elapsed)} drift=${Math.round(elapsed - LIGHT_CUE_MS[0])}ms`);
+            loggedCues[1] = true;
+        }
+        nextLitCount = 1;
+      }
+      
+      setLitCount(prev => {
+        if (prev !== nextLitCount) return nextLitCount;
+        return prev;
+      });
+      
+      animationRef.current = requestAnimationFrame(tick);
+    };
+    
+    animationRef.current = requestAnimationFrame(tick);
   };
 
   const react = () => {
@@ -96,6 +264,8 @@ export default function ReactionTimer({ onExit }) {
     }
     if (current === 'running') {
       clearTimers();
+      stopAudio();
+      attemptRef.current += 1; // Invalidate current attempt
       setLitCount(0);
       setPhaseSafe('jump');
       return;
@@ -156,7 +326,9 @@ export default function ReactionTimer({ onExit }) {
             {[1, 2, 3, 4, 5].map((i) => (
               <span
                 key={i}
-                className={`h-12 w-12 rounded-full transition-all duration-150 md:h-16 md:w-16 ${
+                className={`h-12 w-12 rounded-full md:h-16 md:w-16 ${
+                  phase === 'go' ? 'transition-none' : 'transition-all duration-150'
+                } ${
                   litCount >= i
                     ? 'border border-red-400 bg-red-600 shadow-[0_0_30px_rgba(220,38,38,1)]'
                     : 'border border-red-900/50 bg-red-950/30'
