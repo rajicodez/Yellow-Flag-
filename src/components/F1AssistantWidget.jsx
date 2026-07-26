@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FaPaperPlane, FaRobot, FaXmark } from 'react-icons/fa6';
 
@@ -16,6 +16,51 @@ export default function F1AssistantWidget() {
   const [showTooltip, setShowTooltip] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([WELCOME_MESSAGE]);
+  
+  const audioRef = useRef(null);
+  const notifiedAssistantMessageIdsRef = useRef(new Set());
+
+  // Seed history on mount so we don't play sounds for existing messages
+  useEffect(() => {
+    messages.forEach(m => {
+      if (m.role === 'bot') {
+        notifiedAssistantMessageIdsRef.current.add(m.id);
+      }
+    });
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Monitor for new completed bot messages
+  useEffect(() => {
+    const latestMessage = messages[messages.length - 1];
+    
+    if (latestMessage && latestMessage.role === 'bot') {
+      // In a real streaming implementation, we would check !latestMessage.isStreaming
+      const isStreaming = latestMessage.isStreaming === true;
+      const id = latestMessage.id;
+      
+      if (!isStreaming && !notifiedAssistantMessageIdsRef.current.has(id)) {
+        notifiedAssistantMessageIdsRef.current.add(id);
+        
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0;
+          const p = audioRef.current.play();
+          if (p !== undefined) {
+            p.catch(err => {
+              console.warn('[F1AssistantWidget] Notification playback failed:', err);
+            });
+          }
+        }
+      }
+    }
+  }, [messages]);
 
   useEffect(() => {
     const alreadySeen = sessionStorage.getItem(TOOLTIP_SEEN_KEY);
@@ -41,6 +86,19 @@ export default function F1AssistantWidget() {
     event.preventDefault();
     const trimmed = input.trim();
     if (!trimmed) return;
+
+    // Prepare audio on user interaction to unlock browser restrictions
+    if (!audioRef.current) {
+      audioRef.current = new Audio('/audio/open-sound.mp3');
+      audioRef.current.preload = 'auto';
+      audioRef.current.loop = false;
+      audioRef.current.volume = 0.6;
+    }
+    try {
+      audioRef.current.load();
+    } catch (e) {
+      // Ignore load errors safely
+    }
 
     setMessages((prev) => [
       ...prev,

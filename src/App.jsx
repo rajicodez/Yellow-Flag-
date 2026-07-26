@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import About from './components/About';
 import Contact from './components/Contact';
@@ -18,6 +18,97 @@ import Tracks from './components/Tracks';
 import BackgroundEffects from './components/ui/BackgroundEffects';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { navItems } from './data/content';
+
+let audioInstance = null;
+let fallbackListenersAttached = false;
+let globalInteractionHandler = null;
+
+function useOpeningSound() {
+  const isMounted = useRef(true);
+
+  useEffect(() => {
+    isMounted.current = true;
+
+    const cleanupListeners = () => {
+      if (fallbackListenersAttached && globalInteractionHandler) {
+        window.removeEventListener('pointerdown', globalInteractionHandler);
+        window.removeEventListener('touchstart', globalInteractionHandler);
+        window.removeEventListener('keydown', globalInteractionHandler);
+        fallbackListenersAttached = false;
+      }
+    };
+
+    const markPlayed = () => {
+      try {
+        window.sessionStorage.setItem('yellowFlagOpeningSoundPlayed', 'true');
+      } catch (e) {}
+    };
+
+    const checkPlayed = () => {
+      try {
+        return window.sessionStorage.getItem('yellowFlagOpeningSoundPlayed') === 'true';
+      } catch (e) {
+        return false;
+      }
+    };
+
+    if (checkPlayed()) return;
+
+    if (!audioInstance) {
+      audioInstance = new Audio('/audio/open-sound.mp3');
+      audioInstance.preload = 'auto';
+      audioInstance.loop = false;
+      audioInstance.volume = 0.6;
+
+      globalInteractionHandler = () => {
+        cleanupListeners();
+        if (checkPlayed()) return;
+
+        audioInstance.currentTime = 0;
+        const p = audioInstance.play();
+        if (p !== undefined) {
+          p.then(() => {
+            markPlayed();
+          }).catch((err) => {
+            console.warn('[OpeningSound] Interaction fallback failed:', err);
+          });
+        }
+      };
+
+      const p = audioInstance.play();
+      if (p !== undefined) {
+        p.then(() => {
+          markPlayed();
+        }).catch((err) => {
+          if (err.name === 'NotAllowedError') {
+            if (!fallbackListenersAttached) {
+              fallbackListenersAttached = true;
+              window.addEventListener('pointerdown', globalInteractionHandler, { once: true });
+              window.addEventListener('touchstart', globalInteractionHandler, { once: true });
+              window.addEventListener('keydown', globalInteractionHandler, { once: true });
+            }
+          } else {
+            console.warn('[OpeningSound] Autoplay failed:', err);
+          }
+        });
+      }
+    }
+
+    return () => {
+      isMounted.current = false;
+      
+      // Delay cleanup to survive React Strict Mode double-invoke
+      setTimeout(() => {
+        if (!isMounted.current) {
+          cleanupListeners();
+          if (audioInstance && !audioInstance.paused && !checkPlayed()) {
+            audioInstance.pause();
+          }
+        }
+      }, 50);
+    };
+  }, []);
+}
 
 function HomePage() {
   const [activeSection, setActiveSection] = useState('home');
@@ -94,6 +185,8 @@ function DriversPage() {
 }
 
 function AppShell() {
+  useOpeningSound();
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
