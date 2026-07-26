@@ -361,7 +361,7 @@ const CALENDAR = [
   { id: 'singapore', name: 'Singapore', circuit: 'Marina Bay' },
   { id: 'cota', name: 'United States', circuit: 'Circuit of the Americas' },
   { id: 'mexico', name: 'Mexico', circuit: 'Autodromo Hermanos Rodriguez' },
-  { id: 'brazil', name: 'Brazil', circuit: 'Interlagos' },
+  { id: 'brazil', name: 'Brazil', circuit: 'Interlagos', hasCrossover: false },
   { id: 'las-vegas', name: 'Las Vegas', circuit: 'Las Vegas Strip Circuit' },
   { id: 'qatar', name: 'Qatar', circuit: 'Lusail' },
   { id: 'abu-dhabi', name: 'Abu Dhabi', circuit: 'Yas Marina' }

@@ -11,6 +11,7 @@ import monza from '../assets/tracks/monza.svg';
 import silverstone from '../assets/tracks/silverstone.svg';
 import singapore from '../assets/tracks/singapore.svg';
 import mexico from '../assets/tracks/mexico.svg';
+import brazil from '../assets/tracks/brazil.svg';
 import { TRACKS, getTrackGeometry } from '../data/racerTracks';
 
 const CANVAS_W = 960;
@@ -27,6 +28,7 @@ const TRACK_SVGS = {
   silverstone,
   singapore,
   mexico,
+  brazil,
 };
 const UNLOCKED_KEY = 'yf-racer-unlocked';
 const RESULTS_KEY = 'yf-racer-results';
