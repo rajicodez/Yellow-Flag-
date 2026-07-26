@@ -449,7 +449,10 @@ function getBaseGeometry(id, width) {
   if (baseCache.has(id)) return baseCache.get(id);
   const d = extractPathD(getSvgSource(id));
   const rawPts = resampleClosed(samplePathD(d), SAMPLES);
-  const { scale, tx, ty } = fitTransform(rawPts, width / 2 + 30);
+  // Mexico gets a tighter fitting margin so the circuit appears ~12% larger.
+  // All other tracks keep the default margin (width/2 + 30).
+  const fitMargin = id === 'mexico' ? width / 2 + 5 : width / 2 + 30;
+  const { scale, tx, ty } = fitTransform(rawPts, fitMargin);
   const pts = rawPts.map((p) => ({ x: p.x * scale + tx, y: p.y * scale + ty }));
   const base = { d, pts, n: pts.length, transform: { scale, tx, ty }, ...buildRacingData(pts, width) };
   
