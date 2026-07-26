@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Monaco Path Validation</title>
+<style>
+  body { margin: 0; background: #222; overflow: hidden; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<script>
+  // Load debug data
+  fetch('debug_monaco.json').then(r=>r.json()).then(data => {
+      let canvas = document.getElementById('canvas');
+      let ctx = canvas.getContext('2d');
+      canvas.width = data.w;
+      canvas.height = data.h;
+      
+      // draw image
+      let img = new Image();
+      // Load the actual user image, or we can just draw the raw pixels
+      
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0,0,canvas.width,canvas.height);
+      
+      ctx.fillStyle = 'red';
+      for (let p of data.rawPixels) {
+          ctx.fillRect(p.x, p.y, 1, 1);
+      }
+      
+      // Load the SVG path and draw it
+      fetch('../src/assets/tracks/monaco.svg').then(r=>r.text()).then(svgText => {
+          let parser = new DOMParser();
+          let doc = parser.parseFromString(svgText, 'image/svg+xml');
+          let pathD = doc.querySelector('path').getAttribute('d');
+          
+          let p2d = new Path2D(pathD);
+          ctx.strokeStyle = 'cyan';
+          ctx.lineWidth = 2;
+          ctx.stroke(p2d);
+      });
+  });
+</script>
+</body>
+</html>

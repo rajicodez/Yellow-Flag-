@@ -4,11 +4,13 @@ import { ArrowLeft, CheckCircle2, Flag, Lock, RotateCcw, Trophy } from 'lucide-r
 import abuDhabi from '../assets/tracks/abu-dhabi.svg';
 import australia from '../assets/tracks/australia.svg';
 import china from '../assets/tracks/china.svg';
-import japan from '../assets/tracks/japan.svg';
+import canada from '../assets/tracks/canada.svg';
+import suzuka from '../assets/tracks/suzuka.svg';
 import monaco from '../assets/tracks/monaco.svg';
 import monza from '../assets/tracks/monza.svg';
 import silverstone from '../assets/tracks/silverstone.svg';
 import singapore from '../assets/tracks/singapore.svg';
+import mexico from '../assets/tracks/mexico.svg';
 import { TRACKS, getTrackGeometry } from '../data/racerTracks';
 
 const CANVAS_W = 960;
@@ -17,12 +19,14 @@ const CANVAS_H = 600;
 const TRACK_SVGS = {
   'abu-dhabi': abuDhabi,
   australia,
+  canada,
   china,
-  japan,
+  suzuka,
   monaco,
   monza,
   silverstone,
   singapore,
+  mexico,
 };
 const UNLOCKED_KEY = 'yf-racer-unlocked';
 const RESULTS_KEY = 'yf-racer-results';
@@ -132,14 +136,15 @@ function buildTrackLayer(track, dpr) {
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
   ctx.strokeStyle = '#e4e4e7';
-  ctx.lineWidth = track.width + 10;
+  ctx.lineWidth = track.borderWidth;
   ctx.stroke(path);
   ctx.setLineDash([16, 16]);
   ctx.strokeStyle = '#dc2626';
+  ctx.lineWidth = track.kerbWidth;
   ctx.stroke(path);
   ctx.setLineDash([]);
   ctx.strokeStyle = '#26272c';
-  ctx.lineWidth = track.width;
+  ctx.lineWidth = track.visualRoadWidth;
   ctx.stroke(path);
   ctx.setLineDash([12, 16]);
   ctx.strokeStyle = 'rgba(255,255,255,0.07)';
@@ -164,6 +169,39 @@ function buildTrackLayer(track, dpr) {
     }
   }
   ctx.restore();
+
+  // Draw Suzuka bridge mask and visual overpass
+  if (track.id === 'suzuka') {
+    const bridgePath = new Path2D();
+    const { scale, tx, ty } = getTrackGeometry(track).transform;
+    bridgePath.moveTo(790 * scale + tx, 120 * scale + ty);
+    bridgePath.lineTo(480 * scale + tx, 380 * scale + ty);
+    
+    // Mask
+    ctx.strokeStyle = '#0b0e11'; 
+    ctx.lineWidth = track.borderWidth + 2;
+    ctx.lineCap = 'butt';
+    ctx.stroke(bridgePath);
+    
+    // Redraw bridge track
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#e4e4e7';
+    ctx.lineWidth = track.borderWidth;
+    ctx.stroke(bridgePath);
+    ctx.setLineDash([16, 16]);
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = track.kerbWidth;
+    ctx.stroke(bridgePath);
+    ctx.setLineDash([]);
+    ctx.strokeStyle = '#26272c';
+    ctx.lineWidth = track.visualRoadWidth;
+    ctx.stroke(bridgePath);
+    ctx.setLineDash([12, 16]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 2;
+    ctx.stroke(bridgePath);
+    ctx.setLineDash([]);
+  }
 
   return canvas;
 }
@@ -344,7 +382,7 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
     // Untransformed 1x context used purely for hit-testing the authentic SVG
     // path: a point is on the tarmac iff it lies within the stroked ribbon.
     const collisionCtx = document.createElement('canvas').getContext('2d');
-    collisionCtx.lineWidth = track.width;
+    collisionCtx.lineWidth = track.collisionWidth || track.width;
     collisionCtx.lineJoin = 'round';
     collisionCtx.lineCap = 'round';
     const isOnTrack = (x, y) => collisionCtx.isPointInStroke(path2d, x, y);
@@ -632,6 +670,27 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
     const draw = () => {
       ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
       ctx.drawImage(trackLayer, 0, 0, CANVAS_W, CANVAS_H);
+
+      // Monaco Tunnel effect
+      if (track.id === 'monaco') {
+        const playerCar = carsRef.current.find(c => c.isPlayer);
+        if (playerCar) {
+          const progress = playerCar.segIdx / pts.length;
+          let tunnelFactor = 0;
+          const start = 0.33;
+          const end = 0.62;
+          const fade = 0.02;
+          if (progress > start && progress < end) {
+            if (progress < start + fade) tunnelFactor = (progress - start) / fade;
+            else if (progress > end - fade) tunnelFactor = (end - progress) / fade;
+            else tunnelFactor = 1;
+          }
+          if (tunnelFactor > 0) {
+            ctx.fillStyle = `rgba(15, 23, 42, ${tunnelFactor * 0.75})`;
+            ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+          }
+        }
+      }
       for (const car of carsRef.current) drawCar(ctx, car);
     };
 

@@ -80,7 +80,7 @@ function getSvgSource(id) {
 // The first <path> in each file is the circuit outline; later paths/shapes
 // are decorative (DRS lines, lakes, etc.).
 function extractPathD(svgText) {
-  const match = svgText.match(/<path[^>]*\sd="([^"]+)"/);
+  const match = svgText.match(/<(?:[a-zA-Z0-9_-]+:)?path[^>]*\sd="([^"]+)"/);
   if (!match) throw new Error('No <path d="..."> found in track SVG');
   return match[1];
 }
@@ -326,7 +326,7 @@ function buildRacingData(pts, width) {
 const CALENDAR = [
   { id: 'australia', name: 'Australia', circuit: 'Albert Park' },
   { id: 'china', name: 'China', circuit: 'Shanghai' },
-  { id: 'japan', name: 'Japan', circuit: 'Suzuka' },
+  { id: 'suzuka', name: 'Japan', circuit: 'Suzuka Circuit' },
   { id: 'bahrain', name: 'Bahrain', circuit: 'Bahrain International Circuit' },
   { id: 'saudi-arabia', name: 'Saudi Arabia', circuit: 'Jeddah Corniche Circuit' },
   { id: 'miami', name: 'Miami', circuit: 'Miami International Autodrome' },
@@ -338,10 +338,11 @@ const CALENDAR = [
   { id: 'silverstone', name: 'Great Britain', circuit: 'Silverstone' },
   { id: 'belgium', name: 'Belgium', circuit: 'Spa-Francorchamps' },
   { id: 'hungary', name: 'Hungary', circuit: 'Hungaroring' },
-  { id: 'netherlands', name: 'Netherlands', circuit: 'Circuit Zandvoort' },
-  { id: 'monza', name: 'Italy', circuit: 'Monza' },
+  { id: 'zandvoort', name: 'Netherlands', circuit: 'Circuit Zandvoort' },
+  { id: 'monza', name: 'Italy', circuit: 'Autodromo Nazionale Monza' },
   { id: 'baku', name: 'Azerbaijan', circuit: 'Baku City Circuit' },
   { id: 'singapore', name: 'Singapore', circuit: 'Marina Bay' },
+  { id: 'cota', name: 'United States', circuit: 'Circuit of the Americas' },
   { id: 'austin', name: 'United States', circuit: 'Circuit of The Americas' },
   { id: 'mexico', name: 'Mexico', circuit: 'Autodromo Hermanos Rodriguez' },
   { id: 'brazil', name: 'Brazil', circuit: 'Interlagos' },
@@ -353,6 +354,71 @@ const CALENDAR = [
 const TRACK_WIDTHS = {
   monaco: 52,
   singapore: 52,
+  austria: 60,
+  silverstone: 62,
+  belgium: 64,
+  hungary: 54,
+  zandvoort: 56,
+  monza: 58,
+  baku: 54,
+  cota: 60, // Fast flowing modern circuit
+  mexico: 58,
+};
+
+const COLLISION_WIDTHS = {
+  monaco: 72,
+  singapore: 70, // Tight street circuit
+  austria: 70,
+  silverstone: 74,
+  belgium: 76,
+  hungary: 64,
+  zandvoort: 66,
+  monza: 68,
+  baku: 66,
+  cota: 72, // Generous runoff
+  mexico: 70,
+};
+
+const VISUAL_ROAD_WIDTHS = {
+  monaco: 52,
+  singapore: 52,
+  austria: 60,
+  silverstone: 62,
+  belgium: 64,
+  hungary: 54,
+  zandvoort: 56,
+  monza: 58,
+  baku: 54,
+  cota: 60,
+  mexico: 58,
+};
+
+const BORDER_WIDTHS = {
+  monaco: 62,
+  singapore: 62,
+  austria: 70,
+  silverstone: 72,
+  belgium: 74,
+  hungary: 64,
+  zandvoort: 66,
+  monza: 68,
+  baku: 64,
+  cota: 70,
+  mexico: 68,
+};
+
+const KERB_WIDTHS = {
+  monaco: 62,
+  singapore: 62,
+  austria: 70,
+  silverstone: 72,
+  belgium: 74,
+  hungary: 64,
+  zandvoort: 66,
+  monza: 68,
+  baku: 64,
+  cota: 70,
+  mexico: 68,
 };
 
 // Pure-math geometry (no DOM APIs), computed once per track at module load.
@@ -381,12 +447,20 @@ function perimeterOf(pts) {
 
 export const TRACKS = CALENDAR.map((entry, index) => {
   const width = TRACK_WIDTHS[entry.id] ?? 56;
+  const collisionWidth = COLLISION_WIDTHS[entry.id] ?? width;
+  const visualRoadWidth = VISUAL_ROAD_WIDTHS[entry.id] ?? width;
+  const borderWidth = BORDER_WIDTHS[entry.id] ?? (width + 10);
+  const kerbWidth = KERB_WIDTHS[entry.id] ?? (width + 10);
   const perimeter = perimeterOf(getBaseGeometry(entry.id, width).pts);
   return {
     ...entry,
     round: index + 1,
     laps: perimeter > 2000 ? 3 : perimeter > 1600 ? 4 : 5,
     width,
+    collisionWidth,
+    visualRoadWidth,
+    borderWidth,
+    kerbWidth,
   };
 });
 
