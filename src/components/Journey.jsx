@@ -5,8 +5,6 @@ import SectionHeading from './ui/SectionHeading';
 export default function Journey() {
   return (
     <section id="journey" className="relative py-24 md:py-32">
-      <div className="absolute inset-x-0 top-1/2 hidden h-px -translate-y-1/2 bg-gradient-to-r from-transparent via-yellow-400/30 to-transparent md:block" />
-
       <div className="mx-auto max-w-7xl px-5 md:px-8">
         <SectionHeading
           eyebrow="Journey"
