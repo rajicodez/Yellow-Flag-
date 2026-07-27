@@ -1,4 +1,5 @@
 import { Type } from '@google/genai';
+import { getEpisodes } from './episodes.js';
 
 // Same API the site already uses in Standing.jsx (Jolpica — the Ergast successor).
 const JOLPICA_BASE = 'https://api.jolpi.ca/ergast/f1';
@@ -166,6 +167,72 @@ async function getRaceResults({ season, round, raceName } = {}) {
   };
 }
 
+// Episode titles refer to drivers by whichever name fits the joke, so a search for
+// one half of a name has to try the other. Pairs both ways.
+const NAME_ALIASES = Object.fromEntries(
+  [
+    ['hamilton', 'lewis'],
+    ['verstappen', 'max'],
+    ['norris', 'lando'],
+    ['piastri', 'oscar'],
+    ['leclerc', 'charles'],
+    ['russell', 'george'],
+    ['antonelli', 'kimi'],
+    ['alonso', 'fernando'],
+    ['sainz', 'carlos'],
+    ['gasly', 'pierre'],
+    ['perez', 'checo'],
+    ['tsunoda', 'yuki'],
+    ['hadjar', 'isack'],
+    ['bearman', 'ollie'],
+    ['newey', 'adrian'],
+  ].flatMap(([a, b]) => [
+    [a, [b]],
+    [b, [a]],
+  ])
+);
+
+// The podcast's own back catalogue — same feed the Episodes section uses, so the
+// assistant answers "do you have an episode about X" from real videos.
+async function getPodcastEpisodes({ query, limit } = {}) {
+  const { episodes, source, fetchedAt } = await getEpisodes();
+  const take = Math.min(Math.max(Number(limit) || 5, 1), 15);
+
+  const shape = (ep) => ({
+    title: ep.title,
+    publishedAt: ep.publishedAt,
+    views: ep.views,
+    duration: ep.duration,
+    url: `https://www.youtube.com/watch?v=${ep.videoId}`,
+  });
+
+  if (!query) {
+    return { source, fetchedAt, totalEpisodes: episodes.length, latest: episodes.slice(0, take).map(shape) };
+  }
+
+  // Titles mix first and last names ("Lewisට උන අසාධාරණය" for a Hamilton episode),
+  // so searching one name has to also try the other.
+  const words = String(query).toLowerCase().split(/\s+/).filter((w) => w.length > 2);
+  const terms = new Set(words);
+  for (const w of words) for (const alias of NAME_ALIASES[w] ?? []) terms.add(alias);
+
+  const matches = episodes.filter((ep) => {
+    const title = ep.title.toLowerCase();
+    return [...terms].some((t) => title.includes(t));
+  });
+
+  return {
+    source,
+    fetchedAt,
+    totalEpisodes: episodes.length,
+    query,
+    matchCount: matches.length,
+    matches: matches.slice(0, take).map(shape),
+    // Titles are bilingual, so a miss is common and does not mean the topic was never covered.
+    latestIfNoMatch: matches.length ? undefined : episodes.slice(0, 3).map(shape),
+  };
+}
+
 export const functionDeclarations = [
   {
     name: 'get_driver_standings',
@@ -216,6 +283,25 @@ export const functionDeclarations = [
     parameters: { type: Type.OBJECT, properties: {} },
   },
   {
+    name: 'get_episodes',
+    description:
+      'List or search Yellow Flag podcast episodes from the channel\'s live video feed — titles, publish dates, view counts and YouTube links. Use this for ANY question about the podcast\'s own content: what they have covered, whether there is an episode about a driver, team or Grand Prix, what the latest episode is. Never answer such questions from memory.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: {
+          type: Type.STRING,
+          description:
+            'Keyword to match against episode titles, e.g. "Hamilton", "Monaco", "Ferrari". Omit to get the most recent episodes.',
+        },
+        limit: {
+          type: Type.STRING,
+          description: 'How many episodes to return, 1-15. Default 5.',
+        },
+      },
+    },
+  },
+  {
     name: 'get_race_results',
     description:
       'Get the classified results of a specific Grand Prix — finishing order, teams, grid positions, points, and race time or retirement status. This is the ONLY way to know who won a race; never answer a "who won" question without calling it.',
@@ -242,6 +328,7 @@ export const functionDeclarations = [
 ];
 
 const executors = {
+  get_episodes: getPodcastEpisodes,
   get_driver_standings: getDriverStandings,
   get_constructor_standings: getConstructorStandings,
   get_race_schedule: getRaceSchedule,
