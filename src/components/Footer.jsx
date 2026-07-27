@@ -1,4 +1,4 @@
-import { BRAND, navItems, socialLinks } from '../data/content';
+import { BRAND, navItems, socialLinks, studio } from '../data/content';
 import { SocialIcon } from './ui/BackgroundEffects';
 
 export default function Footer() {
@@ -37,6 +37,8 @@ export default function Footer() {
               <a
                 key={social.id}
                 href={social.url}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-zinc-300 transition hover:border-yellow-400/30 hover:text-yellow-300"
                 aria-label={social.label}
               >
@@ -48,7 +50,16 @@ export default function Footer() {
       </div>
 
       <div className="mx-auto mt-10 max-w-7xl border-t border-white/10 px-5 pt-6 text-sm text-zinc-500 md:px-8">
-        © {new Date().getFullYear()} {BRAND.name}. All rights reserved.
+        © {new Date().getFullYear()} {BRAND.name}. All Rights Reserved. Built by{' '}
+        <a
+          href={studio.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-semibold text-yellow-400 transition hover:text-yellow-300 hover:underline hover:underline-offset-4"
+        >
+          {studio.name}
+        </a>
+        .
       </div>
     </footer>
   );

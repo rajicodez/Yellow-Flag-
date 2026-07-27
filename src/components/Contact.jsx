@@ -70,6 +70,8 @@ export default function Contact() {
                   <a
                     key={social.id}
                     href={social.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/40 px-4 py-4 text-zinc-200 transition hover:border-yellow-400/30 hover:text-yellow-300"
                   >
                     <SocialIcon id={social.id} />

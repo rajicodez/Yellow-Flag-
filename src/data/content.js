@@ -6,6 +6,11 @@ export const BRAND = {
   footerTagline: 'Yellow Flag — Sinhala Formula 1 Podcast for Sri Lankan Racing Fans.',
 };
 
+export const studio = {
+  name: 'Kindforth',
+  url: 'https://kindforth.com',
+};
+
 export const navItems = [
   { id: 'home', label: 'Home' },
   { id: 'episodes', label: 'Episodes' },
@@ -34,6 +39,7 @@ export const hosts = [
       'A proud Red Bull Racing fan and self-appointed Max Verstappen defender-in-chief, Lakindu brings equal parts stats obsession, engineering curiosity, and cheeky commentary to every episode.',
     ],
     badge: 'P1',
+    photo: '/hosts/lakindu.png',
     socials: ['youtube', 'instagram'],
   },
   {
@@ -48,6 +54,7 @@ export const hosts = [
       'Thank you for being part of our journey. We look forward to sharing every twist, triumph, and unforgettable moment of Formula 1 with you.',
     ],
     badge: 'P2',
+    photo: '/hosts/kasun.jpg',
     socials: ['youtube', 'tiktok'],
   },
 ];
@@ -69,8 +76,11 @@ export const highlightCards = [
 ];
 
 export const socialLinks = [
-  { id: 'youtube', label: 'YouTube', url: '#' },
-  { id: 'tiktok', label: 'TikTok', url: '#' },
-  { id: 'facebook', label: 'Facebook', url: '#' },
-  { id: 'instagram', label: 'Instagram', url: '#' },
+  { id: 'youtube', label: 'YouTube', url: 'https://www.youtube.com/@yellowflagpod' },
+  { id: 'tiktok', label: 'TikTok', url: 'https://www.tiktok.com/@yellowflag_podcast' },
+  { id: 'facebook', label: 'Facebook', url: 'https://www.facebook.com/share/1C8GTTT12X/' },
+  { id: 'instagram', label: 'Instagram', url: 'https://www.instagram.com/yellowflag_pod' },
 ];
+
+/** Lookup for places that reference a platform by id, e.g. each host's `socials`. */
+export const socialUrlById = Object.fromEntries(socialLinks.map((social) => [social.id, social.url]));

@@ -1,3 +1,4 @@
+import { socialUrlById } from '../data/content';
 import Reveal from './Reveal';
 
 export default function Featured() {
@@ -17,7 +18,12 @@ export default function Featured() {
             <p className="section-desc">
               Raw reactions, honest takes, and the full energy of a race weekend debrief — straight from our YouTube channel.
             </p>
-            <a href="#" className="btn btn-youtube btn-glow">
+            <a
+              href={socialUrlById.youtube}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-youtube btn-glow"
+            >
               <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M23.5 6.2a3 3 0 0 0-3-3H3.5a3 3 0 0 0-3 3v11.6a3 3 0 0 0 3 3h17a3 3 0 0 0 3-3V6.2zM9.7 12.5l7.5 4.4V8.1l-7.5 4.4z" />
               </svg>

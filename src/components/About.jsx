@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { aboutIntro, hosts } from '../data/content';
+import { aboutIntro, hosts, socialUrlById } from '../data/content';
 import { SocialIcon } from './ui/BackgroundEffects';
 import Reveal from './ui/Reveal';
 import SectionHeading from './ui/SectionHeading';
@@ -8,6 +8,7 @@ import SectionHeading from './ui/SectionHeading';
 
 function HostCard({ host }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [photoFailed, setPhotoFailed] = useState(false);
   const paragraphs = Array.isArray(host.bio) ? host.bio : [host.bio];
   const visibleParagraphs = isExpanded ? paragraphs : paragraphs.slice(0, 1);
   const hasMore = paragraphs.length > 1;
@@ -21,10 +22,21 @@ function HostCard({ host }) {
 
       <div className="relative flex flex-col gap-6 md:flex-row md:items-start">
         <div className="relative h-36 w-36 shrink-0 overflow-hidden rounded-3xl border border-yellow-400/20 bg-gradient-to-br from-zinc-800 to-black">
-          <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(250,204,21,0.15),transparent)]" />
-          <div className="flex h-full items-center justify-center font-display text-4xl font-black text-yellow-300/70">
-            {host.badge}
-          </div>
+          {host.photo && !photoFailed ? (
+            <img
+              src={host.photo}
+              alt={host.name}
+              loading="lazy"
+              decoding="async"
+              className="h-full w-full object-cover object-top"
+              onError={() => setPhotoFailed(true)}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center font-display text-4xl font-black text-yellow-300/70">
+              {host.badge}
+            </div>
+          )}
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(250,204,21,0.15),transparent)]" />
         </div>
 
         <div>
@@ -50,9 +62,11 @@ function HostCard({ host }) {
             {host.socials.map((social) => (
               <a
                 key={social}
-                href="#"
+                href={socialUrlById[social]}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-black/40 text-zinc-300 transition hover:border-yellow-400/40 hover:text-yellow-300"
-                aria-label={social}
+                aria-label={`${host.name} on ${social}`}
               >
                 <SocialIcon id={social} />
               </a>
