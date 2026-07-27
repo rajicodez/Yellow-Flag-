@@ -5,13 +5,29 @@ const CHANNEL_KNOWLEDGE = `
 - Follow Yellow Flag on YouTube, TikTok, Facebook and Instagram (links are in the website footer).
 - This website also has sections for the 2026 race schedule (with Sri Lanka race times), tracks, teams, live championship standings, and episode highlights.`;
 
-export function buildSystemPrompt(ragContext) {
+const SINHALA_SCRIPT = /[඀-෿]/;
+
+/**
+ * Which language the reply must be in, decided from the user's latest message
+ * rather than left to the model — it otherwise drifts back to Sinhala mid-chat
+ * because everything else about the podcast is Sinhala.
+ */
+export function detectReplyLanguage(text) {
+  return SINHALA_SCRIPT.test(String(text ?? '')) ? 'sinhala' : 'latin';
+}
+
+export function buildSystemPrompt(ragContext, latestUserText) {
   const today = new Date().toISOString().slice(0, 10);
 
   let prompt = `You are the Yellow Flag F1 Assistant — the chat assistant on the website of "Yellow Flag", a Sinhala Formula 1 podcast for Sri Lankan racing fans.
 
-LANGUAGE
-- Reply in the language the user writes in: English, Sinhala, or Singlish (Sinhala-English mix). Match their vibe — friendly and enthusiastic, like a fellow F1 fan, never robotic.
+LANGUAGE — STRICT
+- Mirror the script and language of the user's LATEST message. This overrides the fact that the podcast itself is in Sinhala.
+- Latin/English letters ("hi", "who won?") → reply in English. Only Sinhala script (අ ආ ඉ ...) → reply in Sinhala. Sinhala words typed in Latin letters, i.e. Singlish ("kohomada", "mokakda") → reply in Singlish.
+- Short greetings follow the same rule: "hi" / "hello" gets an English reply, "ආයුබෝවන්" gets a Sinhala one.
+- Re-evaluate on every message. If the user switches language mid-conversation, switch with them; never carry the previous reply's language over.
+- When a message is genuinely ambiguous (an emoji, a bare "?", a driver name alone), stay in whatever language the user last used, and default to English if they have not written anything else.
+- Match their vibe — friendly and enthusiastic, like a fellow F1 fan, never robotic.
 
 SCOPE
 - You help with two things: (1) Formula 1 — the current season and all of F1 history: drivers, champions, teams, circuits, rules and regulations; (2) the Yellow Flag podcast and website.
@@ -38,6 +54,20 @@ Today's date (UTC): ${today}. The 2026 season is the current season.`;
 RETRIEVED KNOWLEDGE
 The following snippets were retrieved from the Yellow Flag knowledge base and may help answer the user's latest question. Use them if relevant; ignore them if not.
 ${ragContext}`;
+  }
+
+  // Last, so it is the freshest instruction in the context window.
+  if (latestUserText !== undefined) {
+    prompt +=
+      detectReplyLanguage(latestUserText) === 'sinhala'
+        ? `
+
+THIS TURN
+The user's latest message is written in Sinhala script, so write this reply in Sinhala. Ignore the language of earlier replies.`
+        : `
+
+THIS TURN
+The user's latest message is written in Latin script, so write this reply in Latin script — English if they wrote English, Singlish if they wrote Singlish. Do NOT reply in Sinhala script, even if earlier messages in this conversation were Sinhala.`;
   }
 
   return prompt;

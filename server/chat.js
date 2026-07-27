@@ -27,7 +27,7 @@ export async function runChat(history) {
   }
 
   const ragContext = await retrieveContext(last.parts[0].text);
-  const systemInstruction = buildSystemPrompt(ragContext);
+  const systemInstruction = buildSystemPrompt(ragContext, last.parts[0].text);
   const ai = getAI();
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
