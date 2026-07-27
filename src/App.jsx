@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { motion } from 'framer-motion';
 import About from './components/About';
 import Contact from './components/Contact';
@@ -223,6 +224,7 @@ function AppShell() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <F1AssistantWidget />
+      <Analytics />
     </motion.div>
   );
 }
