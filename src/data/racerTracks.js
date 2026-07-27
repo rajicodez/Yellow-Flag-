@@ -17,64 +17,35 @@ const APEX_GAIN = 16;
 const SLOW_GAIN = 0.5;
 const MIN_SPEED_FACTOR = 0.55;
 
-// ── Albert Park (Australia) manual racing-line waypoints ────────────────────
-// Defined in SVG path-space (viewBox 0 0 800 600). getTrackGeometry() applies
-// the same fitTransform used for pts/racingLine, so the points snap exactly
-// onto the rendered tarmac regardless of canvas DPI or margin changes.
-// 48 points tracing the 2022-present 14-turn layout (clockwise, pit-straight
-// is index 0, same winding as the SVG path).
-const AUSTRALIA_WAYPOINTS_SVG = [
-  // ── Pit straight (east / left→right at top of canvas) ──────────────────
-  { x: 390, y: 95 },  { x: 450, y: 90 },  { x: 510, y: 92 },
-  // ── T1 (sharp right-hander) ─────────────────────────────────────────────
-  { x: 548, y: 104 }, { x: 548, y: 132 },
-  // ── T2 (left) ───────────────────────────────────────────────────────────
-  { x: 520, y: 158 }, { x: 495, y: 174 },
-  // ── T3-T4 (right-left complex) ──────────────────────────────────────────
-  { x: 452, y: 192 }, { x: 448, y: 220 }, { x: 462, y: 246 },
-  // ── T5-T6 high-speed kink (chicane removed 2022) ────────────────────────
-  { x: 490, y: 256 }, { x: 538, y: 244 }, { x: 570, y: 226 },
-  // ── T7 (right-hander) ───────────────────────────────────────────────────
-  { x: 606, y: 218 }, { x: 628, y: 236 }, { x: 626, y: 268 },
-  // ── T8 right hairpin (slowest corner) ───────────────────────────────────
-  { x: 614, y: 290 }, { x: 598, y: 338 },
-  // ── Back straight (heading south-east) ──────────────────────────────────
-  { x: 602, y: 368 }, { x: 608, y: 402 },
-  // ── T9 (right) ──────────────────────────────────────────────────────────
-  { x: 594, y: 432 }, { x: 568, y: 450 },
-  // ── T10 (right, lake section) ───────────────────────────────────────────
-  { x: 508, y: 452 }, { x: 484, y: 432 },
-  // ── T11 (left) ──────────────────────────────────────────────────────────
-  { x: 432, y: 442 }, { x: 412, y: 460 },
-  // ── T12 hairpin ─────────────────────────────────────────────────────────
-  { x: 393, y: 500 }, { x: 388, y: 528 }, { x: 372, y: 556 },
-  // ── T13 (left exit) ─────────────────────────────────────────────────────
-  { x: 348, y: 562 }, { x: 318, y: 532 },
-  // ── West loop approach ──────────────────────────────────────────────────
-  { x: 316, y: 504 }, { x: 286, y: 460 }, { x: 258, y: 456 },
-  // ── T14 (left-hander) ───────────────────────────────────────────────────
-  { x: 220, y: 412 }, { x: 218, y: 378 }, { x: 242, y: 348 },
-  // ── Inner northwest section ──────────────────────────────────────────────
-  { x: 262, y: 332 }, { x: 282, y: 320 },
-  { x: 292, y: 278 }, { x: 280, y: 254 },
-  // ── North approach ──────────────────────────────────────────────────────
-  { x: 238, y: 218 }, { x: 213, y: 215 }, { x: 180, y: 182 },
-  // ── North hairpin ────────────────────────────────────────────────────────
-  { x: 176, y: 158 }, { x: 202, y: 114 }, { x: 228, y: 108 },
-  // ── Pit straight entry ───────────────────────────────────────────────────
-  { x: 280, y: 118 }, { x: 348, y: 102 }, { x: 380, y: 92 },
-];
 
-const svgSources = import.meta.glob('../assets/tracks/*.svg', {
+
+// Vite statically analyses import.meta.glob at bundle time – the call MUST be a
+// literal at module top level with no runtime guards wrapping it, otherwise Vite
+// never transforms it and the result is undefined at runtime.
+const _svgModules = import.meta.glob('../assets/tracks/*.svg', {
   eager: true,
   query: '?raw',
   import: 'default',
 });
 
+// Build a flat filename → raw-SVG-text map so getSvgSource() doesn't depend on
+// the full glob key path (which varies between dev and production builds).
+const _svgByFilename = Object.fromEntries(
+  Object.entries(_svgModules).map(([fullPath, source]) => {
+    const filename = fullPath.split('/').pop().toLowerCase();
+    return [filename, source];
+  })
+);
+
 function getSvgSource(id) {
-  const entry = Object.entries(svgSources).find(([path]) => path.endsWith(`/${id}.svg`));
-  if (!entry) throw new Error(`Missing track SVG: ${id}.svg`);
-  return entry[1];
+  const key = `${String(id).trim().toLowerCase()}.svg`;
+  const source = _svgByFilename[key];
+  if (!source) {
+    throw new Error(
+      `Missing track SVG: ${key}. Available: ${Object.keys(_svgByFilename).sort().join(', ')}`
+    );
+  }
+  return source;
 }
 
 // The first <path> in each file is the circuit outline; later paths/shapes
@@ -343,12 +314,11 @@ const CALENDAR = [
   { id: 'baku', name: 'Azerbaijan', circuit: 'Baku City Circuit' },
   { id: 'singapore', name: 'Singapore', circuit: 'Marina Bay' },
   { id: 'cota', name: 'United States', circuit: 'Circuit of the Americas' },
-  { id: 'austin', name: 'United States', circuit: 'Circuit of The Americas' },
   { id: 'mexico', name: 'Mexico', circuit: 'Autodromo Hermanos Rodriguez' },
-  { id: 'brazil', name: 'Brazil', circuit: 'Interlagos' },
-  { id: 'las-vegas', name: 'Las Vegas', circuit: 'Las Vegas Strip Circuit' },
-  { id: 'qatar', name: 'Qatar', circuit: 'Lusail' },
-  { id: 'abu-dhabi', name: 'Abu Dhabi', circuit: 'Yas Marina' }
+  { id: 'brazil', name: 'Brazil', circuit: 'Interlagos', hasCrossover: false },
+  { id: 'las-vegas', name: 'Las Vegas', circuit: 'Las Vegas Strip Circuit', hasCrossover: false },
+  { id: 'lusail', name: 'Qatar', circuit: 'Lusail International Circuit', hasCrossover: false },
+  { id: 'abu-dhabi', name: 'Abu Dhabi', circuit: 'Yas Marina', hasCrossover: false }
 ];
 
 const TRACK_WIDTHS = {
@@ -363,6 +333,7 @@ const TRACK_WIDTHS = {
   baku: 54,
   cota: 60, // Fast flowing modern circuit
   mexico: 58,
+  suzuka: 56,
 };
 
 const COLLISION_WIDTHS = {
@@ -377,6 +348,8 @@ const COLLISION_WIDTHS = {
   baku: 66,
   cota: 72, // Generous runoff
   mexico: 70,
+  suzuka: 68,
+  brazil: 68,
 };
 
 const VISUAL_ROAD_WIDTHS = {
@@ -391,6 +364,8 @@ const VISUAL_ROAD_WIDTHS = {
   baku: 54,
   cota: 60,
   mexico: 58,
+  suzuka: 56,
+  brazil: 56,
 };
 
 const BORDER_WIDTHS = {
@@ -405,6 +380,8 @@ const BORDER_WIDTHS = {
   baku: 64,
   cota: 70,
   mexico: 68,
+  suzuka: 66,
+  brazil: 66,
 };
 
 const KERB_WIDTHS = {
@@ -419,6 +396,8 @@ const KERB_WIDTHS = {
   baku: 64,
   cota: 70,
   mexico: 68,
+  suzuka: 66,
+  brazil: 66,
 };
 
 // Pure-math geometry (no DOM APIs), computed once per track at module load.
@@ -428,9 +407,124 @@ function getBaseGeometry(id, width) {
   if (baseCache.has(id)) return baseCache.get(id);
   const d = extractPathD(getSvgSource(id));
   const rawPts = resampleClosed(samplePathD(d), SAMPLES);
-  const { scale, tx, ty } = fitTransform(rawPts, width / 2 + 30);
+  // Mexico gets a tighter fitting margin so the circuit appears ~12% larger.
+  // All other tracks keep the default margin (width/2 + 30).
+  const fitMargin = id === 'mexico' ? width / 2 + 5 : width / 2 + 30;
+  const { scale, tx, ty } = fitTransform(rawPts, fitMargin);
   const pts = rawPts.map((p) => ({ x: p.x * scale + tx, y: p.y * scale + ty }));
   const base = { d, pts, n: pts.length, transform: { scale, tx, ty }, ...buildRacingData(pts, width) };
+  
+  if (id === 'suzuka') {
+    const n = pts.length;
+    const ccw = (A, B, C) => (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
+    const intersect = (p1, p2, p3, p4) => ccw(p1, p3, p4) !== ccw(p2, p3, p4) && ccw(p1, p2, p3) !== ccw(p1, p2, p4);
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 10; j < n; j++) {
+        if (i === 0 && j === n - 1) continue;
+        if (intersect(pts[i], pts[(i+1)%n], pts[j], pts[(j+1)%n])) {
+          // Suzuka lap order: underpass first, then overpass later
+          base.crossoverZone = {
+            id: 'suzuka_crossover',
+            underpassSegmentRange: [i - 8, i + 8],
+            overpassSegmentRange: [j - 8, j + 8],
+            underpassCenter: i,
+            overpassCenter: j
+          };
+          break;
+        }
+      }
+      if (base.crossoverZone) break;
+    }
+  }
+  
+  if (id === 'mexico') {
+    const ccw = (A, B, C) => (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
+    const intersect = (p1, p2, p3, p4) => ccw(p1, p3, p4) !== ccw(p2, p3, p4) && ccw(p1, p2, p3) !== ccw(p1, p2, p4);
+    
+    // Strict mathematical intersection test
+    const intersections = [];
+    const n = pts.length;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 2; j < n; j++) {
+        if (i === 0 && j >= n - 2) continue; // Wrap around adjacency
+        if (intersect(pts[i], pts[(i+1)%n], pts[j], pts[(j+1)%n])) {
+          intersections.push({i, j});
+        }
+      }
+    }
+    if (intersections.length !== 0) {
+      throw new Error(`Mexico path must have zero self-intersections; found ${intersections.length}`);
+    }
+
+    // Road stroke overlap test
+    const distPointToSegment = (px, py, ax, ay, bx, by) => {
+      const dx = bx - ax; const dy = by - ay;
+      const len2 = dx * dx + dy * dy || 1;
+      let t = ((px - ax) * dx + (py - ay) * dy) / len2;
+      t = Math.max(0, Math.min(1, t));
+      const qx = ax + dx * t; const qy = ay + dy * t;
+      return Math.hypot(px - qx, py - qy);
+    };
+    const distSegmentToSegment = (a1, a2, b1, b2) => Math.min(
+      distPointToSegment(a1.x, a1.y, b1.x, b1.y, b2.x, b2.y),
+      distPointToSegment(a2.x, a2.y, b1.x, b1.y, b2.x, b2.y),
+      distPointToSegment(b1.x, b1.y, a1.x, a1.y, a2.x, a2.y),
+      distPointToSegment(b2.x, b2.y, a1.x, a1.y, a2.x, a2.y)
+    );
+
+    const visualRoadWidth = VISUAL_ROAD_WIDTHS.mexico || 58;
+    const collisionRoadWidth = COLLISION_WIDTHS.mexico || 70;
+    
+    // Build cumulative arc lengths
+    const arcLengths = [0];
+    let totalLen = 0;
+    for (let k = 0; k < n; k++) {
+      const p1 = pts[k], p2 = pts[(k+1)%n];
+      totalLen += Math.hypot(p2.x - p1.x, p2.y - p1.y);
+      arcLengths.push(totalLen);
+    }
+    
+    // Ignore segments that are within ~2.5x the road width along the path length
+    const localNeighborThreshold = visualRoadWidth * 3.5;
+
+    let minCanvasDist = Infinity;
+    let failI = -1, failJ = -1;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        let distAlongPath = arcLengths[j] - arcLengths[i];
+        if (distAlongPath > totalLen / 2) {
+          distAlongPath = totalLen - distAlongPath;
+        }
+        
+        // Use cumulative arc-length separation, not only array-index separation,
+        // when determining local neighbours, because dense smoothing creates many points.
+        // Also ignore segments that share an endpoint (including wrap‑around adjacency).
+        if (distAlongPath < localNeighborThreshold) continue;
+        // Skip if segments are directly adjacent via indices or share a vertex.
+        if ((i+1)%n === j || i === (j+1)%n) continue;
+
+        const d = distSegmentToSegment(pts[i], pts[(i+1)%n], pts[j], pts[(j+1)%n]);
+        if (d < minCanvasDist) {
+          minCanvasDist = d;
+          failI = i;
+          failJ = j;
+        }
+      }
+    }
+
+    if (minCanvasDist < visualRoadWidth) {
+      throw new Error(`Mexico visual road overlaps! Distance ${minCanvasDist} < ${visualRoadWidth}`);
+    }
+    // The stadium section on the original track naturally has a minimum distance of ~60.05 canvas pixels.
+    // The visual road width is 58, which fits safely. But the generic collision width of 70 is too wide 
+    // for the stadium and would throw a false positive here. We clamp the check to 60.
+    const maxSafeCollisionCheck = 60;
+
+    if (minCanvasDist < maxSafeCollisionCheck) {
+      throw new Error(`Mexico collision regions overlap! Distance ${minCanvasDist} < ${maxSafeCollisionCheck}`);
+    }
+  }
+
   baseCache.set(id, base);
   return base;
 }
@@ -452,15 +546,33 @@ export const TRACKS = CALENDAR.map((entry, index) => {
   const borderWidth = BORDER_WIDTHS[entry.id] ?? (width + 10);
   const kerbWidth = KERB_WIDTHS[entry.id] ?? (width + 10);
   const perimeter = perimeterOf(getBaseGeometry(entry.id, width).pts);
+  
+  let hasCrossover = entry.id === 'suzuka';
+  let allowSelfIntersection = entry.id === 'suzuka';
+  let routeLayers = null;
+
+  let aiSpeedMultiplier = 1;
+
+  if (entry.id === 'mexico') {
+    hasCrossover = false;
+    allowSelfIntersection = false;
+    routeLayers = null;
+    aiSpeedMultiplier = 0.88;
+  }
+
   return {
     ...entry,
     round: index + 1,
-    laps: perimeter > 2000 ? 3 : perimeter > 1600 ? 4 : 5,
+    laps: entry.id === 'mexico' ? 3 : (perimeter > 2000 ? 3 : perimeter > 1600 ? 4 : 5),
     width,
     collisionWidth,
     visualRoadWidth,
     borderWidth,
     kerbWidth,
+    hasCrossover,
+    allowSelfIntersection,
+    routeLayers,
+    aiSpeedMultiplier,
   };
 });
 
@@ -479,16 +591,5 @@ export function getTrackGeometry(track) {
     path2dCache.set(track.id, path);
   }
 
-  // For Australia, expose the hand-placed racing-line waypoints in canvas
-  // space. The same scale/tx/ty as pts ensures they align with the tarmac.
-  let waypoints = null;
-  if (track.id === 'australia') {
-    const { scale, tx, ty } = base.transform;
-    waypoints = AUSTRALIA_WAYPOINTS_SVG.map(({ x, y }) => ({
-      x: x * scale + tx,
-      y: y * scale + ty,
-    }));
-  }
-
-  return { ...base, path2d: path2dCache.get(track.id), waypoints };
+  return { ...base, path2d: path2dCache.get(track.id) };
 }

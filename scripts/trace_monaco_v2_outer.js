@@ -1,9 +1,8 @@
 import fs from 'fs';
 
-const {w, h, mask} = JSON.parse(fs.readFileSync('monaco_mask_clean.json', 'utf8'));
+const {w, h, mask} = JSON.parse(fs.readFileSync('monaco_mask_v2_clean.json', 'utf8'));
 
 // Find a starting pixel on the outer boundary.
-// We can scan from left to right, middle height, to find the first pixel.
 let startX = -1;
 let startY = -1;
 for (let y = Math.floor(h / 2); y < h; y++) {
@@ -19,8 +18,6 @@ for (let y = Math.floor(h / 2); y < h; y++) {
 
 console.log(`Start tracing from x=${startX}, y=${startY}`);
 
-// Moore neighborhood tracing
-// Directions: 0: up, 1: up-right, 2: right, 3: down-right, 4: down, 5: down-left, 6: left, 7: up-left
 const dirs = [
   {x: 0, y: -1}, {x: 1, y: -1}, {x: 1, y: 0}, {x: 1, y: 1},
   {x: 0, y: 1}, {x: -1, y: 1}, {x: -1, y: 0}, {x: -1, y: -1}
@@ -31,14 +28,10 @@ let currY = startY;
 let currDir = 0;
 
 const boundary = [];
-const visitedStr = new Set();
 
 while (true) {
   boundary.push({x: currX, y: currY});
-  visitedStr.add(`${currX},${currY}`);
   
-  // Search for the next boundary pixel
-  // Start from the direction we came from, minus 2 (so we check "left" of forward direction)
   let found = false;
   let searchDir = (currDir + 6) % 8; // Turn left 90 degrees
   
@@ -98,9 +91,8 @@ function rdp(points, epsilon) {
   }
 }
 
-// Subsample before RDP
 const subsampled = [];
-for (let i = 0; i < boundary.length; i+=3) {
+for (let i = 0; i < boundary.length; i+=2) {
   subsampled.push(boundary[i]);
 }
 

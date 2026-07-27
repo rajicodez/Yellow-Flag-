@@ -29,10 +29,54 @@ export default function F1AssistantWidget() {
   const [isTyping, setIsTyping] = useState(false);
   const messageListRef = useRef(null);
 
+  const audioRef = useRef(null);
+  const notifiedAssistantMessageIdsRef = useRef(new Set());
+
   useEffect(() => {
     const list = messageListRef.current;
     if (list) list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
   }, [messages, isTyping, isOpen]);
+
+  // Seed history on mount so we don't play sounds for existing messages
+  useEffect(() => {
+    messages.forEach((m) => {
+      if (m.role === 'bot') {
+        notifiedAssistantMessageIdsRef.current.add(m.id);
+      }
+    });
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Monitor for new completed bot messages
+  useEffect(() => {
+    const latestMessage = messages[messages.length - 1];
+
+    if (latestMessage && latestMessage.role === 'bot') {
+      const isStreaming = latestMessage.isStreaming === true;
+      const id = latestMessage.id;
+
+      if (!isStreaming && !notifiedAssistantMessageIdsRef.current.has(id)) {
+        notifiedAssistantMessageIdsRef.current.add(id);
+
+        if (audioRef.current) {
+          audioRef.current.currentTime = 0;
+          const p = audioRef.current.play();
+          if (p !== undefined) {
+            p.catch((err) => {
+              console.warn('[F1AssistantWidget] Notification playback failed:', err);
+            });
+          }
+        }
+      }
+    }
+  }, [messages]);
 
   useEffect(() => {
     const alreadySeen = sessionStorage.getItem(TOOLTIP_SEEN_KEY);
@@ -63,6 +107,19 @@ export default function F1AssistantWidget() {
     event.preventDefault();
     const trimmed = input.trim();
     if (!trimmed || isTyping) return;
+
+    // Prepare audio on user interaction to unlock browser restrictions
+    if (!audioRef.current) {
+      audioRef.current = new Audio('/audio/open-sound.mp3');
+      audioRef.current.preload = 'auto';
+      audioRef.current.loop = false;
+      audioRef.current.volume = 0.6;
+    }
+    try {
+      audioRef.current.load();
+    } catch (e) {
+      // Ignore load errors safely
+    }
 
     const userMessage = { id: `user-${Date.now()}`, role: 'user', text: trimmed };
     const nextMessages = [...messages, userMessage];

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle2, Flag, Lock, RotateCcw, Trophy } from 'lucide-react';
 import abuDhabi from '../assets/tracks/abu-dhabi.svg';
@@ -11,6 +11,9 @@ import monza from '../assets/tracks/monza.svg';
 import silverstone from '../assets/tracks/silverstone.svg';
 import singapore from '../assets/tracks/singapore.svg';
 import mexico from '../assets/tracks/mexico.svg';
+import brazil from '../assets/tracks/brazil.svg';
+import lasVegas from '../assets/tracks/las-vegas.svg';
+import lusail from '../assets/tracks/lusail.svg';
 import { TRACKS, getTrackGeometry } from '../data/racerTracks';
 
 const CANVAS_W = 960;
@@ -27,6 +30,9 @@ const TRACK_SVGS = {
   silverstone,
   singapore,
   mexico,
+  brazil,
+  'las-vegas': lasVegas,
+  lusail,
 };
 const UNLOCKED_KEY = 'yf-racer-unlocked';
 const RESULTS_KEY = 'yf-racer-results';
@@ -51,6 +57,81 @@ const viewMotion = {
   exit: { opacity: 0, y: -16 },
   transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] },
 };
+
+function TrackMiniMap({ track, isUnlocked }) {
+  const { d, viewBox, strokeWidth, error } = useMemo(() => {
+    try {
+      const geometry = getTrackGeometry(track);
+      const pts = geometry.pts;
+      if (!pts || pts.length === 0) {
+        return { error: true };
+      }
+
+      let minX = Infinity;
+      let minY = Infinity;
+      let maxX = -Infinity;
+      let maxY = -Infinity;
+
+      let d = '';
+      for (let i = 0; i < pts.length; i++) {
+        const { x, y } = pts[i];
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+        
+        if (i === 0) d += `M ${x} ${y} `;
+        else d += `L ${x} ${y} `;
+      }
+      d += 'Z';
+
+      const width = maxX - minX;
+      const height = maxY - minY;
+      const paddingX = width * 0.12;
+      const paddingY = height * 0.12;
+
+      const viewBox = `${minX - paddingX} ${minY - paddingY} ${width + paddingX * 2} ${height + paddingY * 2}`;
+      const strokeWidth = Math.max(width, height) * 0.018;
+
+      return { d, viewBox, strokeWidth, error: false };
+    } catch (err) {
+      console.error(`[TrackMiniMap] Missing geometry for track ID: ${track.id}`, err);
+      return { error: true };
+    }
+  }, [track]);
+
+  if (error) {
+    return (
+      <div className="flex w-full h-32 items-center justify-center rounded-lg border border-dashed border-white/10 bg-white/5">
+        <span className="text-xs text-zinc-500">Preview Unavailable</span>
+      </div>
+    );
+  }
+
+  return (
+    <svg
+      viewBox={viewBox}
+      className={`w-full h-32 rounded-lg object-contain transition duration-300 ${
+        isUnlocked
+          ? 'opacity-90 group-hover:opacity-100 group-hover:brightness-110 drop-shadow-[0_0_8px_rgba(250,204,21,0.2)]'
+          : 'opacity-40 grayscale'
+      }`}
+    >
+      <path
+        d={d}
+        fill="none"
+        className={`transition-colors duration-300 ${
+          isUnlocked
+            ? 'stroke-zinc-500 group-hover:stroke-yellow-400'
+            : 'stroke-zinc-700'
+        }`}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
@@ -115,7 +196,8 @@ function nearestWpIdx(x, y, wps) {
 // is stroked directly from the authentic SVG Path2D, so the visible tarmac is
 // the exact real-world circuit shape.
 function buildTrackLayer(track, dpr) {
-  const { pts, path2d } = getTrackGeometry(track);
+  const trackGeometry = getTrackGeometry(track);
+  const { pts, path2d, crossoverZone } = trackGeometry;
   const canvas = document.createElement('canvas');
   canvas.width = CANVAS_W * dpr;
   canvas.height = CANVAS_H * dpr;
@@ -135,22 +217,23 @@ function buildTrackLayer(track, dpr) {
 
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
+
   ctx.strokeStyle = '#e4e4e7';
   ctx.lineWidth = track.borderWidth;
   ctx.stroke(path);
-  ctx.setLineDash([16, 16]);
-  ctx.strokeStyle = '#dc2626';
-  ctx.lineWidth = track.kerbWidth;
-  ctx.stroke(path);
-  ctx.setLineDash([]);
-  ctx.strokeStyle = '#26272c';
-  ctx.lineWidth = track.visualRoadWidth;
-  ctx.stroke(path);
-  ctx.setLineDash([12, 16]);
-  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-  ctx.lineWidth = 2;
-  ctx.stroke(path);
-  ctx.setLineDash([]);
+    ctx.setLineDash([16, 16]);
+    ctx.strokeStyle = '#dc2626';
+    ctx.lineWidth = track.kerbWidth;
+    ctx.stroke(path);
+    ctx.setLineDash([]);
+    ctx.strokeStyle = '#26272c';
+    ctx.lineWidth = track.visualRoadWidth;
+    ctx.stroke(path);
+    ctx.setLineDash([12, 16]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+    ctx.lineWidth = 2;
+    ctx.stroke(path);
+    ctx.setLineDash([]);
 
   // Chequered start/finish strip perpendicular to the racing direction.
   const p0 = pts[0];
@@ -171,11 +254,14 @@ function buildTrackLayer(track, dpr) {
   ctx.restore();
 
   // Draw Suzuka bridge mask and visual overpass
-  if (track.id === 'suzuka') {
+  if (crossoverZone) {
     const bridgePath = new Path2D();
-    const { scale, tx, ty } = getTrackGeometry(track).transform;
-    bridgePath.moveTo(790 * scale + tx, 120 * scale + ty);
-    bridgePath.lineTo(480 * scale + tx, 380 * scale + ty);
+    const [start, end] = crossoverZone.overpassSegmentRange;
+    for (let k = start; k <= end; k++) {
+      const p = pts[((k % pts.length) + pts.length) % pts.length];
+      if (k === start) bridgePath.moveTo(p.x, p.y);
+      else bridgePath.lineTo(p.x, p.y);
+    }
     
     // Mask
     ctx.strokeStyle = '#0b0e11'; 
@@ -292,7 +378,7 @@ function loadResults() {
 
 /* ----------------------------- Race screen ----------------------------- */
 
-function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackToSelect }) {
+function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackToSelect, onResetChampionship }) {
   const canvasRef = useRef(null);
   const carsRef = useRef([]);
   const keysRef = useRef({ up: false, down: false, left: false, right: false });
@@ -369,7 +455,7 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
   // Game engine: init cars, run simulation + render loop.
   useEffect(() => {
     const geometry = getTrackGeometry(track);
-    const { pts, n, racingLine, speedFactor, path2d, waypoints } = geometry;
+    const { pts, n, racingLine, speedFactor, path2d } = geometry;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     const canvas = canvasRef.current;
@@ -385,7 +471,8 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
     collisionCtx.lineWidth = track.collisionWidth || track.width;
     collisionCtx.lineJoin = 'round';
     collisionCtx.lineCap = 'round';
-    const isOnTrack = (x, y) => collisionCtx.isPointInStroke(path2d, x, y);
+    
+    let isOnTrack = (x, y) => collisionCtx.isPointInStroke(path2d, x, y);
 
     // AI difficulty scales with championship progress. Pace is high enough to
     // punish any player mistake; the apex-hugging racing line means the AI
@@ -421,11 +508,10 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
         segIdx: idx,
         lastS: idx,
         totalProgress: idx - n,
+        nextCheckpoint: 0,
         offTrack: false,
         finished: false,
         finishOrder: 0,
-        // Waypoint index for the Albert Park AI path (null on other tracks).
-        wpIdx: waypoints && !spec.isPlayer ? nearestWpIdx(startX, startY, waypoints) : 0,
       };
     });
 
@@ -468,19 +554,14 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
     };
 
     const updateProgress = (car) => {
-      const near = nearestSegment(pts, car.x, car.y, car.segIdx, 15);
+      // Restrict search window in Mexico to completely prevent jumping across esses
+      const windowSize = track.id === 'mexico' ? 5 : 15;
+      const near = nearestSegment(pts, car.x, car.y, car.segIdx, windowSize);
       // Boundary check — two modes depending on the track:
       //
       // Albert Park (waypoints defined): the player's distance from the
-      // waypoint polyline (i.e., the racing centerline) must stay within
-      // half the track width + a small grace buffer (40 px). Breaching that
-      // fires the 45% one-time speed cut. AI cars use their own boundary
-      // management via the existing maxOffset clamp.
-      //
-      // All other tracks: the original SVG stroke hit-test + maxOffset clamp.
-      const outside = waypoints
-        ? car.isPlayer && nearestDistToPolyline(car.x, car.y, waypoints) > 40
-        : !isOnTrack(car.x, car.y);
+      // Player collision checks against the canonical centerline.
+      const outside = !isOnTrack(car.x, car.y);
 
       if (outside || near.dist > maxOffset) {
         if (near.dist > maxOffset) {
@@ -505,13 +586,39 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
       let delta = s - car.lastS;
       if (delta > n / 2) delta -= n;
       else if (delta < -n / 2) delta += n;
+      
+      // Prevent physically impossible jumps in one frame
+      if (track.id === 'mexico') {
+         delta = clamp(delta, -windowSize, windowSize);
+      }
+      
       car.lastS = s;
       if (car.finished) return;
       car.totalProgress += delta;
-      if (car.totalProgress >= finishLine) {
-        car.finished = true;
-        car.finishOrder = ++finishCounterRef.current;
-        if (car.isPlayer) endRace(car.finishOrder);
+
+      // Ensure laps only count when making valid forward progress
+      // Checkpoints spaced out across the lap
+      if (track.id === 'mexico') {
+        const lap = Math.floor(car.totalProgress / n);
+        const normalizedProgress = car.totalProgress - (lap * n);
+        const expectedCheckpointInLap = car.nextCheckpoint % 10;
+        const checkpointSpacing = n / 10; // 10 checkpoints around the track
+        
+        if (normalizedProgress >= expectedCheckpointInLap * checkpointSpacing && normalizedProgress < (expectedCheckpointInLap + 1.5) * checkpointSpacing) {
+           car.nextCheckpoint++;
+        }
+        
+        if (car.totalProgress >= finishLine && car.nextCheckpoint >= 10 * track.laps - 1) {
+          car.finished = true;
+          car.finishOrder = ++finishCounterRef.current;
+          if (car.isPlayer) endRace(car.finishOrder);
+        }
+      } else {
+        if (car.totalProgress >= finishLine) {
+          car.finished = true;
+          car.finishOrder = ++finishCounterRef.current;
+          if (car.isPlayer) endRace(car.finishOrder);
+        }
       }
     };
 
@@ -550,46 +657,8 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
           car.speed *= Math.pow(0.988, dt);
           if (Math.abs(car.speed) < 0.02 && !keys.up && !keys.down) car.speed = 0;
         } else {
-          // AI steering — two modes:
-          //
-          // Albert Park (waypoints defined): chase the explicit waypoint
-          // array. Capture within 20 px advances to the next point. A
-          // 3-step look-ahead keeps steering smooth through high-speed
-          // sections. Speed control still uses speedFactor via segIdx so the
-          // AI brakes correctly for every corner apex.
-          //
-          // All other tracks: classic look-ahead on the computed racingLine.
-          if (waypoints) {
-            // Advance waypoint index when car enters capture radius.
-            const wp = waypoints[car.wpIdx];
-            if (Math.hypot(wp.x - car.x, wp.y - car.y) < 20) {
-              car.wpIdx = (car.wpIdx + 1) % waypoints.length;
-            }
-            // Target 3 waypoints ahead for smoother cornering.
-            const lookWp = waypoints[(car.wpIdx + 3) % waypoints.length];
-            const diff = normalizeAngle(
-              Math.atan2(lookWp.y - car.y, lookWp.x - car.x) - car.heading
-            );
-            car.heading += clamp(diff, -car.turnClamp * dt, car.turnClamp * dt);
-
-            // Speed: brake for the tightest upcoming corner (same as before).
-            let cornerGrip = 1;
-            for (let a = 2; a <= 12; a++) {
-              const sf = speedFactor[(car.segIdx + a) % n];
-              if (sf < cornerGrip) cornerGrip = sf;
-            }
-            const target =
-              car.maxSpeed *
-              aiBoost *
-              Math.max(0.6, cornerGrip) *
-              (1 - Math.min(0.25, Math.abs(diff) * 0.7));
-            car.speed =
-              car.speed < target
-                ? Math.min(target, car.speed + car.accel * aiBoost * dt)
-                : Math.max(target, car.speed - 0.12 * dt);
-          } else {
-            // Classic racingLine look-ahead for all other tracks.
-            const lookIdx = (car.segIdx + 5) % n;
+          // Classic racingLine look-ahead for all tracks (waypoints removed).
+          const lookIdx = (car.segIdx + 5) % n;
             const lp = racingLine[lookIdx];
             const lq = racingLine[(lookIdx + 1) % n];
             const tangent = Math.atan2(lq.y - lp.y, lq.x - lp.x);
@@ -609,12 +678,12 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
               car.maxSpeed *
               aiBoost *
               Math.max(0.6, cornerGrip) *
-              (1 - Math.min(0.25, Math.abs(diff) * 0.7));
+              (1 - Math.min(0.25, Math.abs(diff) * 0.7)) *
+              (track.aiSpeedMultiplier || 1);
             car.speed =
               car.speed < target
                 ? Math.min(target, car.speed + car.accel * aiBoost * dt)
                 : Math.max(target, car.speed - 0.12 * dt);
-          }
         }
 
         car.x += Math.cos(car.heading) * car.speed * dt;
@@ -677,8 +746,8 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
         if (playerCar) {
           const progress = playerCar.segIdx / pts.length;
           let tunnelFactor = 0;
-          const start = 0.33;
-          const end = 0.62;
+          const start = 0.50;
+          const end = 0.69;
           const fade = 0.02;
           if (progress > start && progress < end) {
             if (progress < start + fade) tunnelFactor = (progress - start) / fade;
@@ -686,8 +755,13 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
             else tunnelFactor = 1;
           }
           if (tunnelFactor > 0) {
+            ctx.save();
+            ctx.globalAlpha = 1;
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.filter = 'none';
             ctx.fillStyle = `rgba(15, 23, 42, ${tunnelFactor * 0.75})`;
             ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+            ctx.restore();
           }
         }
       }
@@ -797,89 +871,136 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
 
         {/* Post-race overlay */}
         {raceState === 'finished' && result && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="absolute inset-0 flex items-center justify-center overflow-y-auto bg-black/75 p-4 backdrop-blur-sm"
-          >
+          isLastTrack && result.victory ? (
             <motion.div
-              initial={{ opacity: 0, y: 24, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-              className="flex w-full max-w-md flex-col items-center gap-5 rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-md md:p-8"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/90 p-4 backdrop-blur-md"
             >
-              <div
-                className={`flex h-14 w-14 items-center justify-center rounded-full border ${
-                  result.victory
-                    ? 'border-yellow-400/30 bg-yellow-400/10 text-yellow-300 shadow-[0_0_32px_rgba(250,204,21,0.3)]'
-                    : 'border-red-500/30 bg-red-500/10 text-red-400 shadow-[0_0_32px_rgba(239,68,68,0.25)]'
-                }`}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                className="flex w-full max-w-2xl flex-col items-center gap-6 rounded-3xl border border-yellow-500/30 bg-black/80 p-8 text-center shadow-[0_0_80px_rgba(250,204,21,0.2)] backdrop-blur-xl md:p-12"
               >
-                {result.victory ? <Trophy className="h-6 w-6" /> : <Flag className="h-6 w-6" />}
-              </div>
-              <div>
-                <h3 className="font-display text-2xl font-black uppercase tracking-[0.02em] text-white md:text-3xl">
-                  {result.victory ? 'Victory!' : 'Game Over!'}
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-zinc-300">
-                  {ORDINALS[result.position - 1]} at {track.circuit} —{' '}
-                  <span className="font-bold text-yellow-400">+{result.points} pts</span>.{' '}
-                  {result.victory
-                    ? isLastTrack
-                      ? `Championship complete — you conquered all ${TOTAL_ROUNDS} rounds!`
-                      : 'Next race unlocked!'
-                    : 'Finish on the podium (top 3) to advance. Try again!'}
-                </p>
-              </div>
+                <div className="flex h-24 w-24 items-center justify-center rounded-full border border-yellow-400/40 bg-yellow-400/10 text-yellow-400 shadow-[0_0_40px_rgba(250,204,21,0.4)]">
+                  <Trophy className="h-12 w-12" />
+                </div>
 
-              {/* Race classification */}
-              <div className="w-full rounded-xl border border-white/10 bg-black/40 p-3">
-                {result.standings.map((row, i) => (
-                  <div
-                    key={row.name}
-                    className={`flex items-center gap-3 rounded-lg px-2 py-1 text-xs font-bold uppercase tracking-widest ${
-                      row.isPlayer ? 'bg-yellow-400/10 text-yellow-400' : 'text-zinc-300'
-                    }`}
-                  >
-                    <span className="w-8 text-left text-zinc-500">P{i + 1}</span>
-                    <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
-                    <span className="flex-1 text-left">{row.name}</span>
-                    <span className="text-zinc-500">+{POINTS_TABLE[i]}</span>
-                  </div>
-                ))}
-              </div>
+                <div>
+                  <h2 className="font-display text-3xl font-black uppercase tracking-[0.02em] text-white md:text-5xl lg:text-5xl drop-shadow-lg">
+                    YOU WIN THE WORLD CHAMPIONSHIP!
+                  </h2>
+                  <p className="mt-4 text-sm font-bold tracking-[0.25em] text-yellow-400 md:text-base">
+                    SEASON COMPLETE — {TOTAL_ROUNDS}/{TOTAL_ROUNDS} RACES
+                  </p>
+                </div>
 
-              <div className="flex w-full flex-col gap-3 sm:flex-row">
-                {result.victory && !isLastTrack ? (
+                <div className="mt-6 flex w-full flex-col gap-4 sm:flex-row">
                   <button
                     type="button"
-                    onClick={onNextRace}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-yellow-500/50 bg-yellow-400/10 py-2.5 text-sm font-semibold uppercase tracking-widest text-yellow-400 transition-all hover:bg-yellow-400/20"
-                  >
-                    <Flag className="h-4 w-4" />
-                    Continue to Next Race
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onRetry}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-yellow-500/50 bg-yellow-400/10 py-2.5 text-sm font-semibold uppercase tracking-widest text-yellow-400 transition-all hover:bg-yellow-400/20"
+                    onClick={onResetChampionship}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-yellow-500/50 bg-yellow-400/20 py-3.5 text-sm font-bold uppercase tracking-widest text-yellow-400 transition-all hover:bg-yellow-400/30"
                   >
                     <RotateCcw className="h-4 w-4" />
-                    {result.victory ? 'Race Again' : 'Try Again'}
+                    PLAY AGAIN
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={onBackToSelect}
-                  className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/10 bg-[#1a1a1a] py-2.5 text-sm font-semibold uppercase tracking-widest text-zinc-200 transition-all hover:border-yellow-500/50 hover:text-yellow-500"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Calendar
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={onBackToSelect}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/20 bg-white/10 py-3.5 text-sm font-bold uppercase tracking-widest text-white transition-all hover:bg-white/20 hover:border-white/40"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    BACK TO HOME
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="absolute inset-0 flex items-center justify-center overflow-y-auto bg-black/75 p-4 backdrop-blur-sm"
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 24, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                className="flex w-full max-w-md flex-col items-center gap-5 rounded-2xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-md md:p-8"
+              >
+                <div
+                  className={`flex h-14 w-14 items-center justify-center rounded-full border ${
+                    result.victory
+                      ? 'border-yellow-400/30 bg-yellow-400/10 text-yellow-300 shadow-[0_0_32px_rgba(250,204,21,0.3)]'
+                      : 'border-red-500/30 bg-red-500/10 text-red-400 shadow-[0_0_32px_rgba(239,68,68,0.25)]'
+                  }`}
+                >
+                  {result.victory ? <Trophy className="h-6 w-6" /> : <Flag className="h-6 w-6" />}
+                </div>
+                <div>
+                  <h3 className="font-display text-2xl font-black uppercase tracking-[0.02em] text-white md:text-3xl">
+                    {result.victory ? 'Victory!' : 'Game Over!'}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-zinc-300">
+                    {ORDINALS[result.position - 1]} at {track.circuit} —{' '}
+                    <span className="font-bold text-yellow-400">+{result.points} pts</span>.{' '}
+                    {result.victory
+                      ? isLastTrack
+                        ? `Championship complete — you conquered all ${TOTAL_ROUNDS} rounds!`
+                        : 'Next race unlocked!'
+                      : 'Finish on the podium (top 3) to advance. Try again!'}
+                  </p>
+                </div>
+
+                {/* Race classification */}
+                <div className="w-full rounded-xl border border-white/10 bg-black/40 p-3">
+                  {result.standings.map((row, i) => (
+                    <div
+                      key={row.name}
+                      className={`flex items-center gap-3 rounded-lg px-2 py-1 text-xs font-bold uppercase tracking-widest ${
+                        row.isPlayer ? 'bg-yellow-400/10 text-yellow-400' : 'text-zinc-300'
+                      }`}
+                    >
+                      <span className="w-8 text-left text-zinc-500">P{i + 1}</span>
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
+                      <span className="flex-1 text-left">{row.name}</span>
+                      <span className="text-zinc-500">+{POINTS_TABLE[i]}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex w-full flex-col gap-3 sm:flex-row">
+                  {result.victory && !isLastTrack ? (
+                    <button
+                      type="button"
+                      onClick={onNextRace}
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-yellow-500/50 bg-yellow-400/10 py-2.5 text-sm font-semibold uppercase tracking-widest text-yellow-400 transition-all hover:bg-yellow-400/20"
+                    >
+                      <Flag className="h-4 w-4" />
+                      Continue to Next Race
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={onRetry}
+                      className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-yellow-500/50 bg-yellow-400/10 py-2.5 text-sm font-semibold uppercase tracking-widest text-yellow-400 transition-all hover:bg-yellow-400/20"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      {result.victory ? 'Race Again' : 'Try Again'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={onBackToSelect}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-full border border-white/10 bg-[#1a1a1a] py-2.5 text-sm font-semibold uppercase tracking-widest text-zinc-200 transition-all hover:border-yellow-500/50 hover:text-yellow-500"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    Calendar
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )
         )}
       </div>
 
@@ -965,35 +1086,7 @@ function ChampionshipCalendar({ unlocked, results, onPick, onExit, onReset }) {
                 {!isUnlocked && <Lock className="h-3.5 w-3.5 text-zinc-600" />}
               </div>
 
-              {track.id === 'australia' ? (
-                <svg
-                  viewBox="-6 -6 237 267"
-                  className={`w-full h-32 rounded-lg object-contain transition duration-300 ${
-                    isUnlocked
-                      ? 'opacity-90 group-hover:opacity-100 group-hover:brightness-110'
-                      : 'opacity-40 grayscale'
-                  }`}
-                  fill="none"
-                >
-                  <path
-                    d="M 209 235 C 207 225, 205 214, 202 203 L 198 190 C 195 180, 188 174, 179 168 L 165 158 C 159 154, 153 157, 147 155 C 133 150, 121 139, 115 128 C 109 117, 109 105, 112 92 L 116 76 C 118 68, 125 64, 127 57 C 130 48, 127 35, 124 27 C 121 19, 115 14, 107 12 C 99 9, 91 12, 82 5 C 78 2, 75 2, 71 5 C 64 10, 54 13, 45 17 C 38 20, 32 24, 29 29 L 30 61 C 23 62, 14 63, 10 66 C 15 80, 25 95, 36 106 L 55 124 C 62 131, 63 138, 58 149 C 57 153, 60 157, 64 161 L 130 226 C 136 232, 141 233, 146 229 L 154 219 C 157 215, 159 215, 162 220 L 174 242 C 177 247, 180 248, 186 246 L 209 238 Z"
-                    stroke="#FACC15"
-                    strokeWidth="3"
-                    fill="rgba(250,204,21,0.08)"
-                  />
-                </svg>
-              ) : (
-                <img
-                  src={TRACK_SVGS[track.id]}
-                  alt=""
-                  aria-hidden="true"
-                  className={`w-full rounded-lg object-contain transition duration-300 ${
-                    isUnlocked
-                      ? 'opacity-90 group-hover:opacity-100 group-hover:brightness-110'
-                      : 'opacity-40 grayscale'
-                  }`}
-                />
-              )}
+              <TrackMiniMap track={track} isUnlocked={isUnlocked} />
 
               <div>
                 <h4
@@ -1094,6 +1187,12 @@ export default function F1Racer({ onExit }) {
         setAttempt((a) => a + 1);
       }}
       onBackToSelect={() => setScreen('select')}
+      onResetChampionship={() => {
+        setUnlocked(1);
+        setResults({});
+        setTrackIndex(0);
+        setAttempt((a) => a + 1);
+      }}
     />
   );
 }

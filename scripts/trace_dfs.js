@@ -1,72 +1,82 @@
 import fs from 'fs';
 
-const {w, h, mask} = JSON.parse(fs.readFileSync('monaco_mask_clean.json', 'utf8'));
+const {pts, minX, minY, maxX, maxY} = JSON.parse(fs.readFileSync('monaco_loop_v2.json', 'utf8'));
 
-// Find a starting pixel on the outer boundary.
-// We can scan from left to right, middle height, to find the first pixel.
-let startX = -1;
-let startY = -1;
-for (let y = Math.floor(h / 2); y < h; y++) {
-  for (let x = 0; x < w; x++) {
-    if (mask[y * w + x] === 1) {
-      startX = x;
-      startY = y;
-      break;
+// Build adjacency
+const grid = new Map();
+for (let i = 0; i < pts.length; i++) grid.set(`${pts[i].x},${pts[i].y}`, i);
+
+const adj = Array.from({length: pts.length}, () => []);
+for (let i = 0; i < pts.length; i++) {
+  const p = pts[i];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const key = `${p.x + dx},${p.y + dy}`;
+      if (grid.has(key)) {
+        adj[i].push(grid.get(key));
+      }
     }
   }
-  if (startX !== -1) break;
 }
 
-console.log(`Start tracing from x=${startX}, y=${startY}`);
+let startNode = 0;
+let bestDist = Infinity;
+for (let i = 0; i < pts.length; i++) {
+  const d = Math.hypot(pts[i].x - 350, pts[i].y - 350);
+  if (d < bestDist) {
+    bestDist = d;
+    startNode = i;
+  }
+}
 
-// Moore neighborhood tracing
-// Directions: 0: up, 1: up-right, 2: right, 3: down-right, 4: down, 5: down-left, 6: left, 7: up-left
-const dirs = [
-  {x: 0, y: -1}, {x: 1, y: -1}, {x: 1, y: 0}, {x: 1, y: 1},
-  {x: 0, y: 1}, {x: -1, y: 1}, {x: -1, y: 0}, {x: -1, y: -1}
-];
-
-let currX = startX;
-let currY = startY;
-let currDir = 0;
-
-const boundary = [];
-const visitedStr = new Set();
+const visited = new Array(pts.length).fill(false);
+const path = [pts[startNode]];
+visited[startNode] = true;
+let curr = startNode;
 
 while (true) {
-  boundary.push({x: currX, y: currY});
-  visitedStr.add(`${currX},${currY}`);
+  let next = -1;
   
-  // Search for the next boundary pixel
-  // Start from the direction we came from, minus 2 (so we check "left" of forward direction)
-  let found = false;
-  let searchDir = (currDir + 6) % 8; // Turn left 90 degrees
-  
-  for (let i = 0; i < 8; i++) {
-    const dir = (searchDir + i) % 8;
-    const nx = currX + dirs[dir].x;
-    const ny = currY + dirs[dir].y;
-    
-    if (nx >= 0 && nx < w && ny >= 0 && ny < h && mask[ny * w + nx] === 1) {
-      currX = nx;
-      currY = ny;
-      currDir = dir;
-      found = true;
+  // Prefer degree-2 nodes first
+  for (const neighbor of adj[curr]) {
+    if (!visited[neighbor] && adj[neighbor].length === 2) {
+      next = neighbor;
       break;
     }
   }
   
-  if (!found) {
-    console.log("No next pixel found, stuck!");
+  // If no degree-2 neighbor, pick any unvisited neighbor
+  if (next === -1) {
+    for (const neighbor of adj[curr]) {
+      if (!visited[neighbor]) {
+        next = neighbor;
+        break;
+      }
+    }
+  }
+  
+  // If still no neighbor, we are stuck (or reached the end of a cycle, but wait, the last node will be adjacent to startNode which is visited)
+  if (next === -1) {
     break;
   }
   
-  if (currX === startX && currY === startY) {
+  visited[next] = true;
+  path.push(pts[next]);
+  curr = next;
+}
+
+console.log(`DFS path size: ${path.length} out of ${pts.length}`);
+
+// Check if it closed the loop (is curr adjacent to startNode?)
+let closed = false;
+for (const neighbor of adj[curr]) {
+  if (neighbor === startNode) {
+    closed = true;
     break;
   }
 }
-
-console.log(`Traced boundary of size ${boundary.length}`);
+console.log(`Loop closed? ${closed}`);
 
 function rdp(points, epsilon) {
   if (points.length < 3) return points;
@@ -98,13 +108,21 @@ function rdp(points, epsilon) {
   }
 }
 
-// Subsample before RDP
-const subsampled = [];
-for (let i = 0; i < boundary.length; i+=3) {
-  subsampled.push(boundary[i]);
+let area = 0;
+for (let i = 0; i < path.length; i++) {
+  const a = path[i];
+  const b = path[(i + 1) % path.length];
+  area += (b.x - a.x) * (b.y + a.y);
+}
+if (area < 0) {
+  console.log('Reversing to clockwise');
+  path.reverse();
 }
 
-const simplified = rdp(subsampled.concat([subsampled[0]]), 2.5);
+const subsampled = [];
+for (let i = 0; i < path.length; i+=2) subsampled.push(path[i]);
+
+const simplified = rdp(subsampled.concat([subsampled[0]]), 1.5);
 simplified.pop(); // remove duplicate closing point
 
 console.log(`Simplified to ${simplified.length} points`);
