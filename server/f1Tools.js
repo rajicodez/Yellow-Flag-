@@ -108,8 +108,43 @@ async function getNextRace() {
   return { season: schedule.season, nextRace: next, nowUTC: now.toISOString() };
 }
 
-async function getRaceResults({ season, round } = {}) {
+// "Monaco", "the Monaco GP", "Silverstone", "Japan" -> a round number, so the model
+// never has to remember which round a Grand Prix was.
+async function resolveRound(season, raceName) {
+  const schedule = await getRaceSchedule({ season });
+  if (schedule.error) return schedule;
+
+  const q = String(raceName)
+    .toLowerCase()
+    .replace(/\b(grand prix|gp|grandprix)\b/g, '')
+    .replace(/[^a-z\s]/g, '')
+    .trim();
+  if (!q) return { error: 'Empty race name.' };
+
+  const haystack = (race) =>
+    [race.raceName, race.circuit, race.location].filter(Boolean).join(' ').toLowerCase();
+  const match =
+    schedule.races.find((race) => haystack(race).includes(q)) ??
+    schedule.races.find((race) => q.split(/\s+/).some((w) => w.length > 3 && haystack(race).includes(w)));
+
+  if (!match) {
+    return {
+      error: `No race matching "${raceName}" in the ${schedule.season} season.`,
+      availableRaces: schedule.races.map((race) => `${race.round}: ${race.raceName}`),
+    };
+  }
+  return { round: match.round };
+}
+
+async function getRaceResults({ season, round, raceName } = {}) {
   const s = assertSeason(season);
+
+  if (!round && raceName) {
+    const resolved = await resolveRound(s, raceName);
+    if (resolved.error) return resolved;
+    round = resolved.round;
+  }
+
   const r = assertRound(round);
   const data = await fetchJolpica(`${s}/${r}/results.json`);
   const race = data?.MRData?.RaceTable?.Races?.[0];
@@ -183,7 +218,7 @@ export const functionDeclarations = [
   {
     name: 'get_race_results',
     description:
-      'Get the classified results of a specific Grand Prix: finishing order, teams, grid positions, points, and race time or retirement status.',
+      'Get the classified results of a specific Grand Prix — finishing order, teams, grid positions, points, and race time or retirement status. This is the ONLY way to know who won a race; never answer a "who won" question without calling it.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -191,9 +226,15 @@ export const functionDeclarations = [
           type: Type.STRING,
           description: 'A 4-digit year like "2021", or "current". Default: "current".',
         },
+        raceName: {
+          type: Type.STRING,
+          description:
+            'The Grand Prix by name, circuit, or place — "Monaco", "Silverstone", "Japanese Grand Prix". Use this when you do not know the round number; it is resolved against that season\'s calendar.',
+        },
         round: {
           type: Type.STRING,
-          description: 'Round number like "14", or "last" for the most recent race. Default: "last".',
+          description:
+            'Round number like "14", or "last" for the most recent race. Only use when the round is actually known; otherwise pass raceName. Defaults to "last" when neither is given.',
         },
       },
     },
