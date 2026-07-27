@@ -61,14 +61,14 @@ function HostCard({ host }) {
           <div className="mt-6 flex gap-3">
             {host.socials.map((social) => (
               <a
-                key={social}
-                href={socialUrlById[social]}
+                key={social.id}
+                href={social.url ?? socialUrlById[social.id]}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-black/40 text-zinc-300 transition hover:border-yellow-400/40 hover:text-yellow-300"
-                aria-label={`${host.name} on ${social}`}
+                aria-label={`${host.name} on ${social.id}`}
               >
-                <SocialIcon id={social} />
+                <SocialIcon id={social.id} />
               </a>
             ))}
           </div>

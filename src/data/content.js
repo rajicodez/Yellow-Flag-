@@ -40,7 +40,11 @@ export const hosts = [
     ],
     badge: 'P1',
     photo: '/hosts/lakindu.png',
-    socials: ['youtube', 'instagram'],
+    // Each host's personal accounts, not the podcast's.
+    socials: [
+      { id: 'facebook', url: 'https://www.facebook.com/lakinduvihan.siriwardana' },
+      { id: 'instagram', url: 'https://www.instagram.com/lakindu_siriwardana/' },
+    ],
   },
   {
     id: 2,
@@ -55,7 +59,10 @@ export const hosts = [
     ],
     badge: 'P2',
     photo: '/hosts/kasun.jpg',
-    socials: ['youtube', 'tiktok'],
+    socials: [
+      { id: 'facebook', url: 'https://www.facebook.com/profile.php?id=100008727703507' },
+      { id: 'instagram', url: 'https://www.instagram.com/kasun_udayangana/' },
+    ],
   },
 ];
 
