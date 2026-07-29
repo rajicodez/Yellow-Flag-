@@ -380,6 +380,7 @@ function loadResults() {
 
 function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackToSelect, onResetChampionship }) {
   const canvasRef = useRef(null);
+  const shellRef = useRef(null);
   const carsRef = useRef([]);
   const keysRef = useRef({ up: false, down: false, left: false, right: false });
   const rafRef = useRef(0);
@@ -395,6 +396,15 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
   const [showGo, setShowGo] = useState(false);
   const [result, setResult] = useState(null);
   const [hud, setHud] = useState({ lap: 1, position: 5, speed: 0, board: [] });
+
+  // Bring the whole panel under the fixed navbar into view as the race opens,
+  // so the capped canvas is fully visible from the first light.
+  useEffect(() => {
+    const el = shellRef.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY - 96;
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }, []);
 
   // Countdown: five red lights, then lights out.
   useEffect(() => {
@@ -782,8 +792,12 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
   }, [track]);
 
   return (
-    <motion.div {...viewMotion}>
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/70 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
+    <motion.div {...viewMotion} ref={shellRef}>
+      {/* The full-bleed transform lives on this inner row, not on the
+          motion.div — framer-motion drives its own transform for the slide. */}
+      <div className="race-row flex flex-col items-center gap-4 lg:flex-row lg:items-start lg:justify-center">
+        <div className="race-shell w-full min-w-0">
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black/70 shadow-[0_0_40px_rgba(0,0,0,0.5)]">
         <canvas ref={canvasRef} className="block h-auto w-full" style={{ aspectRatio: '960 / 600' }} />
 
         {/* HUD: round / lap / position */}
@@ -792,7 +806,7 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
             <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-yellow-400">
               Round {track.round}/{TOTAL_ROUNDS}
             </p>
-            <p className="font-display text-sm font-black uppercase tracking-wide text-white md:text-lg">
+            <p className="font-display text-sm font-black uppercase tracking-wide text-white md:text-base">
               {track.circuit}
             </p>
           </div>
@@ -810,23 +824,6 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
               </p>
             </div>
           </div>
-        </div>
-
-        {/* Leaderboard */}
-        <div className="pointer-events-none absolute bottom-3 left-3 hidden rounded-xl border border-white/10 bg-black/60 p-3 backdrop-blur-md sm:block md:bottom-4 md:left-4">
-          {hud.board.map((row, i) => (
-            <div
-              key={row.name}
-              className={`flex items-center gap-2 py-0.5 text-[11px] font-bold uppercase tracking-widest ${
-                row.isPlayer ? 'text-yellow-400' : 'text-zinc-300'
-              }`}
-            >
-              <span className="w-4 text-zinc-500">{i + 1}</span>
-              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: row.color }} />
-              <span className="w-14">{row.name}</span>
-              <span className="text-zinc-500">{row.lapText}</span>
-            </div>
-          ))}
         </div>
 
         {/* Speedometer + controls hint */}
@@ -1016,6 +1013,32 @@ function RaceScreen({ track, isLastTrack, onFinish, onRetry, onNextRace, onBackT
         <p className="text-[10px] font-semibold uppercase tracking-widest text-zinc-500 md:hidden">
           Keyboard required — best played on desktop
         </p>
+      </div>
+      </div>
+
+      {/* Live classification. It lives beside the canvas rather than over it:
+          the circuit is fitted to the full 960x600 canvas, so anything floating
+          on top would hide tarmac, and the page has spare width either side. */}
+      <aside className="w-full shrink-0 rounded-2xl border border-white/10 bg-black/60 p-4 backdrop-blur-md lg:w-[210px]">
+        <p className="mb-3 text-[9px] font-bold uppercase tracking-[0.25em] text-yellow-400">
+          Positions
+        </p>
+        <div className="grid grid-cols-2 gap-x-4 sm:grid-cols-3 lg:grid-cols-1">
+          {hud.board.map((row, i) => (
+            <div
+              key={row.name}
+              className={`flex items-center gap-2 py-1 text-[11px] font-bold uppercase tracking-widest ${
+                row.isPlayer ? 'text-yellow-400' : 'text-zinc-300'
+              }`}
+            >
+              <span className="w-4 text-zinc-500">{i + 1}</span>
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
+              <span className="flex-1 truncate">{row.name}</span>
+              <span className="text-zinc-500">{row.lapText}</span>
+            </div>
+          ))}
+        </div>
+      </aside>
       </div>
     </motion.div>
   );
