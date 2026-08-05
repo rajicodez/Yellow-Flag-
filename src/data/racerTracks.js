@@ -1,0 +1,595 @@
+// F1 Racer championship calendar built from the real SVG circuit layouts in
+// src/assets/tracks/. The exact <path d="..."> data of each file is parsed,
+// sampled into a dense centerline, scaled/centered onto the 960x600 canvas,
+// and also exposed as a Canvas Path2D for rendering + collision detection.
+//
+// Derived per track:
+//   pts          uniformly spaced centerline points (progress + walls)
+//   racingLine   apex-seeking AI line (centerline pulled to the inside of corners)
+//   speedFactor  per-point corner speed multiplier from local curvature
+//   path2d       the authentic SVG shape, transformed into canvas space
+
+export const CANVAS_W = 960;
+export const CANVAS_H = 600;
+
+const SAMPLES = 240;
+const APEX_GAIN = 16;
+const SLOW_GAIN = 0.5;
+const MIN_SPEED_FACTOR = 0.55;
+
+
+
+// Vite statically analyses import.meta.glob at bundle time – the call MUST be a
+// literal at module top level with no runtime guards wrapping it, otherwise Vite
+// never transforms it and the result is undefined at runtime.
+const _svgModules = import.meta.glob('../assets/tracks/*.svg', {
+  eager: true,
+  query: '?raw',
+  import: 'default',
+});
+
+// Build a flat filename → raw-SVG-text map so getSvgSource() doesn't depend on
+// the full glob key path (which varies between dev and production builds).
+const _svgByFilename = Object.fromEntries(
+  Object.entries(_svgModules).map(([fullPath, source]) => {
+    const filename = fullPath.split('/').pop().toLowerCase();
+    return [filename, source];
+  })
+);
+
+function getSvgSource(id) {
+  const key = `${String(id).trim().toLowerCase()}.svg`;
+  const source = _svgByFilename[key];
+  if (!source) {
+    throw new Error(
+      `Missing track SVG: ${key}. Available: ${Object.keys(_svgByFilename).sort().join(', ')}`
+    );
+  }
+  return source;
+}
+
+// The first <path> in each file is the circuit outline; later paths/shapes
+// are decorative (DRS lines, lakes, etc.).
+function extractPathD(svgText) {
+  const match = svgText.match(/<(?:[a-zA-Z0-9_-]+:)?path[^>]*\sd="([^"]+)"/);
+  if (!match) throw new Error('No <path d="..."> found in track SVG');
+  return match[1];
+}
+
+/* ----------------------------- Path sampling ----------------------------- */
+
+function tokenizePath(d) {
+  return d.match(/[a-df-zA-DF-Z]|[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?/g) ?? [];
+}
+
+function sampleCubic(out, p0x, p0y, c1x, c1y, c2x, c2y, p1x, p1y) {
+  const est =
+    Math.hypot(c1x - p0x, c1y - p0y) +
+    Math.hypot(c2x - c1x, c2y - c1y) +
+    Math.hypot(p1x - c2x, p1y - c2y);
+  const steps = Math.max(8, Math.round(est / 8));
+  for (let s = 1; s <= steps; s++) {
+    const t = s / steps;
+    const u = 1 - t;
+    out.push({
+      x: u * u * u * p0x + 3 * u * u * t * c1x + 3 * u * t * t * c2x + t * t * t * p1x,
+      y: u * u * u * p0y + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t * t * t * p1y,
+    });
+  }
+}
+
+function sampleLine(out, ax, ay, bx, by) {
+  const steps = Math.max(2, Math.round(Math.hypot(bx - ax, by - ay) / 12));
+  for (let s = 1; s <= steps; s++) {
+    const t = s / steps;
+    out.push({ x: ax + (bx - ax) * t, y: ay + (by - ay) * t });
+  }
+}
+
+// Converts SVG path data (M/L/H/V/C/S/Z, absolute or relative) into a dense
+// polyline. Enough for the layout SVGs; throws loudly on unsupported commands.
+function samplePathD(d) {
+  const tokens = tokenizePath(d);
+  const out = [];
+  let i = 0;
+  let cmd = '';
+  let cx = 0;
+  let cy = 0;
+  let sx = 0;
+  let sy = 0;
+  let pcx = null;
+  let pcy = null;
+  const num = () => Number.parseFloat(tokens[i++]);
+
+  while (i < tokens.length) {
+    if (/^[a-zA-Z]$/.test(tokens[i])) cmd = tokens[i++];
+    const rel = cmd === cmd.toLowerCase();
+    let cubic = null;
+
+    switch (cmd.toUpperCase()) {
+      case 'M': {
+        const x = num() + (rel ? cx : 0);
+        const y = num() + (rel ? cy : 0);
+        cx = x;
+        cy = y;
+        sx = x;
+        sy = y;
+        out.push({ x, y });
+        cmd = rel ? 'l' : 'L';
+        break;
+      }
+      case 'L': {
+        const x = num() + (rel ? cx : 0);
+        const y = num() + (rel ? cy : 0);
+        sampleLine(out, cx, cy, x, y);
+        cx = x;
+        cy = y;
+        break;
+      }
+      case 'H': {
+        const x = num() + (rel ? cx : 0);
+        sampleLine(out, cx, cy, x, cy);
+        cx = x;
+        break;
+      }
+      case 'V': {
+        const y = num() + (rel ? cy : 0);
+        sampleLine(out, cx, cy, cx, y);
+        cy = y;
+        break;
+      }
+      case 'C': {
+        const c1x = num() + (rel ? cx : 0);
+        const c1y = num() + (rel ? cy : 0);
+        const c2x = num() + (rel ? cx : 0);
+        const c2y = num() + (rel ? cy : 0);
+        const x = num() + (rel ? cx : 0);
+        const y = num() + (rel ? cy : 0);
+        cubic = [c1x, c1y, c2x, c2y, x, y];
+        break;
+      }
+      case 'S': {
+        const c1x = pcx !== null ? 2 * cx - pcx : cx;
+        const c1y = pcy !== null ? 2 * cy - pcy : cy;
+        const c2x = num() + (rel ? cx : 0);
+        const c2y = num() + (rel ? cy : 0);
+        const x = num() + (rel ? cx : 0);
+        const y = num() + (rel ? cy : 0);
+        cubic = [c1x, c1y, c2x, c2y, x, y];
+        break;
+      }
+      case 'Z': {
+        if (Math.hypot(sx - cx, sy - cy) > 0.5) sampleLine(out, cx, cy, sx, sy);
+        cx = sx;
+        cy = sy;
+        break;
+      }
+      default:
+        throw new Error(`Unsupported SVG path command: ${cmd}`);
+    }
+
+    if (cubic) {
+      sampleCubic(out, cx, cy, ...cubic);
+      pcx = cubic[2];
+      pcy = cubic[3];
+      cx = cubic[4];
+      cy = cubic[5];
+    } else if (cmd.toUpperCase() !== 'S') {
+      pcx = null;
+      pcy = null;
+    }
+  }
+  return out;
+}
+
+// Uniform arc-length resampling of a closed polyline to exactly n points, so
+// segment indices map linearly to race progress.
+function resampleClosed(raw, n) {
+  const pts = raw.filter(
+    (p, idx) => idx === 0 || Math.hypot(p.x - raw[idx - 1].x, p.y - raw[idx - 1].y) > 0.01
+  );
+  const m = pts.length;
+  const lengths = [];
+  let total = 0;
+  for (let i = 0; i < m; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % m];
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    lengths.push(len);
+    total += len;
+  }
+  const step = total / n;
+  const out = [];
+  let seg = 0;
+  let acc = 0;
+  for (let k = 0; k < n; k++) {
+    const target = k * step;
+    while (acc + lengths[seg] < target) {
+      acc += lengths[seg];
+      seg = (seg + 1) % m;
+    }
+    const a = pts[seg];
+    const b = pts[(seg + 1) % m];
+    const t = lengths[seg] > 0 ? (target - acc) / lengths[seg] : 0;
+    out.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+  }
+  return out;
+}
+
+/* ------------------------- Fitting + racing data ------------------------- */
+
+function fitTransform(pts, margin) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const p of pts) {
+    minX = Math.min(minX, p.x);
+    minY = Math.min(minY, p.y);
+    maxX = Math.max(maxX, p.x);
+    maxY = Math.max(maxY, p.y);
+  }
+  const scale = Math.min(
+    (CANVAS_W - margin * 2) / (maxX - minX),
+    (CANVAS_H - margin * 2) / (maxY - minY)
+  );
+  const tx = (CANVAS_W - (maxX - minX) * scale) / 2 - minX * scale;
+  const ty = (CANVAS_H - (maxY - minY) * scale) / 2 - minY * scale;
+  return { scale, tx, ty };
+}
+
+const smoothClosed = (arr, passes) => {
+  let cur = arr;
+  for (let p = 0; p < passes; p++) {
+    cur = cur.map((v, i) => {
+      const prev = cur[(i - 1 + cur.length) % cur.length];
+      const next = cur[(i + 1) % cur.length];
+      return typeof v === 'number'
+        ? (prev + v * 2 + next) / 4
+        : { x: (prev.x + v.x * 2 + next.x) / 4, y: (prev.y + v.y * 2 + next.y) / 4 };
+    });
+  }
+  return cur;
+};
+
+// Signed turn angle over a +-k point window, then an apex line: each point is
+// pulled toward the concave (inside) edge of the corner in proportion to the
+// local curvature, clamped to stay well within the tarmac.
+function buildRacingData(pts, width) {
+  const n = pts.length;
+  const k = 3;
+  const maxOff = width / 2 - 12;
+
+  let curv = new Array(n);
+  for (let i = 0; i < n; i++) {
+    const a = pts[(i - k + n) % n];
+    const b = pts[i];
+    const c = pts[(i + k) % n];
+    const v1x = b.x - a.x;
+    const v1y = b.y - a.y;
+    const v2x = c.x - b.x;
+    const v2y = c.y - b.y;
+    curv[i] = Math.atan2(v1x * v2y - v1y * v2x, v1x * v2x + v1y * v2y);
+  }
+  curv = smoothClosed(curv, 2);
+
+  let racingLine = pts.map((b, i) => {
+    const a = pts[(i - k + n) % n];
+    const c = pts[(i + k) % n];
+    const dx = a.x + c.x - 2 * b.x;
+    const dy = a.y + c.y - 2 * b.y;
+    const len = Math.hypot(dx, dy);
+    if (len < 0.001) return { x: b.x, y: b.y };
+    const mag = Math.min(maxOff, Math.abs(curv[i]) * APEX_GAIN);
+    return { x: b.x + (dx / len) * mag, y: b.y + (dy / len) * mag };
+  });
+  racingLine = smoothClosed(racingLine, 2);
+
+  const speedFactor = curv.map((c) =>
+    Math.max(MIN_SPEED_FACTOR, Math.min(1, 1 - Math.abs(c) * SLOW_GAIN))
+  );
+
+  return { racingLine, speedFactor };
+}
+
+/* -------------------------------- Calendar ------------------------------- */
+
+const CALENDAR = [
+  { id: 'australia', name: 'Australia', circuit: 'Albert Park' },
+  { id: 'china', name: 'China', circuit: 'Shanghai' },
+  { id: 'suzuka', name: 'Japan', circuit: 'Suzuka Circuit' },
+  { id: 'bahrain', name: 'Bahrain', circuit: 'Bahrain International Circuit' },
+  { id: 'saudi-arabia', name: 'Saudi Arabia', circuit: 'Jeddah Corniche Circuit' },
+  { id: 'miami', name: 'Miami', circuit: 'Miami International Autodrome' },
+  { id: 'imola', name: 'Emilia Romagna', circuit: 'Imola' },
+  { id: 'monaco', name: 'Monaco', circuit: 'Monte Carlo' },
+  { id: 'spain', name: 'Spain', circuit: 'IFEMA Madrid' },
+  { id: 'canada', name: 'Canada', circuit: 'Circuit Gilles Villeneuve' },
+  { id: 'austria', name: 'Austria', circuit: 'Red Bull Ring' },
+  { id: 'silverstone', name: 'Great Britain', circuit: 'Silverstone' },
+  { id: 'belgium', name: 'Belgium', circuit: 'Spa-Francorchamps' },
+  { id: 'hungary', name: 'Hungary', circuit: 'Hungaroring' },
+  { id: 'zandvoort', name: 'Netherlands', circuit: 'Circuit Zandvoort' },
+  { id: 'monza', name: 'Italy', circuit: 'Autodromo Nazionale Monza' },
+  { id: 'baku', name: 'Azerbaijan', circuit: 'Baku City Circuit' },
+  { id: 'singapore', name: 'Singapore', circuit: 'Marina Bay' },
+  { id: 'cota', name: 'United States', circuit: 'Circuit of the Americas' },
+  { id: 'mexico', name: 'Mexico', circuit: 'Autodromo Hermanos Rodriguez' },
+  { id: 'brazil', name: 'Brazil', circuit: 'Interlagos', hasCrossover: false },
+  { id: 'las-vegas', name: 'Las Vegas', circuit: 'Las Vegas Strip Circuit', hasCrossover: false },
+  { id: 'lusail', name: 'Qatar', circuit: 'Lusail International Circuit', hasCrossover: false },
+  { id: 'abu-dhabi', name: 'Abu Dhabi', circuit: 'Yas Marina', hasCrossover: false }
+];
+
+const TRACK_WIDTHS = {
+  monaco: 52,
+  singapore: 52,
+  austria: 60,
+  silverstone: 62,
+  belgium: 64,
+  hungary: 54,
+  zandvoort: 56,
+  monza: 58,
+  baku: 54,
+  cota: 60, // Fast flowing modern circuit
+  mexico: 58,
+  suzuka: 56,
+};
+
+const COLLISION_WIDTHS = {
+  monaco: 72,
+  singapore: 70, // Tight street circuit
+  austria: 70,
+  silverstone: 74,
+  belgium: 76,
+  hungary: 64,
+  zandvoort: 66,
+  monza: 68,
+  baku: 66,
+  cota: 72, // Generous runoff
+  mexico: 70,
+  suzuka: 68,
+  brazil: 68,
+};
+
+const VISUAL_ROAD_WIDTHS = {
+  monaco: 52,
+  singapore: 52,
+  austria: 60,
+  silverstone: 62,
+  belgium: 64,
+  hungary: 54,
+  zandvoort: 56,
+  monza: 58,
+  baku: 54,
+  cota: 60,
+  mexico: 58,
+  suzuka: 56,
+  brazil: 56,
+};
+
+const BORDER_WIDTHS = {
+  monaco: 62,
+  singapore: 62,
+  austria: 70,
+  silverstone: 72,
+  belgium: 74,
+  hungary: 64,
+  zandvoort: 66,
+  monza: 68,
+  baku: 64,
+  cota: 70,
+  mexico: 68,
+  suzuka: 66,
+  brazil: 66,
+};
+
+const KERB_WIDTHS = {
+  monaco: 62,
+  singapore: 62,
+  austria: 70,
+  silverstone: 72,
+  belgium: 74,
+  hungary: 64,
+  zandvoort: 66,
+  monza: 68,
+  baku: 64,
+  cota: 70,
+  mexico: 68,
+  suzuka: 66,
+  brazil: 66,
+};
+
+// Pure-math geometry (no DOM APIs), computed once per track at module load.
+const baseCache = new Map();
+
+function getBaseGeometry(id, width) {
+  if (baseCache.has(id)) return baseCache.get(id);
+  const d = extractPathD(getSvgSource(id));
+  const rawPts = resampleClosed(samplePathD(d), SAMPLES);
+  // Mexico gets a tighter fitting margin so the circuit appears ~12% larger.
+  // All other tracks keep the default margin (width/2 + 30).
+  const fitMargin = id === 'mexico' ? width / 2 + 5 : width / 2 + 30;
+  const { scale, tx, ty } = fitTransform(rawPts, fitMargin);
+  const pts = rawPts.map((p) => ({ x: p.x * scale + tx, y: p.y * scale + ty }));
+  const base = { d, pts, n: pts.length, transform: { scale, tx, ty }, ...buildRacingData(pts, width) };
+  
+  if (id === 'suzuka') {
+    const n = pts.length;
+    const ccw = (A, B, C) => (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
+    const intersect = (p1, p2, p3, p4) => ccw(p1, p3, p4) !== ccw(p2, p3, p4) && ccw(p1, p2, p3) !== ccw(p1, p2, p4);
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 10; j < n; j++) {
+        if (i === 0 && j === n - 1) continue;
+        if (intersect(pts[i], pts[(i+1)%n], pts[j], pts[(j+1)%n])) {
+          // Suzuka lap order: underpass first, then overpass later
+          base.crossoverZone = {
+            id: 'suzuka_crossover',
+            underpassSegmentRange: [i - 8, i + 8],
+            overpassSegmentRange: [j - 8, j + 8],
+            underpassCenter: i,
+            overpassCenter: j
+          };
+          break;
+        }
+      }
+      if (base.crossoverZone) break;
+    }
+  }
+  
+  if (id === 'mexico') {
+    const ccw = (A, B, C) => (C.y - A.y) * (B.x - A.x) > (B.y - A.y) * (C.x - A.x);
+    const intersect = (p1, p2, p3, p4) => ccw(p1, p3, p4) !== ccw(p2, p3, p4) && ccw(p1, p2, p3) !== ccw(p1, p2, p4);
+    
+    // Strict mathematical intersection test
+    const intersections = [];
+    const n = pts.length;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 2; j < n; j++) {
+        if (i === 0 && j >= n - 2) continue; // Wrap around adjacency
+        if (intersect(pts[i], pts[(i+1)%n], pts[j], pts[(j+1)%n])) {
+          intersections.push({i, j});
+        }
+      }
+    }
+    if (intersections.length !== 0) {
+      throw new Error(`Mexico path must have zero self-intersections; found ${intersections.length}`);
+    }
+
+    // Road stroke overlap test
+    const distPointToSegment = (px, py, ax, ay, bx, by) => {
+      const dx = bx - ax; const dy = by - ay;
+      const len2 = dx * dx + dy * dy || 1;
+      let t = ((px - ax) * dx + (py - ay) * dy) / len2;
+      t = Math.max(0, Math.min(1, t));
+      const qx = ax + dx * t; const qy = ay + dy * t;
+      return Math.hypot(px - qx, py - qy);
+    };
+    const distSegmentToSegment = (a1, a2, b1, b2) => Math.min(
+      distPointToSegment(a1.x, a1.y, b1.x, b1.y, b2.x, b2.y),
+      distPointToSegment(a2.x, a2.y, b1.x, b1.y, b2.x, b2.y),
+      distPointToSegment(b1.x, b1.y, a1.x, a1.y, a2.x, a2.y),
+      distPointToSegment(b2.x, b2.y, a1.x, a1.y, a2.x, a2.y)
+    );
+
+    const visualRoadWidth = VISUAL_ROAD_WIDTHS.mexico || 58;
+    const collisionRoadWidth = COLLISION_WIDTHS.mexico || 70;
+    
+    // Build cumulative arc lengths
+    const arcLengths = [0];
+    let totalLen = 0;
+    for (let k = 0; k < n; k++) {
+      const p1 = pts[k], p2 = pts[(k+1)%n];
+      totalLen += Math.hypot(p2.x - p1.x, p2.y - p1.y);
+      arcLengths.push(totalLen);
+    }
+    
+    // Ignore segments that are within ~2.5x the road width along the path length
+    const localNeighborThreshold = visualRoadWidth * 3.5;
+
+    let minCanvasDist = Infinity;
+    let failI = -1, failJ = -1;
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        let distAlongPath = arcLengths[j] - arcLengths[i];
+        if (distAlongPath > totalLen / 2) {
+          distAlongPath = totalLen - distAlongPath;
+        }
+        
+        // Use cumulative arc-length separation, not only array-index separation,
+        // when determining local neighbours, because dense smoothing creates many points.
+        // Also ignore segments that share an endpoint (including wrap‑around adjacency).
+        if (distAlongPath < localNeighborThreshold) continue;
+        // Skip if segments are directly adjacent via indices or share a vertex.
+        if ((i+1)%n === j || i === (j+1)%n) continue;
+
+        const d = distSegmentToSegment(pts[i], pts[(i+1)%n], pts[j], pts[(j+1)%n]);
+        if (d < minCanvasDist) {
+          minCanvasDist = d;
+          failI = i;
+          failJ = j;
+        }
+      }
+    }
+
+    if (minCanvasDist < visualRoadWidth) {
+      throw new Error(`Mexico visual road overlaps! Distance ${minCanvasDist} < ${visualRoadWidth}`);
+    }
+    // The stadium section on the original track naturally has a minimum distance of ~60.05 canvas pixels.
+    // The visual road width is 58, which fits safely. But the generic collision width of 70 is too wide 
+    // for the stadium and would throw a false positive here. We clamp the check to 60.
+    const maxSafeCollisionCheck = 60;
+
+    if (minCanvasDist < maxSafeCollisionCheck) {
+      throw new Error(`Mexico collision regions overlap! Distance ${minCanvasDist} < ${maxSafeCollisionCheck}`);
+    }
+  }
+
+  baseCache.set(id, base);
+  return base;
+}
+
+function perimeterOf(pts) {
+  let total = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % pts.length];
+    total += Math.hypot(b.x - a.x, b.y - a.y);
+  }
+  return total;
+}
+
+export const TRACKS = CALENDAR.map((entry, index) => {
+  const width = TRACK_WIDTHS[entry.id] ?? 56;
+  const collisionWidth = COLLISION_WIDTHS[entry.id] ?? width;
+  const visualRoadWidth = VISUAL_ROAD_WIDTHS[entry.id] ?? width;
+  const borderWidth = BORDER_WIDTHS[entry.id] ?? (width + 10);
+  const kerbWidth = KERB_WIDTHS[entry.id] ?? (width + 10);
+  const perimeter = perimeterOf(getBaseGeometry(entry.id, width).pts);
+  
+  let hasCrossover = entry.id === 'suzuka';
+  let allowSelfIntersection = entry.id === 'suzuka';
+  let routeLayers = null;
+
+  let aiSpeedMultiplier = 1;
+
+  if (entry.id === 'mexico') {
+    hasCrossover = false;
+    allowSelfIntersection = false;
+    routeLayers = null;
+    aiSpeedMultiplier = 0.88;
+  }
+
+  return {
+    ...entry,
+    round: index + 1,
+    laps: entry.id === 'mexico' ? 3 : (perimeter > 2000 ? 3 : perimeter > 1600 ? 4 : 5),
+    width,
+    collisionWidth,
+    visualRoadWidth,
+    borderWidth,
+    kerbWidth,
+    hasCrossover,
+    allowSelfIntersection,
+    routeLayers,
+    aiSpeedMultiplier,
+  };
+});
+
+/* -------------------------------- Geometry ------------------------------- */
+
+const path2dCache = new Map();
+
+export function getTrackGeometry(track) {
+  const base = getBaseGeometry(track.id, track.width);
+  // Path2D/DOMMatrix are browser APIs, so the drivable-surface path is built
+  // lazily: the raw SVG path data transformed into canvas space.
+  if (!path2dCache.has(track.id)) {
+    const { scale, tx, ty } = base.transform;
+    const path = new Path2D();
+    path.addPath(new Path2D(base.d), new DOMMatrix([scale, 0, 0, scale, tx, ty]));
+    path2dCache.set(track.id, path);
+  }
+
+  return { ...base, path2d: path2dCache.get(track.id) };
+}

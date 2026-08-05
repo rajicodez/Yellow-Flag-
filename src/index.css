@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+@theme {
+  /* Semantic brand tokens used by the Episodes section (ported from the
+     Ai-agent branch). Added, not overriding master's yellow-* ramp, so the
+     rest of the site keeps its existing look. */
+  --color-flag: #ffd400;
+  --color-redflag: #e10600;
+  --color-chequer: #f5f5f4;
+  --color-steel: #9ca3af;
+  --color-carbon: #0a0a0b;
+  --color-panel: #101013;
+  --color-panel-2: #17171b;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: "Titillium Web", "Noto Sans Sinhala", sans-serif;
+  background: #050505;
+  color: #fafafa;
+}
+
+h1,
+h2,
+h3,
+h4,
+.font-display {
+  font-family: "Titillium Web", "Noto Sans Sinhala", sans-serif;
+}
+
+/* Mixed Sinhala/English text (episode titles). Never letterspace or
+   fake-uppercase Sinhala — the script has no case and tight tracking rules. */
+.font-sinhala {
+  font-family: "Noto Sans Sinhala", "Titillium Web", sans-serif;
+}
+
+::selection {
+  background: rgba(250, 204, 21, 0.35);
+  color: #fff;
+}
+
+/* F1 Racer: the canvas keeps a fixed 960x600 aspect, so a full-width panel on a
+   short viewport pushes the top of the circuit under the fixed navbar. Capping
+   the panel's WIDTH by the available HEIGHT (x 960/600) keeps the whole track on
+   screen on every circuit without distorting the aspect ratio. The reserve
+   covers the navbar plus the exit-race row under the canvas. */
+.race-shell {
+  max-width: min(100%, max(320px, calc((100vh - 190px) * 1.6)));
+  max-width: min(100%, max(320px, calc((100svh - 190px) * 1.6)));
+  margin-inline: auto;
+}
+
+/* The standings panel sits beside the canvas, so on wide screens the race row
+   breaks out of the section's max-w-7xl container and uses the page gutters
+   instead of taking width away from the track. */
+@media (min-width: 1024px) {
+  .race-row {
+    width: calc(100vw - 4rem);
+    max-width: 1600px;
+    margin-left: 50%;
+    transform: translateX(-50%);
+  }
+}
