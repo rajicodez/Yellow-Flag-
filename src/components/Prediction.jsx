@@ -1,8 +1,11 @@
 import { motion } from 'framer-motion';
 import { BarChart2, HelpCircle, Star, Trophy, ChevronsRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Reveal from './ui/Reveal';
 
 export default function Prediction() {
+  const navigate = useNavigate();
+
   return (
     <section id="prediction" className="relative py-16 md:py-24">
       {/* Background accents similar to other sections */}
@@ -57,7 +60,10 @@ export default function Prediction() {
             </div>
 
             {/* CTA Button */}
-            <button className="group mt-6 flex w-full max-w-md items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 py-4 font-display text-lg font-black uppercase tracking-widest text-black transition-all hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(250,204,21,0.4)]">
+            <button 
+              onClick={() => navigate('/predictions/dutch-grand-prix')}
+              className="group mt-6 flex w-full max-w-md items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 py-4 font-display text-lg font-black uppercase tracking-widest text-black transition-all hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(250,204,21,0.4)]"
+            >
               Make Your Prediction
               <ChevronsRight className="h-5 w-5 transition-transform group-hover:translate-x-1" strokeWidth={3} />
             </button>
