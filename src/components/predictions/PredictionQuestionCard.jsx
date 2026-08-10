@@ -25,10 +25,6 @@ export default function PredictionQuestionCard({
     onAnswer(question.id, teamName);
   };
 
-  const handleSelectOption = (option) => {
-    onAnswer(question.id, option);
-  };
-
   // Variant for Framer Motion to slide questions
   const variants = {
     enter: (direction) => ({
@@ -82,19 +78,6 @@ export default function PredictionQuestionCard({
       <div className="flex-1 min-h-[400px]">
         {question.type === 'driver' && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {question.allowNoRetirements && (
-              <button
-                onClick={() => handleSelectOption('No Retirements')}
-                className={`col-span-full mb-2 relative flex w-full items-center justify-center p-4 rounded-xl border transition-all ${
-                  currentAnswer === 'No Retirements'
-                    ? 'border-yellow-400 bg-yellow-400/10 text-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.2)]'
-                    : 'border-white/10 bg-white/5 text-white hover:border-white/30'
-                }`}
-              >
-                <span className="font-display font-bold uppercase tracking-widest">No Retirements</span>
-              </button>
-            )}
-            
             {driversData.map(driver => (
               <DriverOptionCard 
                 key={driver.id} 
@@ -119,28 +102,6 @@ export default function PredictionQuestionCard({
           </div>
         )}
 
-        {question.type === 'options' && (
-          <div className="flex flex-col gap-3">
-            {question.options.map(option => (
-              <button
-                key={option}
-                onClick={() => handleSelectOption(option)}
-                className={`relative flex w-full items-center p-5 rounded-xl border transition-all ${
-                  currentAnswer === option
-                    ? 'border-yellow-400 bg-yellow-400/10 text-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.2)]'
-                    : 'border-white/10 bg-white/5 text-white hover:border-white/30'
-                }`}
-              >
-                <div className={`mr-4 h-5 w-5 rounded-full border-2 flex items-center justify-center ${
-                  currentAnswer === option ? 'border-yellow-400' : 'border-zinc-500'
-                }`}>
-                  {currentAnswer === option && <div className="h-2.5 w-2.5 rounded-full bg-yellow-400" />}
-                </div>
-                <span className="font-display text-lg font-bold tracking-widest uppercase">{option}</span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Navigation Footer */}

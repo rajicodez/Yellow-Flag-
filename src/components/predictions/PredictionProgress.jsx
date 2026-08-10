@@ -1,8 +1,17 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-export default function PredictionProgress({ currentQuestion, totalQuestions, onNavigate }) {
-  const percentage = Math.round((currentQuestion / totalQuestions) * 100);
+export default function PredictionProgress({
+  currentQuestion,
+  totalQuestions,
+  answeredQuestions,
+  answeredQuestionNumbers,
+  onNavigate
+}) {
+  const remainingQuestions = totalQuestions - answeredQuestions;
+  const percentage = totalQuestions > 0
+    ? Math.round((answeredQuestions / totalQuestions) * 100)
+    : 0;
 
   return (
     <div className="w-full py-4">
@@ -23,13 +32,17 @@ export default function PredictionProgress({ currentQuestion, totalQuestions, on
         />
       </div>
 
+      <span className="sr-only">
+        {answeredQuestions} answered, {remainingQuestions} remaining
+      </span>
+
       {/* Number Indicators */}
       <div className="mt-4 flex justify-between gap-1 sm:gap-2">
         {Array.from({ length: totalQuestions }).map((_, idx) => {
           const num = idx + 1;
-          const isCompleted = num < currentQuestion;
           const isCurrent = num === currentQuestion;
-          const isUpcoming = num > currentQuestion;
+          const isCompleted = answeredQuestionNumbers.includes(num) && !isCurrent;
+          const isUpcoming = !isCompleted && !isCurrent;
 
           return (
             <button

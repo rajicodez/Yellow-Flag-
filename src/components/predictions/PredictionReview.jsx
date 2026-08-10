@@ -6,17 +6,19 @@ import { driversData } from '../../data/drivers';
 import { f1Teams2026 } from '../../data/teams';
 
 export default function PredictionReview({ answers, onSubmit, onEdit, isSubmitting }) {
+  const totalQuestions = dutchGPQuestions.length;
+  const answeredQuestions = dutchGPQuestions.filter(q => Boolean(answers[q.id])).length;
   
   const getAnswerDisplay = (questionId, answer) => {
     const question = dutchGPQuestions.find(q => q.id === questionId);
     
     let imageUrl = null;
-    let label = answer;
+    let label = answer || 'Not answered';
 
-    if (question.type === 'driver' && answer !== 'No Retirements') {
+    if (question?.type === 'driver' && answer) {
       const driver = driversData.find(d => d.name === answer);
       if (driver) imageUrl = driver.avatarUrl;
-    } else if (question.type === 'team') {
+    } else if (question?.type === 'team' && answer) {
       const team = f1Teams2026.find(t => t.name === answer);
       if (team) imageUrl = team.logoUrl;
     }
@@ -36,13 +38,13 @@ export default function PredictionReview({ answers, onSubmit, onEdit, isSubmitti
           Review Your Prediction
         </h3>
         <p className="text-zinc-400 font-medium tracking-wide">
-          10 of 10 answered • Max 25 Points
+          {answeredQuestions} of {totalQuestions} answered • Max 25 Points
         </p>
       </div>
 
       {/* Answers List */}
       <div className="flex flex-col gap-4 mb-8">
-        {dutchGPQuestions.map((q) => {
+        {dutchGPQuestions.map((q, index) => {
           const answer = answers[q.id];
           const display = getAnswerDisplay(q.id, answer);
 
@@ -50,7 +52,7 @@ export default function PredictionReview({ answers, onSubmit, onEdit, isSubmitti
             <div key={q.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-white/5 bg-white/5 gap-4">
               <div className="flex-1">
                 <span className="text-xs font-bold uppercase tracking-widest text-yellow-400 mb-1 block">
-                  {q.id}. {q.shortTitle}
+                  {index + 1}. {q.shortTitle}
                 </span>
                 <span className="font-display text-lg sm:text-xl font-bold text-white">
                   {q.title}
@@ -70,9 +72,9 @@ export default function PredictionReview({ answers, onSubmit, onEdit, isSubmitti
                 </div>
                 
                 <button
-                  onClick={() => onEdit(q.id)}
+                  onClick={() => onEdit(index + 1)}
                   className="p-2 text-zinc-400 hover:text-yellow-400 transition-colors"
-                  aria-label={`Edit question ${q.id}`}
+                  aria-label={`Edit question ${index + 1}`}
                 >
                   <Edit2 className="h-5 w-5" />
                 </button>
@@ -85,7 +87,7 @@ export default function PredictionReview({ answers, onSubmit, onEdit, isSubmitti
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-white/10">
         <button
-          onClick={() => onEdit(10)}
+          onClick={() => onEdit(totalQuestions)}
           className="flex-1 px-6 py-4 rounded-xl border border-white/20 bg-transparent font-display font-bold uppercase tracking-widest text-white transition-colors hover:bg-white/5"
         >
           Back to Questions
