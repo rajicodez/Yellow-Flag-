@@ -1,7 +1,8 @@
 node_modules
 dist
 .DS_Store
-*.local
 
-# Local secrets (Gemini/Qdrant keys)
+# Local environment files and secrets
 .env
+.env.*
+!.env.example
