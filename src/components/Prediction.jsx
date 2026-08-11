@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { BarChart2, HelpCircle, Star, Trophy, ChevronsRight, Eye, EyeOff } from 'lucide-react';
+import { FcGoogle } from 'react-icons/fc';
 import { useNavigate } from 'react-router-dom';
 import Reveal from './ui/Reveal';
-import { getAuthorizedHostProfile, isSupabaseConfigured, supabase } from '../lib/supabase';
+import {
+  getAuthorizedHostProfile,
+  isSupabaseConfigured,
+  signInWithGoogle,
+  supabase,
+} from '../lib/supabase';
 
 function HostLoginModal({ isOpen, onCancel, onAuthenticated }) {
   const [email, setEmail] = useState('');
@@ -172,10 +178,123 @@ function HostLoginModal({ isOpen, onCancel, onAuthenticated }) {
   );
 }
 
+function UserLoginModal({ isOpen, onCancel }) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const googleButtonRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setErrorMessage('');
+    googleButtonRef.current?.focus();
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape' && !isLoading) onCancel();
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, isLoading, onCancel]);
+
+  const handleGoogleSignIn = async () => {
+    setErrorMessage('');
+    setIsLoading(true);
+
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Unable to start Google sign-in. Please try again.'
+      );
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !isLoading) onCancel();
+          }}
+        >
+          <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="user-login-title"
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 12 }}
+            className="w-full max-w-md overflow-hidden rounded-2xl border border-yellow-400/20 bg-[#121212] p-6 shadow-[0_0_50px_rgba(250,204,21,0.12)] sm:p-8"
+          >
+            <div className="mb-6 border-b border-white/10 pb-5">
+              <p className="mb-2 text-xs font-bold uppercase tracking-[0.25em] text-yellow-400">
+                Yellow Flag Predictions
+              </p>
+              <h3 id="user-login-title" className="font-display text-3xl font-black uppercase text-white">
+                Sign in to <span className="text-yellow-400">Predict</span>
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-zinc-400">
+                A Google account is required to submit predictions and track your season points.
+              </p>
+            </div>
+
+            {errorMessage && (
+              <p role="alert" className="mb-4 rounded-lg border border-red-500/30 bg-red-950/40 px-4 py-3 text-sm font-semibold text-red-400">
+                {errorMessage}
+              </p>
+            )}
+
+            <div className="space-y-3">
+              <button
+                ref={googleButtonRef}
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={isLoading}
+                className="flex w-full items-center justify-center gap-3 rounded-xl bg-white px-5 py-3.5 font-display font-black uppercase tracking-wider text-black transition hover:bg-zinc-100 disabled:cursor-wait disabled:opacity-70"
+              >
+                <FcGoogle className="h-5 w-5" aria-hidden="true" />
+                {isLoading ? 'Connecting...' : 'Continue with Google'}
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={isLoading}
+                className="w-full rounded-xl border border-white/20 px-5 py-3 font-display font-bold uppercase tracking-widest text-white transition-colors hover:bg-white/5 disabled:opacity-60"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 export default function Prediction() {
   const navigate = useNavigate();
+  const [isUserLoginOpen, setIsUserLoginOpen] = useState(false);
+  const [isSessionChecking, setIsSessionChecking] = useState(false);
   const [isHostLoginOpen, setIsHostLoginOpen] = useState(false);
+  const userLoginTriggerRef = useRef(null);
   const hostLoginTriggerRef = useRef(null);
+
+  const closeUserLogin = () => {
+    setIsUserLoginOpen(false);
+    requestAnimationFrame(() => userLoginTriggerRef.current?.focus());
+  };
 
   const closeHostLogin = () => {
     setIsHostLoginOpen(false);
@@ -185,6 +304,30 @@ export default function Prediction() {
   const handleHostAuthenticated = () => {
     setIsHostLoginOpen(false);
     navigate('/predictions/dutch-grand-prix');
+  };
+
+  const handlePredictionClick = async () => {
+    if (!supabase) {
+      setIsUserLoginOpen(true);
+      return;
+    }
+
+    setIsSessionChecking(true);
+
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+
+      if (data.session?.user) {
+        navigate('/predictions/dutch-grand-prix');
+      } else {
+        setIsUserLoginOpen(true);
+      }
+    } catch {
+      setIsUserLoginOpen(true);
+    } finally {
+      setIsSessionChecking(false);
+    }
   };
 
   return (
@@ -241,11 +384,14 @@ export default function Prediction() {
             </div>
 
             {/* CTA Button */}
-            <button 
-              onClick={() => navigate('/predictions/dutch-grand-prix')}
-              className="group mt-6 flex w-full max-w-md items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 py-4 font-display text-lg font-black uppercase tracking-widest text-black transition-all hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(250,204,21,0.4)]"
+            <button
+              ref={userLoginTriggerRef}
+              type="button"
+              onClick={handlePredictionClick}
+              disabled={isSessionChecking}
+              className="group mt-6 flex w-full max-w-md items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 py-4 font-display text-lg font-black uppercase tracking-widest text-black transition-all hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(250,204,21,0.4)] disabled:cursor-wait disabled:opacity-70"
             >
-              Make Your Prediction
+              {isSessionChecking ? 'Checking Session...' : 'Make Your Prediction'}
               <ChevronsRight className="h-5 w-5 transition-transform group-hover:translate-x-1" strokeWidth={3} />
             </button>
 
@@ -380,6 +526,10 @@ export default function Prediction() {
         isOpen={isHostLoginOpen}
         onCancel={closeHostLogin}
         onAuthenticated={handleHostAuthenticated}
+      />
+      <UserLoginModal
+        isOpen={isUserLoginOpen}
+        onCancel={closeUserLogin}
       />
     </section>
   );

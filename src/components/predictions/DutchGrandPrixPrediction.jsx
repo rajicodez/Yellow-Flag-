@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, BarChart2 } from 'lucide-react';
+import { FcGoogle } from 'react-icons/fc';
 import PredictionCountdown from './PredictionCountdown';
 import PredictionProgress from './PredictionProgress';
 import PredictionQuestionCard from './PredictionQuestionCard';
@@ -11,7 +12,7 @@ import BackgroundEffects from '../ui/BackgroundEffects';
 import { dutchGPQuestions } from '../../data/dutchGPQuestions';
 import { driversData } from '../../data/drivers';
 import { f1Teams2026 } from '../../data/teams';
-import { getAuthorizedHostProfile, supabase } from '../../lib/supabase';
+import { getAuthorizedHostProfile, signInWithGoogle, supabase } from '../../lib/supabase';
 
 const PREDICTION_KEY = 'yellowFlagPrediction_dutchGP';
 const QUESTION_SET_VERSION = 2;
@@ -85,6 +86,25 @@ const findDuplicatePodiumSelection = (candidateAnswers) => {
   return null;
 };
 
+function PredictionAuthShell({ children }) {
+  return (
+    <div className="relative min-h-screen bg-black text-white">
+      <BackgroundEffects />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(250,204,21,0.08),transparent_65%)]" />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.02]"
+        style={{
+          backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)',
+          backgroundSize: '24px 24px',
+        }}
+      />
+      <main className="relative z-10 flex min-h-screen items-center justify-center px-4 py-12">
+        {children}
+      </main>
+    </div>
+  );
+}
+
 export default function DutchGrandPrixPrediction() {
   const navigate = useNavigate();
   const [answers, setAnswers] = useState({});
@@ -96,10 +116,57 @@ export default function DutchGrandPrixPrediction() {
   const [hostProfile, setHostProfile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState('');
+  const [authUser, setAuthUser] = useState(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState('');
+  const [isGoogleSignInLoading, setIsGoogleSignInLoading] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const authenticatedUserId = authUser?.id;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!supabase) {
+      setIsAuthLoading(false);
+      return undefined;
+    }
+
+    const restoreSession = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (!isMounted) return;
+
+        if (error) throw error;
+
+        setAuthUser(data.session?.user ?? null);
+      } catch {
+        if (isMounted) {
+          setAuthUser(null);
+          setAuthError('Unable to restore your session. Please sign in again.');
+        }
+      } finally {
+        if (isMounted) setIsAuthLoading(false);
+      }
+    };
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
+
+      setAuthUser(session?.user ?? null);
+      setIsAuthLoading(false);
+      if (session?.user) setAuthError('');
+    });
+
+    restoreSession();
+
+    return () => {
+      isMounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   // Load existing predictions from localStorage on mount
   useEffect(() => {
-    let isMounted = true;
     window.scrollTo({ top: 0, behavior: 'instant' });
     const saved = localStorage.getItem(PREDICTION_KEY);
     if (saved) {
@@ -135,15 +202,20 @@ export default function DutchGrandPrixPrediction() {
         localStorage.removeItem(PREDICTION_KEY);
       }
     }
+  }, []);
+
+  useEffect(() => {
+    if (isAuthLoading || !authenticatedUserId || !supabase) {
+      if (!isAuthLoading && !authenticatedUserId) setHostProfile(null);
+      return undefined;
+    }
+
+    let isMounted = true;
+    setHostProfile(null);
 
     const loadHostPrediction = async () => {
-      if (!supabase) return;
-
       try {
-        const { data: authData, error: authError } = await supabase.auth.getUser();
-        if (authError || !authData.user) return;
-
-        const profile = await getAuthorizedHostProfile(authData.user.id);
+        const profile = await getAuthorizedHostProfile(authenticatedUserId);
         if (!profile || !isMounted) return;
 
         const { data: hostPrediction, error: predictionError } = await supabase
@@ -203,7 +275,7 @@ export default function DutchGrandPrixPrediction() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [authenticatedUserId, isAuthLoading]);
 
   const handleAnswer = (questionId, answer) => {
     if (PODIUM_QUESTION_IDS.includes(questionId)) {
@@ -344,6 +416,107 @@ export default function DutchGrandPrixPrediction() {
     // If they haven't submitted, maybe we lock it or show review
   };
 
+  const handleGoogleSignIn = async () => {
+    setAuthError('');
+    setIsGoogleSignInLoading(true);
+
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      setAuthError(
+        error instanceof Error
+          ? error.message
+          : 'Unable to start Google sign-in. Please try again.'
+      );
+      setIsGoogleSignInLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    if (!supabase) {
+      setAuthError('Supabase authentication is not configured.');
+      return;
+    }
+
+    setAuthError('');
+    setIsSigningOut(true);
+
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      navigate('/#prediction', { replace: true });
+    } catch {
+      setAuthError('Unable to log out right now. Please try again.');
+      setIsSigningOut(false);
+    }
+  };
+
+  if (isAuthLoading) {
+    return (
+      <PredictionAuthShell>
+        <div
+          role="status"
+          aria-live="polite"
+          className="w-full max-w-md rounded-2xl border border-yellow-400/20 bg-[#121212]/95 p-8 text-center shadow-[0_0_50px_rgba(250,204,21,0.12)]"
+        >
+          <div className="mx-auto mb-5 h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-yellow-400" />
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-yellow-400">
+            Yellow Flag Predictions
+          </p>
+          <h1 className="mt-3 font-display text-3xl font-black uppercase text-white">
+            Restoring your session
+          </h1>
+        </div>
+      </PredictionAuthShell>
+    );
+  }
+
+  if (!authUser) {
+    return (
+      <PredictionAuthShell>
+        <div className="w-full max-w-md rounded-2xl border border-yellow-400/20 bg-[#121212]/95 p-6 text-center shadow-[0_0_50px_rgba(250,204,21,0.12)] sm:p-8">
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-yellow-400">
+            Authentication Required
+          </p>
+          <h1 className="mt-3 font-display text-3xl font-black uppercase leading-tight text-white sm:text-4xl">
+            Sign in to make your prediction
+          </h1>
+          <p className="mt-4 text-sm leading-6 text-zinc-400">
+            Continue with your Google account to submit predictions and track your season points.
+          </p>
+
+          {authError && (
+            <p role="alert" className="mt-5 rounded-lg border border-red-500/30 bg-red-950/40 px-4 py-3 text-sm font-semibold text-red-400">
+              {authError}
+            </p>
+          )}
+
+          <div className="mt-7 space-y-3">
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              disabled={isGoogleSignInLoading}
+              className="flex w-full items-center justify-center gap-3 rounded-xl bg-white px-5 py-3.5 font-display font-black uppercase tracking-wider text-black transition hover:bg-zinc-100 disabled:cursor-wait disabled:opacity-70"
+            >
+              <FcGoogle className="h-5 w-5" aria-hidden="true" />
+              {isGoogleSignInLoading ? 'Connecting...' : 'Continue with Google'}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/#prediction')}
+              disabled={isGoogleSignInLoading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 px-5 py-3 font-display font-bold uppercase tracking-widest text-white transition hover:bg-white/5 disabled:opacity-60"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Back to Home
+            </button>
+          </div>
+        </div>
+      </PredictionAuthShell>
+    );
+  }
+
   const answeredQuestionNumbers = dutchGPQuestions.reduce((questionNumbers, question, index) => {
     if (answers[question.id]) {
       questionNumbers.push(index + 1);
@@ -351,6 +524,15 @@ export default function DutchGrandPrixPrediction() {
     return questionNumbers;
   }, []);
   const answeredQuestions = answeredQuestionNumbers.length;
+  const userDisplayName =
+    authUser.user_metadata?.full_name
+    || authUser.user_metadata?.name
+    || authUser.email
+    || 'Signed in user';
+  const userAvatarUrl =
+    authUser.user_metadata?.avatar_url
+    || authUser.user_metadata?.picture
+    || null;
 
   return (
     <div className="relative min-h-screen bg-black text-white">
@@ -363,13 +545,49 @@ export default function DutchGrandPrixPrediction() {
       <main className="relative z-10 mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
         
         {/* Top Navigation */}
-        <button 
-          onClick={() => navigate('/')}
-          className="group mb-8 flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-zinc-400 transition-colors hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-          Back to Home
-        </button>
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="group flex items-center gap-2 self-start text-sm font-bold uppercase tracking-widest text-zinc-400 transition-colors hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+            Back to Home
+          </button>
+
+          <div className="flex max-w-full items-center gap-3 self-start rounded-xl border border-white/10 bg-[#121212]/80 px-3 py-2 backdrop-blur-md sm:self-auto">
+            {userAvatarUrl ? (
+              <img
+                src={userAvatarUrl}
+                alt=""
+                referrerPolicy="no-referrer"
+                className="h-9 w-9 shrink-0 rounded-full border border-yellow-400/30 object-cover"
+              />
+            ) : (
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-yellow-400/30 bg-yellow-400/10 font-display text-sm font-black uppercase text-yellow-400">
+                {userDisplayName.charAt(0)}
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="max-w-48 truncate text-sm font-semibold text-white">{userDisplayName}</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400">Signed In</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={isSigningOut}
+              className="ml-1 shrink-0 rounded-lg border border-white/10 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-zinc-300 transition hover:border-red-500/40 hover:text-red-400 disabled:cursor-wait disabled:opacity-60"
+            >
+              {isSigningOut ? 'Logging Out...' : 'Log Out'}
+            </button>
+          </div>
+        </div>
+
+        {authError && (
+          <p role="alert" className="mb-6 rounded-lg border border-red-500/30 bg-red-950/40 px-4 py-3 text-sm font-semibold text-red-400">
+            {authError}
+          </p>
+        )}
 
         {/* Page Header */}
         <header className="mb-12 flex flex-col items-center text-center lg:items-start lg:text-left">

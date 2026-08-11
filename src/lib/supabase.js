@@ -18,6 +18,24 @@ export const supabase = isSupabaseConfigured
     })
   : null;
 
+export async function signInWithGoogle() {
+  if (!supabase) {
+    throw new Error('Supabase authentication is not configured.');
+  }
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/predictions/dutch-grand-prix`,
+      queryParams: { prompt: 'select_account' },
+    },
+  });
+
+  if (error) throw error;
+
+  return data;
+}
+
 const AUTHORIZED_HOST_NAMES = new Set(['Lakindu', 'Kasun']);
 
 export async function getAuthorizedHostProfile(userId) {
