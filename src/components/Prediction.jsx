@@ -11,6 +11,42 @@ import {
   supabase,
 } from '../lib/supabase';
 
+const RACE_SLUG = '2026-dutch-grand-prix';
+const EMPTY_COUNTDOWN = { days: '--', hours: '--', minutes: '--' };
+
+function getRaceTiming(race) {
+  if (!race) return { state: 'unavailable', countdown: EMPTY_COUNTDOWN };
+
+  const now = Date.now();
+  const opensAt = Date.parse(race.opens_at);
+  const closesAt = Date.parse(race.closes_at);
+  const status = String(race.status ?? '').toLowerCase();
+
+  if (!Number.isFinite(closesAt)) {
+    return { state: 'unavailable', countdown: EMPTY_COUNTDOWN };
+  }
+
+  const remaining = Math.max(0, closesAt - now);
+  const countdown = {
+    days: String(Math.floor(remaining / 86_400_000)).padStart(2, '0'),
+    hours: String(Math.floor((remaining % 86_400_000) / 3_600_000)).padStart(2, '0'),
+    minutes: String(Math.floor((remaining % 3_600_000) / 60_000)).padStart(2, '0'),
+  };
+
+  if (status === 'closed' || now >= closesAt) {
+    return { state: 'closed', countdown };
+  }
+
+  if (
+    status !== 'open'
+    || (Number.isFinite(opensAt) && now < opensAt)
+  ) {
+    return { state: 'upcoming', countdown };
+  }
+
+  return { state: 'open', countdown };
+}
+
 function HostLoginModal({ isOpen, onCancel, onAuthenticated }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -285,11 +321,79 @@ function UserLoginModal({ isOpen, onCancel }) {
 
 export default function Prediction() {
   const navigate = useNavigate();
+  const [raceConfig, setRaceConfig] = useState(null);
+  const [raceTiming, setRaceTiming] = useState({
+    state: 'loading',
+    countdown: EMPTY_COUNTDOWN,
+  });
+  const [isRaceLoading, setIsRaceLoading] = useState(true);
+  const [raceConfigError, setRaceConfigError] = useState('');
   const [isUserLoginOpen, setIsUserLoginOpen] = useState(false);
   const [isSessionChecking, setIsSessionChecking] = useState(false);
   const [isHostLoginOpen, setIsHostLoginOpen] = useState(false);
   const userLoginTriggerRef = useRef(null);
   const hostLoginTriggerRef = useRef(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadRaceConfig = async () => {
+      if (!supabase) {
+        if (isMounted) {
+          setRaceConfigError('Prediction configuration is unavailable.');
+          setIsRaceLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('races')
+          .select('opens_at, closes_at, status')
+          .eq('slug', RACE_SLUG)
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!data || !Number.isFinite(Date.parse(data.closes_at))) {
+          throw new Error('Race configuration is incomplete.');
+        }
+
+        if (isMounted) {
+          setRaceConfig(data);
+          setRaceConfigError('');
+        }
+      } catch {
+        if (isMounted) {
+          setRaceConfig(null);
+          setRaceConfigError('Prediction configuration is unavailable.');
+        }
+      } finally {
+        if (isMounted) setIsRaceLoading(false);
+      }
+    };
+
+    loadRaceConfig();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!raceConfig) {
+      setRaceTiming({
+        state: isRaceLoading ? 'loading' : 'unavailable',
+        countdown: EMPTY_COUNTDOWN,
+      });
+      return undefined;
+    }
+
+    const updateRaceTiming = () => setRaceTiming(getRaceTiming(raceConfig));
+    updateRaceTiming();
+
+    const intervalId = window.setInterval(updateRaceTiming, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [raceConfig, isRaceLoading]);
 
   const closeUserLogin = () => {
     setIsUserLoginOpen(false);
@@ -307,6 +411,8 @@ export default function Prediction() {
   };
 
   const handlePredictionClick = async () => {
+    if (raceTiming.state !== 'open') return;
+
     if (!supabase) {
       setIsUserLoginOpen(true);
       return;
@@ -330,6 +436,27 @@ export default function Prediction() {
     }
   };
 
+  const isPredictionOpen = raceTiming.state === 'open';
+  const predictionStatusLabel = isRaceLoading
+    ? 'Loading Race Predictions'
+    : raceConfigError || raceTiming.state === 'unavailable'
+      ? 'Race Predictions Unavailable'
+      : isPredictionOpen
+        ? 'Race Predictions Are Open'
+        : raceTiming.state === 'closed'
+          ? 'Race Predictions Are Closed'
+          : 'Race Predictions Open Soon';
+
+  const predictionButtonLabel = isSessionChecking
+    ? 'Checking Session...'
+    : isRaceLoading
+      ? 'Loading Predictions...'
+      : isPredictionOpen
+        ? 'Make Your Prediction'
+        : raceTiming.state === 'closed'
+          ? 'Predictions Closed'
+          : 'Predictions Unavailable';
+
   return (
     <section id="prediction" className="relative py-16 md:py-24">
       {/* Background accents similar to other sections */}
@@ -343,7 +470,7 @@ export default function Prediction() {
             {/* Badge */}
             <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-4 py-1.5 text-sm font-bold uppercase tracking-wider text-black">
               <BarChart2 className="h-4 w-4" strokeWidth={3} />
-              Race Predictions Are Open
+              {predictionStatusLabel}
             </div>
 
             {/* Title */}
@@ -368,17 +495,17 @@ export default function Prediction() {
             {/* Countdown Timer */}
             <div className="mt-8 flex w-full max-w-md items-center justify-between rounded-xl border border-white/10 bg-[#121212] py-4 px-6 md:px-10">
               <div className="flex flex-col items-center">
-                <span className="font-display text-4xl font-black leading-none text-white md:text-5xl">02</span>
+                <span className="font-display text-4xl font-black leading-none text-white md:text-5xl">{raceTiming.countdown.days}</span>
                 <span className="mt-1 text-xs font-bold uppercase tracking-widest text-yellow-400">Days</span>
               </div>
               <div className="h-12 w-px bg-white/10"></div>
               <div className="flex flex-col items-center">
-                <span className="font-display text-4xl font-black leading-none text-white md:text-5xl">14</span>
+                <span className="font-display text-4xl font-black leading-none text-white md:text-5xl">{raceTiming.countdown.hours}</span>
                 <span className="mt-1 text-xs font-bold uppercase tracking-widest text-yellow-400">Hours</span>
               </div>
               <div className="h-12 w-px bg-white/10"></div>
               <div className="flex flex-col items-center">
-                <span className="font-display text-4xl font-black leading-none text-white md:text-5xl">35</span>
+                <span className="font-display text-4xl font-black leading-none text-white md:text-5xl">{raceTiming.countdown.minutes}</span>
                 <span className="mt-1 text-xs font-bold uppercase tracking-widest text-yellow-400">Min</span>
               </div>
             </div>
@@ -388,16 +515,22 @@ export default function Prediction() {
               ref={userLoginTriggerRef}
               type="button"
               onClick={handlePredictionClick}
-              disabled={isSessionChecking}
+              disabled={isSessionChecking || !isPredictionOpen}
               className="group mt-6 flex w-full max-w-md items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 py-4 font-display text-lg font-black uppercase tracking-widest text-black transition-all hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(250,204,21,0.4)] disabled:cursor-wait disabled:opacity-70"
             >
-              {isSessionChecking ? 'Checking Session...' : 'Make Your Prediction'}
+              {predictionButtonLabel}
               <ChevronsRight className="h-5 w-5 transition-transform group-hover:translate-x-1" strokeWidth={3} />
             </button>
 
             {/* Closing Note */}
             <p className="mt-4 w-full max-w-md text-center text-sm italic text-zinc-500">
-              Predictions close when Qualifying Q1 begins
+              {isPredictionOpen
+                ? 'Predictions close when Qualifying Q1 begins'
+                : raceConfigError
+                  ? 'Prediction timing is temporarily unavailable'
+                  : raceTiming.state === 'closed'
+                    ? 'The prediction window is closed'
+                    : 'Predictions are not open yet'}
             </p>
           </Reveal>
 
@@ -453,7 +586,7 @@ export default function Prediction() {
                     <Star className="h-6 w-6" strokeWidth={2} />
                   </div>
                   <div>
-                    <div className="font-display text-2xl font-black leading-none text-white">Max 25</div>
+                    <div className="font-display text-2xl font-black leading-none text-white">Max 7</div>
                     <div className="mt-1 text-xs font-bold uppercase tracking-widest text-yellow-400">Points</div>
                   </div>
                 </div>

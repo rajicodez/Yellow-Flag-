@@ -5,7 +5,8 @@ export const dutchGPQuestions = [
     shortTitle: 'POLE POSITION',
     category: 'Qualifying',
     instruction: 'Select one driver',
-    type: 'driver'
+    type: 'driver',
+    databaseKey: 'pole_position'
   },
   {
     id: 2,
@@ -13,7 +14,8 @@ export const dutchGPQuestions = [
     shortTitle: 'RACE WINNER',
     category: 'Race Result',
     instruction: 'Select one driver',
-    type: 'driver'
+    type: 'driver',
+    databaseKey: 'race_winner'
   },
   {
     id: 3,
@@ -21,7 +23,8 @@ export const dutchGPQuestions = [
     shortTitle: 'SECOND PLACE',
     category: 'Race Result',
     instruction: 'Select one driver',
-    type: 'driver'
+    type: 'driver',
+    databaseKey: 'p2_finisher'
   },
   {
     id: 4,
@@ -29,7 +32,8 @@ export const dutchGPQuestions = [
     shortTitle: 'THIRD PLACE',
     category: 'Race Result',
     instruction: 'Select one driver',
-    type: 'driver'
+    type: 'driver',
+    databaseKey: 'p3_finisher'
   },
   {
     id: 5,
@@ -37,7 +41,8 @@ export const dutchGPQuestions = [
     shortTitle: 'DRIVER OF THE DAY',
     category: 'Race Awards',
     instruction: 'Select one driver',
-    type: 'driver'
+    type: 'driver',
+    databaseKey: 'driver_of_the_day'
   },
   {
     id: 6,
@@ -45,7 +50,8 @@ export const dutchGPQuestions = [
     shortTitle: 'BEST-PERFORMING CONSTRUCTOR',
     category: 'Team Performance',
     instruction: 'Select one team',
-    type: 'team'
+    type: 'team',
+    databaseKey: 'top_constructor'
   },
   {
     id: 7,
@@ -53,6 +59,7 @@ export const dutchGPQuestions = [
     shortTitle: 'WORST-PERFORMING TEAM',
     category: 'Team Performance',
     instruction: 'Select one team',
-    type: 'team'
+    type: 'team',
+    databaseKey: 'worst_constructor'
   }
 ];

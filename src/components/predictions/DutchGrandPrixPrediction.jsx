@@ -14,36 +14,20 @@ import { driversData } from '../../data/drivers';
 import { f1Teams2026 } from '../../data/teams';
 import { getAuthorizedHostProfile, signInWithGoogle, supabase } from '../../lib/supabase';
 
-const PREDICTION_KEY = 'yellowFlagPrediction_dutchGP';
-const QUESTION_SET_VERSION = 2;
+const RACE_SLUG = '2026-dutch-grand-prix';
+const LEGACY_PREDICTION_KEY = 'yellowFlagPrediction_dutchGP';
 const PODIUM_QUESTION_IDS = [2, 3, 4];
-const LEGACY_REMOVED_QUESTION_IDS = [8, 9, 10];
-const LEGACY_UNCHANGED_QUESTION_IDS = new Set([1, 2, 3, 4, 6]);
 const driverNames = new Set(driversData.map(driver => driver.name));
 const teamNames = new Set(f1Teams2026.map(team => team.name));
-// Set closing date to a future date for the prototype
-const predictionCloseTime = new Date('2026-08-25T15:00:00Z').toISOString();
-
-const hasLegacyQuestionStructure = (savedAnswers) =>
-  savedAnswers
-  && typeof savedAnswers === 'object'
-  && LEGACY_REMOVED_QUESTION_IDS.some(id => Object.hasOwn(savedAnswers, id));
 
 const sanitizeAnswers = (savedAnswers) => {
   if (!savedAnswers || typeof savedAnswers !== 'object' || Array.isArray(savedAnswers)) {
     return {};
   }
 
-  const isLegacy = hasLegacyQuestionStructure(savedAnswers);
   const sanitized = {};
 
   dutchGPQuestions.forEach(question => {
-    // Questions 5 and 7 replaced different legacy questions, so their old
-    // answers must not be carried into the new question set.
-    if (isLegacy && !LEGACY_UNCHANGED_QUESTION_IDS.has(question.id)) {
-      return;
-    }
-
     const answer = savedAnswers[question.id];
     const isValidDriver = question.type === 'driver' && driverNames.has(answer);
     const isValidTeam = question.type === 'team' && teamNames.has(answer);
@@ -68,6 +52,63 @@ const sanitizeAnswers = (savedAnswers) => {
 
   return sanitized;
 };
+
+const databaseQuestionByKey = new Map(
+  dutchGPQuestions.map(question => [question.databaseKey, question])
+);
+
+function getDatabaseQuestionKey(questionRow) {
+  return questionRow.question_key
+    ?? questionRow.database_key
+    ?? questionRow.key
+    ?? null;
+}
+
+function getPredictionAnswerValue(answerRow) {
+  return answerRow.answer
+    ?? answerRow.answer_value
+    ?? answerRow.answer_text
+    ?? answerRow.value
+    ?? null;
+}
+
+function getRaceWindowState(race) {
+  if (!race) return 'unavailable';
+
+  const now = Date.now();
+  const opensAt = Date.parse(race.opens_at);
+  const closesAt = Date.parse(race.closes_at);
+  const status = String(race.status ?? '').toLowerCase();
+
+  if (!Number.isFinite(closesAt)) return 'unavailable';
+  if (status === 'closed' || now >= closesAt) return 'closed';
+  if (status !== 'open' || (Number.isFinite(opensAt) && now < opensAt)) return 'upcoming';
+  return 'open';
+}
+
+async function fetchEntryAnswers(entryId) {
+  const entryColumns = ['entry_id', 'prediction_entry_id'];
+  let lastError = null;
+
+  for (const entryColumn of entryColumns) {
+    const { data, error } = await supabase
+      .from('prediction_answers')
+      .select('*')
+      .eq(entryColumn, entryId);
+
+    if (!error) return data ?? [];
+
+    lastError = error;
+    const isMissingColumn =
+      error.code === '42703'
+      || error.code === 'PGRST204'
+      || /column.*does not exist|could not find.*column/i.test(error.message ?? '');
+
+    if (!isMissingColumn) break;
+  }
+
+  throw lastError ?? new Error('Unable to load saved prediction answers.');
+}
 
 const findDuplicatePodiumSelection = (candidateAnswers) => {
   for (const questionId of PODIUM_QUESTION_IDS) {
@@ -111,11 +152,15 @@ export default function DutchGrandPrixPrediction() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [stage, setStage] = useState('questions'); // 'questions', 'review', 'success'
   const [validationError, setValidationError] = useState('');
-  const [isClosed, setIsClosed] = useState(false);
+  const [isClosed, setIsClosed] = useState(true);
   const [submissionData, setSubmissionData] = useState(null);
   const [hostProfile, setHostProfile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionError, setSubmissionError] = useState('');
+  const [raceConfig, setRaceConfig] = useState(null);
+  const [raceWindowState, setRaceWindowState] = useState('unavailable');
+  const [isPredictionLoading, setIsPredictionLoading] = useState(true);
+  const [predictionLoadError, setPredictionLoadError] = useState('');
   const [authUser, setAuthUser] = useState(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [authError, setAuthError] = useState('');
@@ -165,73 +210,89 @@ export default function DutchGrandPrixPrediction() {
     };
   }, []);
 
-  // Load existing predictions from localStorage on mount
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
-    const saved = localStorage.getItem(PREDICTION_KEY);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        const sanitizedAnswers = sanitizeAnswers(parsed?.answers);
-        const isComplete = dutchGPQuestions.every(question => sanitizedAnswers[question.id]);
-        const normalizedStatus = parsed?.status === 'submitted' && isComplete ? 'submitted' : 'draft';
-        const normalizedData = {
-          ...parsed,
-          answers: sanitizedAnswers,
-          status: normalizedStatus,
-          questionSetVersion: QUESTION_SET_VERSION
-        };
-
-        setAnswers(sanitizedAnswers);
-        localStorage.setItem(PREDICTION_KEY, JSON.stringify(normalizedData));
-
-        if (normalizedStatus === 'submitted') {
-          setSubmissionData(normalizedData);
-
-          // If it's already submitted and closed, show read-only
-          if (new Date() > new Date(normalizedData.closeTime || predictionCloseTime)) {
-            setIsClosed(true);
-            setStage('review');
-          } else {
-            // Still open, let them edit or see success
-            setStage('success');
-          }
-        }
-      } catch {
-        // Ignore malformed legacy data and start with a clean prediction.
-        localStorage.removeItem(PREDICTION_KEY);
-      }
-    }
+    localStorage.removeItem(LEGACY_PREDICTION_KEY);
   }, []);
 
   useEffect(() => {
     if (isAuthLoading || !authenticatedUserId || !supabase) {
-      if (!isAuthLoading && !authenticatedUserId) setHostProfile(null);
+      if (!isAuthLoading && !authenticatedUserId) {
+        setHostProfile(null);
+        setRaceConfig(null);
+        setRaceWindowState('unavailable');
+        setIsPredictionLoading(false);
+      }
       return undefined;
     }
 
     let isMounted = true;
     setHostProfile(null);
+    setRaceConfig(null);
+    setRaceWindowState('unavailable');
+    setIsClosed(true);
+    setIsPredictionLoading(true);
+    setPredictionLoadError('');
+    setSubmissionError('');
 
-    const loadHostPrediction = async () => {
+    const loadRaceAndPrediction = async () => {
       try {
-        const profile = await getAuthorizedHostProfile(authenticatedUserId);
-        if (!profile || !isMounted) return;
-
-        const { data: hostPrediction, error: predictionError } = await supabase
-          .from('host_predictions')
-          .select('race_id, answers, status, question_set_version, submitted_at')
-          .eq('host_id', profile.user_id)
-          .eq('race_id', 'dutchGP')
+        const { data: race, error: raceError } = await supabase
+          .from('races')
+          .select('id, opens_at, closes_at, status')
+          .eq('slug', RACE_SLUG)
           .maybeSingle();
 
-        if (predictionError) throw predictionError;
+        if (raceError) throw raceError;
+        if (!race || !Number.isFinite(Date.parse(race.closes_at))) {
+          throw new Error('Race configuration is unavailable.');
+        }
+
+        const { data: raceQuestions, error: questionsError } = await supabase
+          .from('race_questions')
+          .select('*')
+          .eq('race_id', race.id);
+
+        if (questionsError) throw questionsError;
+
+        const questionKeyById = new Map();
+        for (const questionRow of raceQuestions ?? []) {
+          const databaseKey = getDatabaseQuestionKey(questionRow);
+          if (databaseQuestionByKey.has(databaseKey)) {
+            questionKeyById.set(questionRow.id, databaseKey);
+          }
+        }
+
+        const hasAllQuestions = dutchGPQuestions.every(question =>
+          [...questionKeyById.values()].includes(question.databaseKey)
+        );
+        if (!hasAllQuestions || questionKeyById.size !== dutchGPQuestions.length) {
+          throw new Error('The race question configuration is incomplete.');
+        }
+
+        const profile = await getAuthorizedHostProfile(authenticatedUserId);
+        if (!isMounted) return;
+        const competition = profile ? 'host' : 'user';
+
+        const { data: predictionEntry, error: entryError } = await supabase
+          .from('prediction_entries')
+          .select('*')
+          .eq('race_id', race.id)
+          .eq('user_id', authenticatedUserId)
+          .eq('competition', competition)
+          .maybeSingle();
+
+        if (entryError) throw entryError;
         if (!isMounted) return;
 
         setHostProfile(profile);
+        setRaceConfig(race);
+        const nextRaceWindowState = getRaceWindowState(race);
+        setRaceWindowState(nextRaceWindowState);
+        setIsClosed(nextRaceWindowState !== 'open');
         setSubmissionError('');
 
-        if (!hostPrediction) {
+        if (!predictionEntry) {
           setAnswers({});
           setSubmissionData(null);
           setCurrentQuestionIndex(0);
@@ -239,38 +300,66 @@ export default function DutchGrandPrixPrediction() {
           return;
         }
 
-        const sanitizedAnswers = sanitizeAnswers(hostPrediction.answers);
+        const databaseAnswers = await fetchEntryAnswers(predictionEntry.id);
+        if (!isMounted) return;
+
+        const restoredAnswers = {};
+        for (const answerRow of databaseAnswers) {
+          const databaseKey = questionKeyById.get(answerRow.question_id);
+          const uiQuestion = databaseQuestionByKey.get(databaseKey);
+          const answerValue = getPredictionAnswerValue(answerRow);
+
+          if (uiQuestion && typeof answerValue === 'string') {
+            restoredAnswers[uiQuestion.id] = answerValue;
+          }
+        }
+
+        const sanitizedAnswers = sanitizeAnswers(restoredAnswers);
         const isComplete = dutchGPQuestions.every(question => sanitizedAnswers[question.id]);
-        const normalizedData = {
-          raceId: hostPrediction.race_id,
-          submittedAt: hostPrediction.submitted_at,
-          closeTime: predictionCloseTime,
+        if (!isComplete) {
+          throw new Error('The saved prediction is incomplete.');
+        }
+
+        const entryIsSubmitted =
+          !predictionEntry.status
+          || String(predictionEntry.status).toLowerCase() === 'submitted';
+        const databaseSubmission = {
+          raceId: race.id,
+          entryId: predictionEntry.id,
+          submittedAt:
+            predictionEntry.submitted_at
+            ?? predictionEntry.updated_at
+            ?? predictionEntry.created_at
+            ?? null,
+          closeTime: race.closes_at,
           answers: sanitizedAnswers,
-          status: hostPrediction.status === 'submitted' && isComplete ? 'submitted' : 'draft',
-          questionSetVersion: hostPrediction.question_set_version
+          status: entryIsSubmitted ? 'submitted' : 'draft',
+          competition,
         };
 
         setAnswers(sanitizedAnswers);
-        setSubmissionData(normalizedData.status === 'submitted' ? normalizedData : null);
+        setSubmissionData(entryIsSubmitted ? databaseSubmission : null);
 
-        if (normalizedData.status === 'submitted') {
-          if (new Date() > new Date(predictionCloseTime)) {
-            setIsClosed(true);
-            setStage('review');
-          } else {
-            setStage('success');
-          }
+        if (entryIsSubmitted) {
+          setStage(nextRaceWindowState === 'open' ? 'success' : 'review');
         } else {
           setStage('questions');
         }
       } catch {
         if (isMounted) {
-          setSubmissionError('Unable to load the saved host prediction. Please try again.');
+          setRaceConfig(null);
+          setRaceWindowState('unavailable');
+          setIsClosed(true);
+          setPredictionLoadError(
+            'Unable to load the race configuration or your saved prediction. Please try again.'
+          );
         }
+      } finally {
+        if (isMounted) setIsPredictionLoading(false);
       }
     };
 
-    loadHostPrediction();
+    loadRaceAndPrediction();
 
     return () => {
       isMounted = false;
@@ -356,6 +445,11 @@ export default function DutchGrandPrixPrediction() {
     const sanitizedAnswers = sanitizeAnswers(answers);
     setSubmissionError('');
 
+    if (!supabase || !raceConfig || getRaceWindowState(raceConfig) !== 'open') {
+      setSubmissionError('Predictions are not open for submission right now.');
+      return;
+    }
+
     // Final check
     const isComplete = dutchGPQuestions.every(q => sanitizedAnswers[q.id]);
     if (!isComplete) {
@@ -369,51 +463,56 @@ export default function DutchGrandPrixPrediction() {
       return;
     }
 
-    let submitData = {
-      raceId: 'dutchGP',
-      submittedAt: new Date().toISOString(),
-      closeTime: predictionCloseTime,
-      answers: sanitizedAnswers,
-      status: 'submitted',
-      questionSetVersion: QUESTION_SET_VERSION
-    };
+    const rpcAnswers = Object.fromEntries(
+      dutchGPQuestions.map(question => [
+        question.databaseKey,
+        sanitizedAnswers[question.id],
+      ])
+    );
+    const competition = hostProfile ? 'host' : 'user';
 
     setIsSubmitting(true);
 
     try {
-      if (hostProfile && supabase) {
-        const { data, error } = await supabase
-          .from('host_predictions')
-          .upsert({
-            host_id: hostProfile.user_id,
-            race_id: 'dutchGP',
-            answers: sanitizedAnswers,
-            status: 'submitted',
-            question_set_version: QUESTION_SET_VERSION
-          }, { onConflict: 'host_id,race_id' })
-          .select('submitted_at')
-          .single();
+      const { data, error } = await supabase.rpc('submit_prediction', {
+        p_race_slug: RACE_SLUG,
+        p_competition: competition,
+        p_answers: rpcAnswers,
+      });
 
-        if (error) throw error;
-        submitData = { ...submitData, submittedAt: data.submitted_at };
-      } else {
-        localStorage.setItem(PREDICTION_KEY, JSON.stringify(submitData));
-      }
+      if (error) throw error;
 
+      const rpcResult = Array.isArray(data) ? data[0] : data;
+      const submittedAt =
+        (rpcResult && typeof rpcResult === 'object'
+          ? rpcResult.submitted_at ?? rpcResult.submittedAt
+          : null)
+        ?? (typeof rpcResult === 'string' ? rpcResult : null)
+        ?? new Date().toISOString();
+      const submitData = {
+        raceId: raceConfig.id,
+        submittedAt,
+        closeTime: raceConfig.closes_at,
+        answers: sanitizedAnswers,
+        status: 'submitted',
+        competition,
+      };
+
+      localStorage.removeItem(LEGACY_PREDICTION_KEY);
       setAnswers(sanitizedAnswers);
       setSubmissionData(submitData);
       setStage('success');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch {
-      setSubmissionError('Unable to submit the host prediction. Please try again.');
+      setSubmissionError('Unable to submit your prediction. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleCountdownComplete = () => {
+    setRaceWindowState('closed');
     setIsClosed(true);
-    // If they haven't submitted, maybe we lock it or show review
   };
 
   const handleGoogleSignIn = async () => {
@@ -517,6 +616,55 @@ export default function DutchGrandPrixPrediction() {
     );
   }
 
+  if (isPredictionLoading) {
+    return (
+      <PredictionAuthShell>
+        <div
+          role="status"
+          aria-live="polite"
+          className="w-full max-w-md rounded-2xl border border-yellow-400/20 bg-[#121212]/95 p-8 text-center shadow-[0_0_50px_rgba(250,204,21,0.12)]"
+        >
+          <div className="mx-auto mb-5 h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-yellow-400" />
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-yellow-400">
+            Yellow Flag Predictions
+          </p>
+          <h1 className="mt-3 font-display text-3xl font-black uppercase text-white">
+            Loading race predictions
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-zinc-400">
+            Checking the race window and your saved entry.
+          </p>
+        </div>
+      </PredictionAuthShell>
+    );
+  }
+
+  if (predictionLoadError || !raceConfig) {
+    return (
+      <PredictionAuthShell>
+        <div className="w-full max-w-md rounded-2xl border border-yellow-400/20 bg-[#121212]/95 p-6 text-center shadow-[0_0_50px_rgba(250,204,21,0.12)] sm:p-8">
+          <p className="text-xs font-bold uppercase tracking-[0.25em] text-yellow-400">
+            Predictions Unavailable
+          </p>
+          <h1 className="mt-3 font-display text-3xl font-black uppercase leading-tight text-white sm:text-4xl">
+            Race data could not be loaded
+          </h1>
+          <p role="alert" className="mt-4 text-sm leading-6 text-zinc-400">
+            {predictionLoadError || 'This prediction event is not available right now.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/#prediction')}
+            className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 px-5 py-3 font-display font-bold uppercase tracking-widest text-white transition hover:bg-white/5"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Back to Home
+          </button>
+        </div>
+      </PredictionAuthShell>
+    );
+  }
+
   const answeredQuestionNumbers = dutchGPQuestions.reduce((questionNumbers, question, index) => {
     if (answers[question.id]) {
       questionNumbers.push(index + 1);
@@ -533,6 +681,14 @@ export default function DutchGrandPrixPrediction() {
     authUser.user_metadata?.avatar_url
     || authUser.user_metadata?.picture
     || null;
+  const raceStatusLabel = raceWindowState === 'open'
+    ? 'Race Predictions Are Open'
+    : raceWindowState === 'closed'
+      ? 'Race Predictions Are Closed'
+      : 'Race Predictions Are Not Open';
+  const closedMessage = raceWindowState === 'upcoming'
+    ? 'The prediction window has not opened yet.'
+    : 'The deadline for submitting predictions has passed.';
 
   return (
     <div className="relative min-h-screen bg-black text-white">
@@ -593,7 +749,7 @@ export default function DutchGrandPrixPrediction() {
         <header className="mb-12 flex flex-col items-center text-center lg:items-start lg:text-left">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-yellow-400 px-3 py-1 text-xs font-bold uppercase tracking-wider text-black">
             <BarChart2 className="h-4 w-4" strokeWidth={3} />
-            Race Predictions Are Open
+            {raceStatusLabel}
           </div>
           
           <h1 className="font-display text-4xl sm:text-6xl font-black uppercase leading-none tracking-tight text-white lg:text-7xl">
@@ -687,7 +843,7 @@ export default function DutchGrandPrixPrediction() {
                   className="flex flex-col items-center justify-center p-12 bg-[#121212]/80 rounded-2xl border border-white/10"
                 >
                   <h2 className="font-display text-4xl font-black uppercase text-white mb-4">Predictions Closed</h2>
-                  <p className="text-zinc-400 mb-8">The deadline for submitting predictions has passed.</p>
+                  <p className="text-zinc-400 mb-8">{closedMessage}</p>
                   
                   {submissionData ? (
                     <div className="w-full">
@@ -711,7 +867,7 @@ export default function DutchGrandPrixPrediction() {
           {/* Right Sidebar (Countdown & Progress) */}
           <div className="lg:col-span-4 order-1 lg:order-2 space-y-6">
             <PredictionCountdown 
-              closeTime={predictionCloseTime} 
+              closeTime={raceConfig.closes_at}
               onComplete={handleCountdownComplete} 
             />
             
@@ -727,7 +883,7 @@ export default function DutchGrandPrixPrediction() {
                 
                 <div className="mt-6 flex items-center justify-between border-t border-white/5 pt-4">
                   <div className="text-sm font-bold uppercase tracking-wider text-zinc-400">Total Points</div>
-                  <div className="font-display text-2xl font-black text-white">25</div>
+                  <div className="font-display text-2xl font-black text-white">7</div>
                 </div>
               </div>
             )}
