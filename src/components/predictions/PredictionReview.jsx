@@ -38,7 +38,7 @@ export default function PredictionReview({ answers, onSubmit, onEdit, isSubmitti
           Review Your Prediction
         </h3>
         <p className="text-zinc-400 font-medium tracking-wide">
-          {answeredQuestions} of {totalQuestions} answered • Max 25 Points
+          {answeredQuestions} of {totalQuestions} answered • Max 7 Points
         </p>
       </div>
 
