@@ -15,7 +15,9 @@ import Schedule from './components/Schedule';
 import Standing from './components/Standing';
 import Teams from './components/Teams';
 import Tracks from './components/Tracks';
+import Prediction from './components/Prediction';
 import BackgroundEffects from './components/ui/BackgroundEffects';
+import DutchGrandPrixPrediction from './components/predictions/DutchGrandPrixPrediction';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { navItems } from './data/content';
 
@@ -177,6 +179,7 @@ function HomePage() {
       <main>
         <Hero />
         <Episodes />
+        <Prediction />
         <About />
         <Journey />
         <Schedule />
@@ -221,6 +224,7 @@ function AppShell() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/drivers" element={<DriversPage />} />
+        <Route path="/predictions/dutch-grand-prix" element={<DutchGrandPrixPrediction />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <F1AssistantWidget />
