@@ -316,22 +316,19 @@ export default function Navbar({ activeSection }) {
                 type="button"
                 disabled
                 aria-label="Checking sign-in status"
-                className="flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-black/35 px-3 text-zinc-400"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-black/50 text-zinc-400"
               >
                 <UserRound className="h-5 w-5 animate-pulse" aria-hidden="true" />
-                <span className="hidden text-xs font-bold uppercase tracking-[0.14em] xl:inline">
-                  Checking
-                </span>
               </button>
             ) : authUser ? (
               <button
                 ref={accountButtonRef}
                 type="button"
                 onClick={handleAccountClick}
-                aria-label={`Open account menu for ${userDisplayName}`}
+                aria-label="Open account menu"
                 aria-haspopup="menu"
                 aria-expanded={isAccountOpen}
-                className="flex h-11 max-w-48 items-center gap-2 rounded-xl border border-yellow-400/25 bg-black/45 px-2.5 text-left text-white transition hover:border-yellow-400/50 hover:bg-yellow-400/10"
+                className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-yellow-400/50 bg-[#121212] text-white shadow-[0_0_14px_rgba(250,204,21,0.16)] transition hover:border-yellow-300 hover:shadow-[0_0_18px_rgba(250,204,21,0.24)]"
               >
                 {userAvatarUrl && !avatarFailed ? (
                   <img
@@ -339,16 +336,13 @@ export default function Navbar({ activeSection }) {
                     alt=""
                     referrerPolicy="no-referrer"
                     onError={() => setAvatarFailed(true)}
-                    className="h-7 w-7 shrink-0 rounded-full border border-yellow-400/35 object-cover"
+                    className="h-full w-full object-cover"
                   />
                 ) : (
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-yellow-400/35 bg-yellow-400/15 font-display text-xs font-black text-yellow-300">
+                  <span className="flex h-full w-full items-center justify-center bg-yellow-400/10 font-display text-sm font-black uppercase text-yellow-300">
                     {userInitial}
                   </span>
                 )}
-                <span className="hidden max-w-28 truncate text-xs font-bold xl:inline">
-                  {userDisplayName}
-                </span>
               </button>
             ) : (
               <button
@@ -356,12 +350,9 @@ export default function Navbar({ activeSection }) {
                 type="button"
                 onClick={openLoginModal}
                 aria-label="Sign in to Yellow Flag"
-                className="flex h-11 items-center gap-2 rounded-xl border border-white/10 bg-black/35 px-3 text-white transition hover:border-yellow-400/40 hover:bg-yellow-400/10 hover:text-yellow-300"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/50 text-white transition hover:border-yellow-400/50 hover:bg-yellow-400/10 hover:text-yellow-300"
               >
                 <UserRound className="h-5 w-5" aria-hidden="true" />
-                <span className="hidden text-xs font-bold uppercase tracking-[0.14em] xl:inline">
-                  Sign In
-                </span>
               </button>
             )}
 
@@ -375,11 +366,26 @@ export default function Navbar({ activeSection }) {
                   exit={{ opacity: 0, y: -8, scale: 0.98 }}
                   className="absolute right-0 top-[calc(100%+0.75rem)] z-[70] w-72 max-w-[calc(100vw-2.5rem)] overflow-hidden rounded-2xl border border-yellow-400/20 bg-[#121212]/98 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.6)] backdrop-blur-xl"
                 >
-                  <div className="border-b border-white/10 px-3 py-3">
-                    <p className="truncate text-sm font-bold text-white">{userDisplayName}</p>
-                    <p className="mt-0.5 truncate text-xs text-zinc-400">
-                      {authUser.email || 'Email unavailable'}
-                    </p>
+                  <div className="flex items-center gap-3 border-b border-white/10 px-3 py-3">
+                    {userAvatarUrl && !avatarFailed ? (
+                      <img
+                        src={userAvatarUrl}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        onError={() => setAvatarFailed(true)}
+                        className="h-11 w-11 shrink-0 rounded-full border border-yellow-400/35 object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-yellow-400/35 bg-yellow-400/10 font-display text-sm font-black uppercase text-yellow-300">
+                        {userInitial}
+                      </span>
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-white">{userDisplayName}</p>
+                      <p className="mt-0.5 truncate text-xs text-zinc-400">
+                        {authUser.email || 'Email unavailable'}
+                      </p>
+                    </div>
                   </div>
 
                   {logoutError && (
