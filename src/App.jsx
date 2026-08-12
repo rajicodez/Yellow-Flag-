@@ -179,13 +179,13 @@ function HomePage() {
       <main>
         <Hero />
         <Episodes />
+        <Prediction />
         <About />
         <Journey />
         <Schedule />
         <Tracks />
         <Teams />
         <Standing />
-        <Prediction />
         <Game />
         <Contact />
       </main>
