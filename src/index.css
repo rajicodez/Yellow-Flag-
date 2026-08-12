@@ -42,6 +42,14 @@ h4,
   color: #fff;
 }
 
+.admin-grid-background {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(135deg, transparent 0 48%, rgba(250, 204, 21, 0.025) 48% 52%, transparent 52% 100%);
+  background-size: 44px 44px, 44px 44px, 180px 180px;
+}
+
 /* F1 Racer: the canvas keeps a fixed 960x600 aspect, so a full-width panel on a
    short viewport pushes the top of the circuit under the fixed navbar. Capping
    the panel's WIDTH by the available HEIGHT (x 960/600) keeps the whole track on

@@ -15,6 +15,7 @@ import Schedule from './components/Schedule';
 import Standing from './components/Standing';
 import Teams from './components/Teams';
 import Tracks from './components/Tracks';
+import AdminPanel from './components/admin/AdminPanel';
 import BackgroundEffects from './components/ui/BackgroundEffects';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { navItems } from './data/content';
@@ -23,10 +24,12 @@ let audioInstance = null;
 let fallbackListenersAttached = false;
 let globalInteractionHandler = null;
 
-function useOpeningSound() {
+function useOpeningSound(enabled = true) {
   const isMounted = useRef(true);
 
   useEffect(() => {
+    if (!enabled) return undefined;
+
     isMounted.current = true;
 
     const cleanupListeners = () => {
@@ -107,7 +110,7 @@ function useOpeningSound() {
         }
       }, 50);
     };
-  }, []);
+  }, [enabled]);
 }
 
 function HomePage() {
@@ -208,7 +211,9 @@ function DriversPage() {
 }
 
 function AppShell() {
-  useOpeningSound();
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+  useOpeningSound(!isAdminRoute);
 
   return (
     <motion.div
@@ -217,13 +222,14 @@ function AppShell() {
       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       className="relative min-h-screen overflow-x-hidden text-white"
     >
-      <BackgroundEffects />
+      {!isAdminRoute && <BackgroundEffects />}
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/drivers" element={<DriversPage />} />
+        <Route path="/admin" element={<AdminPanel />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <F1AssistantWidget />
+      {!isAdminRoute && <F1AssistantWidget />}
       <Analytics />
     </motion.div>
   );

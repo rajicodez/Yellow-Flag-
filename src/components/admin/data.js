@@ -1,0 +1,176 @@
+export const adminNavigation = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'races', label: 'Races' },
+  { id: 'questions', label: 'Questions' },
+  { id: 'results', label: 'Results & Scoring' },
+  { id: 'leaderboard', label: 'Leaderboard' },
+  { id: 'users', label: 'Users & Roles' },
+  { id: 'settings', label: 'Settings' },
+];
+
+export const demoRaces = [
+  {
+    id: 1,
+    name: 'Dutch Grand Prix',
+    slug: 'dutch-grand-prix',
+    circuit: 'Circuit Zandvoort',
+    country: 'Netherlands',
+    round: 15,
+    season: 2026,
+    opensAt: '20 Aug 2026, 09:00',
+    closesAt: '23 Aug 2026, 17:30',
+    status: 'Open',
+    questions: 7,
+  },
+  {
+    id: 2,
+    name: 'Italian Grand Prix',
+    slug: 'italian-grand-prix',
+    circuit: 'Autodromo Nazionale Monza',
+    country: 'Italy',
+    round: 16,
+    season: 2026,
+    opensAt: '27 Aug 2026, 09:00',
+    closesAt: '30 Aug 2026, 17:30',
+    status: 'Draft',
+    questions: 0,
+  },
+  {
+    id: 3,
+    name: 'Hungarian Grand Prix',
+    slug: 'hungarian-grand-prix',
+    circuit: 'Hungaroring',
+    country: 'Hungary',
+    round: 14,
+    season: 2026,
+    opensAt: '23 Jul 2026, 09:00',
+    closesAt: '26 Jul 2026, 17:30',
+    status: 'Scored',
+    questions: 7,
+  },
+  {
+    id: 4,
+    name: 'British Grand Prix',
+    slug: 'british-grand-prix',
+    circuit: 'Silverstone Circuit',
+    country: 'United Kingdom',
+    round: 12,
+    season: 2026,
+    opensAt: '02 Jul 2026, 09:00',
+    closesAt: '05 Jul 2026, 18:30',
+    status: 'Closed',
+    questions: 7,
+  },
+];
+
+export const dutchGrandPrixQuestions = [
+  {
+    id: 1,
+    key: 'pole_position',
+    text: 'Who will take Pole Position at Zandvoort?',
+    type: 'Driver',
+    points: 1,
+    active: true,
+  },
+  {
+    id: 2,
+    key: 'race_winner',
+    text: 'Who will win the Dutch Grand Prix?',
+    type: 'Driver',
+    points: 1,
+    active: true,
+  },
+  {
+    id: 3,
+    key: 'second_place',
+    text: 'Who will finish in P2?',
+    type: 'Driver',
+    points: 1,
+    active: true,
+  },
+  {
+    id: 4,
+    key: 'third_place',
+    text: 'Who will finish in P3?',
+    type: 'Driver',
+    points: 1,
+    active: true,
+  },
+  {
+    id: 5,
+    key: 'driver_of_the_day',
+    text: 'Who will be Driver of the Day?',
+    type: 'Driver',
+    points: 1,
+    active: true,
+  },
+  {
+    id: 6,
+    key: 'best_constructor',
+    text: 'Which constructor will score the most points?',
+    type: 'Constructor',
+    points: 1,
+    active: true,
+  },
+  {
+    id: 7,
+    key: 'worst_constructor',
+    text: 'Which constructor will be the worst-performing team?',
+    type: 'Constructor',
+    points: 1,
+    active: true,
+  },
+];
+
+export const recentActivity = [
+  { id: 1, title: 'A user submitted a prediction', detail: 'Dutch Grand Prix · 2 minutes ago' },
+  { id: 2, title: 'Race questions were updated', detail: 'Seven questions · 18 minutes ago' },
+  { id: 3, title: 'Prediction deadline was changed', detail: 'Closes 23 Aug at 17:30 · 1 hour ago' },
+  { id: 4, title: 'Race results were published', detail: 'Hungarian Grand Prix · Yesterday' },
+];
+
+export const leaderboardUsers = [
+  { position: 1, name: 'ApexRacer', racePoints: 7, seasonPoints: 42, submissions: 8 },
+  { position: 2, name: 'PitLanePro', racePoints: 6, seasonPoints: 39, submissions: 8 },
+  { position: 3, name: 'YellowSector', racePoints: 6, seasonPoints: 37, submissions: 8 },
+  { position: 4, name: 'GridWatcher', racePoints: 5, seasonPoints: 34, submissions: 8 },
+  { position: 5, name: 'LateBraker', racePoints: 5, seasonPoints: 31, submissions: 7 },
+  { position: 6, name: 'DRSDetective', racePoints: 4, seasonPoints: 29, submissions: 8 },
+  { position: 7, name: 'KerbRider', racePoints: 4, seasonPoints: 27, submissions: 7 },
+  { position: 8, name: 'RaceCraftLK', racePoints: 3, seasonPoints: 24, submissions: 8 },
+  { position: 9, name: 'Slipstream', racePoints: 3, seasonPoints: 22, submissions: 6 },
+  { position: 10, name: 'BoxBoxDemo', racePoints: 2, seasonPoints: 19, submissions: 7 },
+  { position: 11, name: 'FastestLap', racePoints: 2, seasonPoints: 17, submissions: 6 },
+  { position: 12, name: 'TurnOne', racePoints: 1, seasonPoints: 15, submissions: 7 },
+  { position: 13, name: 'PaddockVoice', racePoints: 1, seasonPoints: 13, submissions: 5 },
+  { position: 14, name: 'DemoMarshal', racePoints: 0, seasonPoints: 10, submissions: 6 },
+];
+
+export const demoUsers = [
+  { id: 1, name: 'Control Admin', email: 'co•••••@example.com', joined: '03 Jan 2026', points: 42, role: 'super_admin', status: 'Active' },
+  { id: 2, name: 'Race Editor', email: 'ra•••••@example.com', joined: '18 Jan 2026', points: 35, role: 'admin', status: 'Active' },
+  { id: 3, name: 'Paddock Host', email: 'pa•••••@example.com', joined: '02 Feb 2026', points: 28, role: 'host', status: 'Active' },
+  { id: 4, name: 'Grid Fan', email: 'gr•••••@example.com', joined: '14 Feb 2026', points: 24, role: 'user', status: 'Active' },
+  { id: 5, name: 'Apex Guest', email: 'ap•••••@example.com', joined: '06 Mar 2026', points: 19, role: 'user', status: 'Pending' },
+  { id: 6, name: 'Sector Viewer', email: 'se•••••@example.com', joined: '20 Mar 2026', points: 12, role: 'user', status: 'Active' },
+];
+
+export const driverOptions = [
+  'Max Verstappen',
+  'Lando Norris',
+  'Oscar Piastri',
+  'Charles Leclerc',
+  'Lewis Hamilton',
+  'George Russell',
+  'Kimi Antonelli',
+];
+
+export const constructorOptions = [
+  'McLaren',
+  'Ferrari',
+  'Mercedes',
+  'Red Bull Racing',
+  'Aston Martin',
+  'Williams',
+  'Racing Bulls',
+];
