@@ -30,7 +30,7 @@ export default function DashboardScreen({ sprintWeekend }) {
   const finishRaceDemo = (message) => {
     setRaceModalOpen(false);
     setCloseModalOpen(false);
-    setNotice(message);
+    setNotice(typeof message === 'string' ? message : 'Race changes previewed locally. No database record was updated.');
   };
 
   return (
@@ -132,7 +132,7 @@ export default function DashboardScreen({ sprintWeekend }) {
         </Panel>
       </div>
 
-      <RaceFormModal race={currentRace} open={raceModalOpen} onClose={() => setRaceModalOpen(false)} onDemoSave={finishRaceDemo} />
+      <RaceFormModal race={currentRace} races={demoRaces} open={raceModalOpen} onClose={() => setRaceModalOpen(false)} onDemoSave={finishRaceDemo} />
       <Modal open={closeModalOpen} onClose={() => setCloseModalOpen(false)} title="Close Predictions?" description="This confirmation is a visual prototype only.">
         <p className="text-sm leading-6 text-zinc-300">A production action would prevent additional submissions for the Dutch Grand Prix. No data will change in this demo.</p>
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

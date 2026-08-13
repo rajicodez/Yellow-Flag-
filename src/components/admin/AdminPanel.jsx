@@ -8,6 +8,7 @@ import RacesScreen from './screens/RacesScreen';
 import ResultsScreen from './screens/ResultsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import UsersScreen from './screens/UsersScreen';
+import { demoRaces } from './data';
 import useSprintWeekend from './useSprintWeekend';
 
 const screens = {
@@ -23,6 +24,7 @@ const screens = {
 export default function AdminPanel() {
   const [demoAuthenticated, setDemoAuthenticated] = useState(false);
   const [activeScreen, setActiveScreen] = useState('dashboard');
+  const [adminRaces, setAdminRaces] = useState(() => demoRaces.map((race) => ({ ...race })));
   const sprintWeekend = useSprintWeekend();
   const ActiveScreen = screens[activeScreen] ?? DashboardScreen;
 
@@ -41,7 +43,7 @@ export default function AdminPanel() {
 
   return (
     <AdminLayout activeScreen={activeScreen} onNavigate={setActiveScreen} onLogout={handleDemoLogout}>
-      <ActiveScreen sprintWeekend={sprintWeekend} />
+      <ActiveScreen sprintWeekend={sprintWeekend} races={adminRaces} setRaces={setAdminRaces} />
     </AdminLayout>
   );
 }

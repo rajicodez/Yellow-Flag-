@@ -50,7 +50,7 @@ function QuestionModal({ question, open, onClose, onDemoSave }) {
 
 function QuestionRow({ question, onEdit, onToggle }) {
   return (
-    <li className={`grid min-w-0 gap-4 p-4 sm:p-5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center ${question.sprint ? 'bg-yellow-400/[0.025]' : ''}`}>
+    <li className={`grid min-w-0 gap-4 rounded-xl border p-4 shadow-[0_8px_24px_rgba(0,0,0,0.18)] sm:p-5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center ${question.sprint ? 'border-yellow-400/25 bg-yellow-400/[0.025]' : 'border-white/10 bg-black/20'} ${question.active ? '' : 'border-dashed opacity-70'}`}>
       <div className="flex items-center gap-3">
         <button type="button" aria-label={`Reorder question ${question.id}`} className="cursor-grab rounded-lg p-2 text-zinc-600 transition hover:bg-white/5 hover:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/50">
           <GripVertical className="h-5 w-5" aria-hidden="true" />
@@ -191,7 +191,7 @@ export default function QuestionsScreen({ sprintWeekend }) {
           <div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-400">Question Order</p><h3 className="mt-1 truncate font-display text-xl font-black uppercase text-white">Zandvoort Prediction Set</h3></div>
           <DemoLabel />
         </div>
-        <ol className="divide-y divide-white/10">
+        <ol className="space-y-3 bg-[#0d0d0f] p-3 sm:p-4">
           {standardQuestions.map((question) => <QuestionRow key={question.id} question={question} onEdit={openEdit} onToggle={toggleQuestion} />)}
         </ol>
         {isSprintWeekend && (
@@ -201,7 +201,7 @@ export default function QuestionsScreen({ sprintWeekend }) {
               <span className="h-px min-w-8 flex-1 bg-yellow-400/20" />
               <DemoLabel>Sprint</DemoLabel>
             </div>
-            <ol start="8" className="divide-y divide-white/10">
+            <ol start="8" className="space-y-3 bg-[#0d0d0f] p-3 sm:p-4">
               {sprintQuestions.map((question) => <QuestionRow key={question.id} question={question} onEdit={openEdit} onToggle={toggleQuestion} />)}
             </ol>
           </>

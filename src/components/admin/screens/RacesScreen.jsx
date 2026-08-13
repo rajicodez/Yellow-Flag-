@@ -2,19 +2,31 @@ import { useMemo, useState } from 'react';
 import { MoreHorizontal, Pencil, Plus, Search } from 'lucide-react';
 import RaceFormModal from '../RaceFormModal';
 import { DemoLabel, EmptyNotice, inputClass, Panel, ScreenHeading, StatusBadge } from '../AdminUI';
-import { demoRaces } from '../data';
 
-export default function RacesScreen() {
+const predictionDateFormatter = new Intl.DateTimeFormat('en-GB', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'Asia/Colombo',
+});
+
+function formatPredictionDate(value) {
+  if (!value) return 'Not set';
+  const [date, time] = value.split('T');
+  return `${predictionDateFormatter.format(new Date(`${date}T00:00:00+05:30`))}, ${time}`;
+}
+
+export default function RacesScreen({ sprintWeekend, races, setRaces }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('All');
   const [selectedRace, setSelectedRace] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [notice, setNotice] = useState('');
 
-  const filteredRaces = useMemo(() => demoRaces.filter((race) => {
+  const filteredRaces = useMemo(() => races.filter((race) => {
     const matchesSearch = `${race.name} ${race.circuit} ${race.country}`.toLowerCase().includes(search.toLowerCase());
     return matchesSearch && (status === 'All' || race.status === status);
-  }), [search, status]);
+  }), [races, search, status]);
 
   const openCreate = () => {
     setSelectedRace(null);
@@ -26,9 +38,31 @@ export default function RacesScreen() {
     setModalOpen(true);
   };
 
-  const handleDemoSave = (message) => {
+  const closeModal = () => {
     setModalOpen(false);
-    setNotice(message);
+    setSelectedRace(null);
+  };
+
+  const handleDemoSave = ({ race: savedRace, isEditing }) => {
+    const raceWithDisplayDates = {
+      ...savedRace,
+      opensAt: formatPredictionDate(savedRace.predictionOpens),
+      closesAt: formatPredictionDate(savedRace.predictionCloses),
+    };
+
+    setRaces((currentRaces) => isEditing
+      ? currentRaces.map((currentRace) => currentRace.id === raceWithDisplayDates.id ? raceWithDisplayDates : currentRace)
+      : [...currentRaces, raceWithDisplayDates]
+    );
+
+    if (savedRace.sprintWeekend) {
+      sprintWeekend.enableSprintWeekend();
+    } else {
+      sprintWeekend.disableSprintWeekend();
+    }
+
+    closeModal();
+    setNotice(`${savedRace.name} ${isEditing ? 'updated' : 'added'} to the UI-only race list.`);
   };
 
   return (
@@ -69,7 +103,13 @@ export default function RacesScreen() {
               <tbody className="divide-y divide-white/10">
                 {filteredRaces.map((race) => (
                   <tr key={race.id} className="transition hover:bg-white/[0.025]">
-                    <td className="px-5 py-4"><p className="font-bold text-white">{race.name}</p><p className="mt-1 text-xs text-zinc-500">{race.circuit} · {race.country}</p></td>
+                    <td className="px-5 py-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-bold text-white">{race.name}</p>
+                        {race.sprintWeekend && <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-yellow-300">Sprint</span>}
+                      </div>
+                      <p className="mt-1 text-xs text-zinc-500">{race.circuit} · {race.country}</p>
+                    </td>
                     <td className="px-4 py-4 font-display text-base font-black text-zinc-200">{String(race.round).padStart(2, '0')}</td>
                     <td className="px-4 py-4 text-xs text-zinc-400">{race.opensAt}</td>
                     <td className="px-4 py-4 text-xs text-zinc-400">{race.closesAt}</td>
@@ -95,7 +135,7 @@ export default function RacesScreen() {
         ) : <div className="p-6"><EmptyNotice>No demonstration races match those filters.</EmptyNotice></div>}
       </Panel>
 
-      <RaceFormModal race={selectedRace} open={modalOpen} onClose={() => setModalOpen(false)} onDemoSave={handleDemoSave} />
+      <RaceFormModal race={selectedRace} races={races} open={modalOpen} onClose={closeModal} onDemoSave={handleDemoSave} />
     </div>
   );
 }

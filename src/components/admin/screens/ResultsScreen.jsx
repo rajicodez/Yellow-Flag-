@@ -19,14 +19,26 @@ function AnswerRow({
 }) {
   const value = answers[question.id] ?? '';
   const invalid = invalidQuestionIds.has(question.id) || duplicatePodiumQuestionIds.has(question.id);
+  const unanswered = question.active && !value;
+  const answerState = invalid
+    ? 'invalid'
+    : !question.active
+      ? 'inactive'
+      : value
+        ? 'complete'
+        : 'unanswered';
 
   return (
-    <div className={`relative grid min-w-0 gap-4 p-5 transition sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.62fr)_auto] lg:items-center ${
-      invalid
-        ? 'bg-red-400/[0.055] ring-1 ring-inset ring-red-400/20'
-        : question.sprint
-          ? 'bg-yellow-400/[0.025]'
-          : ''
+    <div className={`relative grid min-w-0 gap-4 rounded-xl border p-5 shadow-[0_8px_24px_rgba(0,0,0,0.18)] transition sm:p-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,0.62fr)_auto] lg:items-center ${
+      answerState === 'invalid'
+        ? 'border-red-400/40 bg-red-400/[0.055] ring-1 ring-inset ring-red-400/20'
+        : answerState === 'complete'
+          ? 'border-emerald-400/30 bg-emerald-400/[0.035]'
+          : answerState === 'unanswered'
+            ? 'border-amber-400/40 bg-amber-400/[0.045]'
+            : question.sprint
+              ? 'border-yellow-400/25 bg-yellow-400/[0.025]'
+              : 'border-white/10 bg-black/20'
     }`}>
       <div className="min-w-0">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -39,27 +51,36 @@ function AnswerRow({
         <p className="mt-1 text-xs text-zinc-500">1 point per correct answer</p>
       </div>
 
-      <SearchableAnswerSelect
-        disabled={!question.active}
-        invalid={invalid}
-        label={`Correct answer for question ${question.id}`}
-        onChange={(answerId) => onAnswerChange(question.id, answerId)}
-        options={options}
-        type={question.type}
-        value={value}
-      />
+      <div className="min-w-0">
+        <SearchableAnswerSelect
+          disabled={!question.active}
+          invalid={invalid}
+          label={`Correct answer for question ${question.id}`}
+          onChange={(answerId) => onAnswerChange(question.id, answerId)}
+          options={options}
+          type={question.type}
+          value={value}
+        />
+        {invalidQuestionIds.has(question.id) && (
+          <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-red-300"><AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Select the correct answer.</p>
+        )}
+        {duplicatePodiumQuestionIds.has(question.id) && (
+          <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-red-300"><AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Choose a different podium driver.</p>
+        )}
+      </div>
 
       <span className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.13em] ${
         !question.active
           ? 'border-zinc-500/20 bg-zinc-500/10 text-zinc-500'
-          : value
-            ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300'
-            : invalid
-              ? 'border-red-400/30 bg-red-400/10 text-red-300'
-              : 'border-white/10 bg-white/5 text-zinc-500'
+          : invalid
+            ? 'border-red-400/30 bg-red-400/10 text-red-300'
+            : value
+              ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300'
+              : 'border-amber-400/35 bg-amber-400/10 text-amber-300'
       }`}>
-        {value && question.active && <CheckCircle2 className="h-3 w-3" aria-hidden="true" />}
-        {!question.active ? 'Inactive Question' : value ? 'Correct Answer Ready' : 'Awaiting Answer'}
+        {value && question.active && !invalid && <CheckCircle2 className="h-3 w-3" aria-hidden="true" />}
+        {(unanswered || invalid) && <AlertTriangle className="h-3 w-3" aria-hidden="true" />}
+        {!question.active ? 'Inactive Question' : invalid ? 'Needs Attention' : value ? 'Correct Answer Ready' : 'Awaiting Answer'}
       </span>
     </div>
   );
@@ -186,7 +207,7 @@ export default function ResultsScreen({ sprintWeekend }) {
           <div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-400">Correct Answers</p><h3 className="mt-1 truncate font-display text-xl font-black uppercase text-white">{maximumPoints}-Point Result Sheet</h3></div>
           <DemoLabel />
         </div>
-        <div className="divide-y divide-white/10">
+        <div className="space-y-3 bg-[#0d0d0f] p-3 sm:p-4">
           {standardQuestions.map((question) => (
             <AnswerRow
               key={question.id}
@@ -206,7 +227,7 @@ export default function ResultsScreen({ sprintWeekend }) {
               <span className="h-px min-w-8 flex-1 bg-yellow-400/20" />
               <DemoLabel>Sprint</DemoLabel>
             </div>
-            <div className="divide-y divide-white/10">
+            <div className="space-y-3 bg-[#0d0d0f] p-3 sm:p-4">
               {sprintQuestions.map((question) => (
                 <AnswerRow
                   key={question.id}
