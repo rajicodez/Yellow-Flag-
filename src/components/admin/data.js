@@ -175,23 +175,3 @@ export const demoUsers = [
   { id: 5, name: 'Apex Guest', email: 'ap•••••@example.com', joined: '06 Mar 2026', points: 19, role: 'user', status: 'Pending' },
   { id: 6, name: 'Sector Viewer', email: 'se•••••@example.com', joined: '20 Mar 2026', points: 12, role: 'user', status: 'Active' },
 ];
-
-export const driverOptions = [
-  'Max Verstappen',
-  'Lando Norris',
-  'Oscar Piastri',
-  'Charles Leclerc',
-  'Lewis Hamilton',
-  'George Russell',
-  'Kimi Antonelli',
-];
-
-export const constructorOptions = [
-  'McLaren',
-  'Ferrari',
-  'Mercedes',
-  'Red Bull Racing',
-  'Aston Martin',
-  'Williams',
-  'Racing Bulls',
-];
