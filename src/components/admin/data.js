@@ -122,6 +122,27 @@ export const dutchGrandPrixQuestions = [
   },
 ];
 
+export const sprintGrandPrixQuestions = [
+  {
+    id: 8,
+    key: 'sprint_pole_position',
+    text: 'Who will take Pole Position at the Sprint Race?',
+    type: 'Driver',
+    points: 1,
+    active: true,
+    sprint: true,
+  },
+  {
+    id: 9,
+    key: 'sprint_race_winner',
+    text: 'Who will win the Sprint Race?',
+    type: 'Driver',
+    points: 1,
+    active: true,
+    sprint: true,
+  },
+];
+
 export const recentActivity = [
   { id: 1, title: 'A user submitted a prediction', detail: 'Dutch Grand Prix · 2 minutes ago' },
   { id: 2, title: 'Race questions were updated', detail: 'Seven questions · 18 minutes ago' },

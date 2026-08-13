@@ -8,6 +8,7 @@ import RacesScreen from './screens/RacesScreen';
 import ResultsScreen from './screens/ResultsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import UsersScreen from './screens/UsersScreen';
+import useSprintWeekend from './useSprintWeekend';
 
 const screens = {
   dashboard: DashboardScreen,
@@ -22,6 +23,7 @@ const screens = {
 export default function AdminPanel() {
   const [demoAuthenticated, setDemoAuthenticated] = useState(false);
   const [activeScreen, setActiveScreen] = useState('dashboard');
+  const sprintWeekend = useSprintWeekend();
   const ActiveScreen = screens[activeScreen] ?? DashboardScreen;
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export default function AdminPanel() {
 
   return (
     <AdminLayout activeScreen={activeScreen} onNavigate={setActiveScreen} onLogout={handleDemoLogout}>
-      <ActiveScreen />
+      <ActiveScreen sprintWeekend={sprintWeekend} />
     </AdminLayout>
   );
 }

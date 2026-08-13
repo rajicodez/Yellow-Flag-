@@ -20,11 +20,12 @@ const summaryCards = [
   { label: 'Predictions Status', value: 'Open', detail: 'Closes in 3 days', icon: Gauge, color: 'text-emerald-300 bg-emerald-400/10 border-emerald-400/20' },
 ];
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ sprintWeekend }) {
   const [raceModalOpen, setRaceModalOpen] = useState(false);
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const currentRace = demoRaces[0];
+  const { maximumPoints, totalQuestions } = sprintWeekend;
 
   const finishRaceDemo = (message) => {
     setRaceModalOpen(false);
@@ -96,11 +97,11 @@ export default function DashboardScreen() {
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/25 p-4">
                 <CircleHelp className="h-5 w-5 text-yellow-400" aria-hidden="true" />
-                <div><p className="font-display text-xl font-black text-white">7</p><p className="text-xs text-zinc-500">Active questions</p></div>
+                <div><p className="font-display text-xl font-black text-white">{totalQuestions}</p><p className="text-xs text-zinc-500">Active questions</p></div>
               </div>
               <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/25 p-4">
                 <Gauge className="h-5 w-5 text-yellow-400" aria-hidden="true" />
-                <div><p className="font-display text-xl font-black text-white">7</p><p className="text-xs text-zinc-500">Maximum points</p></div>
+                <div><p className="font-display text-xl font-black text-white">{maximumPoints}</p><p className="text-xs text-zinc-500">Maximum points</p></div>
               </div>
             </div>
             <div className="mt-5 flex flex-col gap-3 sm:flex-row">
