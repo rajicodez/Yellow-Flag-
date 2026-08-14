@@ -6,6 +6,7 @@ import {
   ChevronRight,
   CircleHelp,
   Flag,
+  History,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -26,6 +27,7 @@ const icons = {
   results: Calculator,
   leaderboard: Trophy,
   users: Users,
+  raceHistory: History,
   settings: Settings,
 };
 

@@ -5,6 +5,7 @@ export const adminNavigation = [
   { id: 'results', label: 'Results & Scoring' },
   { id: 'leaderboard', label: 'Leaderboard' },
   { id: 'users', label: 'Users & Roles' },
+  { id: 'raceHistory', label: 'Race History' },
   { id: 'settings', label: 'Settings' },
 ];
 
@@ -80,6 +81,83 @@ export const demoRaces = [
     closesAt: '05 Jul 2026, 18:30',
     status: 'Closed',
     questions: 7,
+  },
+  {
+    id: 5,
+    calendarId: '2026-austria',
+    name: 'Austrian Grand Prix',
+    slug: 'austrian-grand-prix',
+    circuit: 'Red Bull Ring',
+    country: 'Austria',
+    round: 11,
+    season: 2026,
+    raceStart: '2026-06-28T18:30:00+05:30',
+    predictionOpens: '2026-06-25T09:00',
+    predictionCloses: '2026-06-28T09:30',
+    sprintWeekend: true,
+    opensAt: '25 Jun 2026, 09:00',
+    closesAt: '28 Jun 2026, 09:30',
+    status: 'Published',
+    questions: 9,
+  },
+];
+
+export const defaultGrandPrixQuestions = [
+  {
+    id: 1,
+    key: 'pole_position',
+    text: 'Who will take Pole Position?',
+    type: 'Driver',
+    points: 1,
+    active: true,
+  },
+  {
+    id: 2,
+    key: 'race_winner',
+    text: 'Who will win the Grand Prix?',
+    type: 'Driver',
+    points: 1,
+    active: true,
+  },
+  {
+    id: 3,
+    key: 'second_place',
+    text: 'Who will finish in P2?',
+    type: 'Driver',
+    points: 1,
+    active: true,
+  },
+  {
+    id: 4,
+    key: 'third_place',
+    text: 'Who will finish in P3?',
+    type: 'Driver',
+    points: 1,
+    active: true,
+  },
+  {
+    id: 5,
+    key: 'driver_of_the_day',
+    text: 'Who will be Driver of the Day?',
+    type: 'Driver',
+    points: 1,
+    active: true,
+  },
+  {
+    id: 6,
+    key: 'best_constructor',
+    text: 'Which constructor will score the most points?',
+    type: 'Constructor',
+    points: 1,
+    active: true,
+  },
+  {
+    id: 7,
+    key: 'worst_constructor',
+    text: 'Which constructor will be the worst-performing team?',
+    type: 'Constructor',
+    points: 1,
+    active: true,
   },
 ];
 
@@ -186,6 +264,56 @@ export const leaderboardUsers = [
   { position: 13, name: 'PaddockVoice', racePoints: 1, seasonPoints: 13, submissions: 5 },
   { position: 14, name: 'DemoMarshal', racePoints: 0, seasonPoints: 10, submissions: 6 },
 ];
+
+// Centralized UI-only history records. These are deliberately labelled as demo
+// data in Race History and must not be interpreted as official Formula 1 results.
+export const demoResultsByRaceId = {
+  '2026-hungary': {
+    isDemo: true,
+    scoringStatus: 'Scored',
+    leaderboardStatus: 'Published',
+    submissionCount: leaderboardUsers.length,
+    totalScoredSubmissions: leaderboardUsers.length,
+    correctAnswers: {
+      pole_position: 'driver:4',
+      race_winner: 'driver:1',
+      second_place: 'driver:2',
+      third_place: 'driver:3',
+      driver_of_the_day: 'driver:5',
+      best_constructor: 'constructor:1',
+      worst_constructor: 'constructor:10',
+    },
+  },
+  '2026-austria': {
+    isDemo: true,
+    scoringStatus: 'Published',
+    leaderboardStatus: 'Published',
+    submissionCount: leaderboardUsers.length,
+    totalScoredSubmissions: leaderboardUsers.length,
+    correctAnswers: {
+      pole_position: 'driver:2',
+      race_winner: 'driver:2',
+      second_place: 'driver:1',
+      third_place: 'driver:4',
+      driver_of_the_day: 'driver:3',
+      best_constructor: 'constructor:4',
+      worst_constructor: 'constructor:11',
+      sprint_pole_position: 'driver:1',
+      sprint_race_winner: 'driver:3',
+    },
+  },
+};
+
+const createDemoRaceLeaderboard = (maximumPoints) => leaderboardUsers.map((user) => ({
+  ...user,
+  correctAnswers: Math.min(user.racePoints, maximumPoints),
+  submissionTime: null,
+}));
+
+export const demoLeaderboardByRaceId = {
+  '2026-hungary': createDemoRaceLeaderboard(7),
+  '2026-austria': createDemoRaceLeaderboard(9),
+};
 
 export const demoUsers = [
   { id: 1, name: 'Control Admin', email: 'co•••••@example.com', joined: '03 Jan 2026', points: 42, role: 'super_admin', status: 'Active' },

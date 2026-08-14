@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, ClipboardCheck, LoaderCircle } from 'lucide-react';
-import { DemoLabel, inputClass, Modal, Panel, ScreenHeading } from '../AdminUI';
+import AdminRaceSelect from '../AdminRaceSelect';
+import { DemoLabel, Modal, Panel, ScreenHeading } from '../AdminUI';
 import SearchableAnswerSelect from '../SearchableAnswerSelect';
-import { demoRaces } from '../data';
 import { getAdminRosterForSeason } from '../rosters';
+import { getRaceStableId } from '../useAdminRaceWorkspace';
 
-const resultRaceNames = new Set(['Dutch Grand Prix', 'Hungarian Grand Prix', 'British Grand Prix']);
-const resultRaces = demoRaces.filter((race) => resultRaceNames.has(race.name));
 const podiumQuestionKeys = ['race_winner', 'second_place', 'third_place'];
 
 function AnswerRow({
@@ -86,20 +85,30 @@ function AnswerRow({
   );
 }
 
-export default function ResultsScreen({ sprintWeekend }) {
-  const [answers, setAnswers] = useState({});
-  const [selectedRaceId, setSelectedRaceId] = useState(resultRaces[0].id);
+export default function ResultsScreen({
+  onNavigate,
+  questionsByRaceId,
+  races,
+  selectedRaceId,
+  setSelectedRaceId,
+}) {
+  const [answersByRaceId, setAnswersByRaceId] = useState({});
   const [reviewOpen, setReviewOpen] = useState(false);
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [scoringState, setScoringState] = useState('idle');
   const scoringTimerRef = useRef(null);
-  const { isSprintWeekend, maximumPoints, questions } = sprintWeekend;
-  const selectedRace = resultRaces.find((race) => race.id === selectedRaceId) ?? resultRaces[0];
-  const roster = getAdminRosterForSeason(selectedRace.season);
+
+  const selectedRace = races.find((race) => getRaceStableId(race) === selectedRaceId) ?? null;
+  const questions = questionsByRaceId[selectedRaceId] ?? [];
+  const answers = answersByRaceId[selectedRaceId] ?? {};
+  const roster = selectedRace ? getAdminRosterForSeason(selectedRace.season) : { drivers: [], constructors: [] };
   const standardQuestions = questions.filter((question) => !question.sprint);
   const sprintQuestions = questions.filter((question) => question.sprint);
   const activeQuestions = questions.filter((question) => question.active);
+  const maximumPoints = questions.reduce((total, question) => total + question.points, 0);
+  const isSprintWeekend = Boolean(selectedRace?.sprintWeekend && sprintQuestions.length);
+
   const unansweredQuestionIds = useMemo(
     () => new Set(activeQuestions.filter((question) => !answers[question.id]).map((question) => question.id)),
     [activeQuestions, answers]
@@ -127,19 +136,20 @@ export default function ResultsScreen({ sprintWeekend }) {
 
   useEffect(() => () => window.clearTimeout(scoringTimerRef.current), []);
 
-  const handleAnswerChange = (questionId, answerId) => {
-    setAnswers((current) => ({ ...current, [questionId]: answerId }));
-    setReviewOpen(false);
-  };
-
-  const handleRaceChange = (event) => {
-    setSelectedRaceId(Number(event.target.value));
-    setAnswers({});
+  useEffect(() => {
     setReviewOpen(false);
     setValidationAttempted(false);
     setConfirmationOpen(false);
     setScoringState('idle');
     window.clearTimeout(scoringTimerRef.current);
+  }, [selectedRaceId]);
+
+  const handleAnswerChange = (questionId, answerId) => {
+    setAnswersByRaceId((current) => ({
+      ...current,
+      [selectedRaceId]: { ...(current[selectedRaceId] ?? {}), [questionId]: answerId },
+    }));
+    setReviewOpen(false);
   };
 
   const answersAreValid = () => {
@@ -168,12 +178,24 @@ export default function ResultsScreen({ sprintWeekend }) {
     }, 800);
   };
 
+  if (!races.length || !selectedRace) {
+    return (
+      <div className="space-y-7">
+        <ScreenHeading eyebrow="Results Desk" title="Results & Scoring" description="Select a configured race before entering results." />
+        <Panel className="border-dashed p-6 text-center sm:p-10">
+          <p className="text-sm font-semibold text-zinc-300">No races are available. Add an upcoming race in Race Management first.</p>
+          <button type="button" onClick={() => onNavigate('races')} className="mt-5 rounded-xl bg-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-black">Go to Race Management</button>
+        </Panel>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-7">
       <ScreenHeading
         eyebrow="Results Desk"
         title="Results & Scoring"
-        description="Select demonstration correct answers and preview the scoring workflow. No RPC, database update, or real score calculation is performed."
+        description={`Enter correct answers for ${selectedRace.name}. No RPC, database update, or real score calculation is performed.`}
         action={<DemoLabel>UI Prototype</DemoLabel>}
       />
 
@@ -188,67 +210,78 @@ export default function ResultsScreen({ sprintWeekend }) {
         </div>
       )}
 
-      <Panel className="p-5 sm:p-6">
-        <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_auto_auto] md:items-end">
-          <label className="block min-w-0 text-sm font-bold text-zinc-200">
-            <span className="mb-2 block">Race</span>
-            <select className={inputClass} value={selectedRaceId} onChange={handleRaceChange}>
-              {resultRaces.map((race) => <option key={race.id} value={race.id}>{race.name}</option>)}
-            </select>
-          </label>
+      <Panel className="overflow-visible p-5 sm:p-6">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_auto_auto] xl:items-end">
+          <AdminRaceSelect
+            races={races}
+            questionsByRaceId={questionsByRaceId}
+            value={selectedRaceId}
+            onChange={setSelectedRaceId}
+            label="Race"
+            placeholder="Choose a race for results"
+          />
           <div className="rounded-xl border border-white/10 bg-black/25 px-5 py-3"><p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Submissions</p><p className="mt-1 font-display text-xl font-black text-white">94 <span className="text-xs text-zinc-500">Demo</span></p></div>
           <div className="rounded-xl border border-white/10 bg-black/25 px-5 py-3"><p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Answered</p><p className="mt-1 font-display text-xl font-black text-white">{answeredCount} / {activeQuestions.length}</p></div>
         </div>
         <p className="mt-4 text-xs text-zinc-500">Season {selectedRace.season} roster · {roster.drivers.length} drivers · {roster.constructors.length} constructors</p>
       </Panel>
 
-      <Panel className="overflow-visible">
-        <div className="flex items-center justify-between gap-4 rounded-t-2xl border-b border-white/10 px-5 py-4 sm:px-6">
-          <div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-400">Correct Answers</p><h3 className="mt-1 truncate font-display text-xl font-black uppercase text-white">{maximumPoints}-Point Result Sheet</h3></div>
-          <DemoLabel />
-        </div>
-        <div className="space-y-3 bg-[#0d0d0f] p-3 sm:p-4">
-          {standardQuestions.map((question) => (
-            <AnswerRow
-              key={question.id}
-              answers={answers}
-              duplicatePodiumQuestionIds={duplicatePodiumQuestionIds}
-              invalidQuestionIds={invalidQuestionIds}
-              onAnswerChange={handleAnswerChange}
-              options={question.type === 'Driver' ? roster.drivers : roster.constructors}
-              question={question}
-            />
-          ))}
-        </div>
-        {isSprintWeekend && (
-          <>
-            <div className="flex flex-wrap items-center gap-3 border-y border-yellow-400/20 bg-yellow-400/[0.07] px-5 py-3 sm:px-6">
-              <span className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-300">Sprint Race Answers</span>
-              <span className="h-px min-w-8 flex-1 bg-yellow-400/20" />
-              <DemoLabel>Sprint</DemoLabel>
+      {!questions.length ? (
+        <Panel className="border-dashed p-6 text-center sm:p-10">
+          <p className="text-base font-bold text-white">Configure the questions for this race before entering results.</p>
+          <button type="button" onClick={() => onNavigate('questions')} className="mt-5 rounded-xl bg-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-black focus:outline-none focus:ring-2 focus:ring-yellow-200">Go to Questions</button>
+        </Panel>
+      ) : (
+        <>
+          <Panel className="overflow-visible">
+            <div className="flex items-center justify-between gap-4 rounded-t-2xl border-b border-white/10 px-5 py-4 sm:px-6">
+              <div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-400">Correct Answers · {selectedRace.name}</p><h3 className="mt-1 truncate font-display text-xl font-black uppercase text-white">{maximumPoints}-Point Result Sheet</h3></div>
+              {isSprintWeekend ? <DemoLabel>Sprint Weekend</DemoLabel> : <DemoLabel />}
             </div>
             <div className="space-y-3 bg-[#0d0d0f] p-3 sm:p-4">
-              {sprintQuestions.map((question) => (
+              {standardQuestions.map((question) => (
                 <AnswerRow
                   key={question.id}
                   answers={answers}
                   duplicatePodiumQuestionIds={duplicatePodiumQuestionIds}
                   invalidQuestionIds={invalidQuestionIds}
                   onAnswerChange={handleAnswerChange}
-                  options={roster.drivers}
+                  options={question.type === 'Driver' ? roster.drivers : roster.constructors}
                   question={question}
                 />
               ))}
             </div>
-          </>
-        )}
-        <div className="flex flex-col gap-3 rounded-b-2xl border-t border-white/10 bg-black/20 p-5 sm:flex-row sm:justify-end sm:p-6">
-          <button type="button" onClick={handleReviewResults} className="flex items-center justify-center gap-2 rounded-xl border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-zinc-200 transition hover:border-yellow-400/40 hover:text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/50"><ClipboardCheck className="h-4 w-4" aria-hidden="true" /> Review Results</button>
-          <button type="button" onClick={handleCalculateScores} disabled={scoringState === 'loading'} className="rounded-xl bg-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-black transition hover:bg-yellow-300 disabled:cursor-wait disabled:opacity-60">Calculate Scores</button>
-        </div>
-      </Panel>
+            {isSprintWeekend && (
+              <>
+                <div className="flex flex-wrap items-center gap-3 border-y border-yellow-400/20 bg-yellow-400/[0.07] px-5 py-3 sm:px-6">
+                  <span className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-300">Sprint Race Answers</span>
+                  <span className="h-px min-w-8 flex-1 bg-yellow-400/20" />
+                  <DemoLabel>Sprint</DemoLabel>
+                </div>
+                <div className="space-y-3 bg-[#0d0d0f] p-3 sm:p-4">
+                  {sprintQuestions.map((question) => (
+                    <AnswerRow
+                      key={question.id}
+                      answers={answers}
+                      duplicatePodiumQuestionIds={duplicatePodiumQuestionIds}
+                      invalidQuestionIds={invalidQuestionIds}
+                      onAnswerChange={handleAnswerChange}
+                      options={question.type === 'Driver' ? roster.drivers : roster.constructors}
+                      question={question}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+            <div className="flex flex-col gap-3 rounded-b-2xl border-t border-white/10 bg-black/20 p-5 sm:flex-row sm:justify-end sm:p-6">
+              <button type="button" onClick={handleReviewResults} className="flex items-center justify-center gap-2 rounded-xl border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-zinc-200 transition hover:border-yellow-400/40 hover:text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/50"><ClipboardCheck className="h-4 w-4" aria-hidden="true" /> Review Results</button>
+              <button type="button" onClick={handleCalculateScores} disabled={scoringState === 'loading'} className="rounded-xl bg-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-black transition hover:bg-yellow-300 disabled:cursor-wait disabled:opacity-60">Calculate Scores</button>
+            </div>
+          </Panel>
 
-      {reviewOpen && <Panel className="p-5 sm:p-6"><div className="flex items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.18em] text-yellow-400">Review Summary</p><p className="mt-2 text-sm text-zinc-300">All {activeQuestions.length} active correct answers are selected and ready for this local demo review.</p></div><CheckCircle2 className="h-6 w-6 shrink-0 text-yellow-400" aria-hidden="true" /></div></Panel>}
+          {reviewOpen && <Panel className="p-5 sm:p-6"><div className="flex items-center justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.18em] text-yellow-400">Review Summary</p><p className="mt-2 text-sm text-zinc-300">All {activeQuestions.length} active correct answers are selected and ready for this local demo review.</p></div><CheckCircle2 className="h-6 w-6 shrink-0 text-yellow-400" aria-hidden="true" /></div></Panel>}
+        </>
+      )}
 
       <Modal open={confirmationOpen} onClose={() => setConfirmationOpen(false)} title="Calculate Demo Scores?" description="Confirmation is required before previewing the scoring state.">
         <p className="text-sm leading-6 text-zinc-300">A production workflow would compare 94 submissions with these {activeQuestions.length} correct answers. This prototype will not call an RPC or write any score.</p>

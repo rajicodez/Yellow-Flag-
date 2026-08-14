@@ -5,6 +5,7 @@ import {
   CircleHelp,
   Flag,
   Gauge,
+  History,
   Pencil,
   Timer,
   Users,
@@ -20,7 +21,7 @@ const summaryCards = [
   { label: 'Predictions Status', value: 'Open', detail: 'Closes in 3 days', icon: Gauge, color: 'text-emerald-300 bg-emerald-400/10 border-emerald-400/20' },
 ];
 
-export default function DashboardScreen({ sprintWeekend }) {
+export default function DashboardScreen({ sprintWeekend, onNavigate }) {
   const [raceModalOpen, setRaceModalOpen] = useState(false);
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [notice, setNotice] = useState('');
@@ -104,12 +105,15 @@ export default function DashboardScreen({ sprintWeekend }) {
                 <div><p className="font-display text-xl font-black text-white">{maximumPoints}</p><p className="text-xs text-zinc-500">Maximum points</p></div>
               </div>
             </div>
-            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <button type="button" onClick={() => setRaceModalOpen(true)} className="flex items-center justify-center gap-2 rounded-xl border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-white transition hover:border-yellow-400/40 hover:text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/50">
                 <Pencil className="h-4 w-4" aria-hidden="true" /> Edit Race
               </button>
               <button type="button" onClick={() => setCloseModalOpen(true)} className="rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-red-300 transition hover:bg-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-400/50">
                 Close Predictions
+              </button>
+              <button type="button" onClick={() => onNavigate('raceHistory')} className="flex items-center justify-center gap-2 rounded-xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-yellow-300 transition hover:border-yellow-400/50 hover:bg-yellow-400/15 focus:outline-none focus:ring-2 focus:ring-yellow-400/50">
+                <History className="h-4 w-4" aria-hidden="true" /> View Previous Results
               </button>
             </div>
           </div>

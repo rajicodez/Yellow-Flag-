@@ -8,8 +8,9 @@ import RacesScreen from './screens/RacesScreen';
 import ResultsScreen from './screens/ResultsScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import UsersScreen from './screens/UsersScreen';
-import { demoRaces } from './data';
-import useSprintWeekend from './useSprintWeekend';
+import RaceHistoryScreen from './screens/RaceHistoryScreen';
+import useAdminRaceWorkspace from './useAdminRaceWorkspace';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const screens = {
   dashboard: DashboardScreen,
@@ -18,19 +19,33 @@ const screens = {
   results: ResultsScreen,
   leaderboard: LeaderboardScreen,
   users: UsersScreen,
+  raceHistory: RaceHistoryScreen,
   settings: SettingsScreen,
 };
 
+const screenForPath = (pathname) => (
+  pathname === '/admin/race-history' ? 'raceHistory' : 'dashboard'
+);
+
 export default function AdminPanel() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [demoAuthenticated, setDemoAuthenticated] = useState(false);
-  const [activeScreen, setActiveScreen] = useState('dashboard');
-  const [adminRaces, setAdminRaces] = useState(() => demoRaces.map((race) => ({ ...race })));
-  const sprintWeekend = useSprintWeekend();
+  const [activeScreen, setActiveScreen] = useState(() => screenForPath(location.pathname));
+  const raceWorkspace = useAdminRaceWorkspace();
   const ActiveScreen = screens[activeScreen] ?? DashboardScreen;
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [activeScreen, demoAuthenticated]);
+
+  useEffect(() => {
+    if (location.pathname === '/admin/race-history') {
+      setActiveScreen('raceHistory');
+    } else {
+      setActiveScreen((current) => current === 'raceHistory' ? 'dashboard' : current);
+    }
+  }, [location.pathname]);
 
   if (!demoAuthenticated) {
     return <AdminLogin onDemoLogin={() => setDemoAuthenticated(true)} />;
@@ -38,12 +53,19 @@ export default function AdminPanel() {
 
   const handleDemoLogout = () => {
     setActiveScreen('dashboard');
+    navigate('/admin', { replace: true });
     setDemoAuthenticated(false);
   };
 
+  const handleNavigate = (screenId) => {
+    setActiveScreen(screenId);
+    const nextPath = screenId === 'raceHistory' ? '/admin/race-history' : '/admin';
+    if (location.pathname !== nextPath) navigate(nextPath);
+  };
+
   return (
-    <AdminLayout activeScreen={activeScreen} onNavigate={setActiveScreen} onLogout={handleDemoLogout}>
-      <ActiveScreen sprintWeekend={sprintWeekend} races={adminRaces} setRaces={setAdminRaces} />
+    <AdminLayout activeScreen={activeScreen} onNavigate={handleNavigate} onLogout={handleDemoLogout}>
+      <ActiveScreen {...raceWorkspace} onNavigate={handleNavigate} />
     </AdminLayout>
   );
 }

@@ -14,6 +14,7 @@ export function StatusBadge({ status }) {
     Open: 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300',
     Active: 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300',
     Scored: 'border-blue-400/25 bg-blue-400/10 text-blue-300',
+    Published: 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300',
     Closed: 'border-red-400/25 bg-red-400/10 text-red-300',
     Draft: 'border-zinc-400/25 bg-zinc-400/10 text-zinc-300',
     Pending: 'border-amber-400/25 bg-amber-400/10 text-amber-300',

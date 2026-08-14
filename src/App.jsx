@@ -227,6 +227,7 @@ function AppShell() {
         <Route path="/" element={<HomePage />} />
         <Route path="/drivers" element={<DriversPage />} />
         <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/admin/race-history" element={<AdminPanel />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {!isAdminRoute && <F1AssistantWidget />}

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { MoreHorizontal, Pencil, Plus, Search } from 'lucide-react';
 import RaceFormModal from '../RaceFormModal';
 import { DemoLabel, EmptyNotice, inputClass, Panel, ScreenHeading, StatusBadge } from '../AdminUI';
+import { getRaceStableId } from '../useAdminRaceWorkspace';
 
 const predictionDateFormatter = new Intl.DateTimeFormat('en-GB', {
   day: '2-digit',
@@ -16,7 +17,7 @@ function formatPredictionDate(value) {
   return `${predictionDateFormatter.format(new Date(`${date}T00:00:00+05:30`))}, ${time}`;
 }
 
-export default function RacesScreen({ sprintWeekend, races, setRaces }) {
+export default function RacesScreen({ ensureQuestionsForRace, races, selectedRaceId, setRaces, setSelectedRaceId }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('All');
   const [selectedRace, setSelectedRace] = useState(null);
@@ -34,6 +35,7 @@ export default function RacesScreen({ sprintWeekend, races, setRaces }) {
   };
 
   const openEdit = (race) => {
+    setSelectedRaceId(getRaceStableId(race));
     setSelectedRace(race);
     setModalOpen(true);
   };
@@ -55,11 +57,8 @@ export default function RacesScreen({ sprintWeekend, races, setRaces }) {
       : [...currentRaces, raceWithDisplayDates]
     );
 
-    if (savedRace.sprintWeekend) {
-      sprintWeekend.enableSprintWeekend();
-    } else {
-      sprintWeekend.disableSprintWeekend();
-    }
+    ensureQuestionsForRace(raceWithDisplayDates, { createIfMissing: !isEditing });
+    setSelectedRaceId(getRaceStableId(raceWithDisplayDates));
 
     closeModal();
     setNotice(`${savedRace.name} ${isEditing ? 'updated' : 'added'} to the UI-only race list.`);
@@ -102,11 +101,12 @@ export default function RacesScreen({ sprintWeekend, races, setRaces }) {
               </thead>
               <tbody className="divide-y divide-white/10">
                 {filteredRaces.map((race) => (
-                  <tr key={race.id} className="transition hover:bg-white/[0.025]">
+                  <tr key={race.id} className={`transition hover:bg-white/[0.025] ${getRaceStableId(race) === selectedRaceId ? 'bg-yellow-400/[0.045]' : ''}`}>
                     <td className="px-5 py-4">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-bold text-white">{race.name}</p>
+                        <button type="button" onClick={() => setSelectedRaceId(getRaceStableId(race))} className="text-left font-bold text-white transition hover:text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/50" aria-label={`Select ${race.name}`}>{race.name}</button>
                         {race.sprintWeekend && <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-yellow-300">Sprint</span>}
+                        {getRaceStableId(race) === selectedRaceId && <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-yellow-300">Selected Race</span>}
                       </div>
                       <p className="mt-1 text-xs text-zinc-500">{race.circuit} · {race.country}</p>
                     </td>
