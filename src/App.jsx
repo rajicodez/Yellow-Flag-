@@ -11,11 +11,13 @@ import Game from './components/Game';
 import Hero from './components/Hero';
 import Journey from './components/Journey';
 import Navbar from './components/Navbar';
+import Prediction from './components/Prediction';
 import Schedule from './components/Schedule';
 import Standing from './components/Standing';
 import Teams from './components/Teams';
 import Tracks from './components/Tracks';
 import AdminPanel from './components/admin/AdminPanel';
+import DutchGrandPrixPrediction from './components/predictions/DutchGrandPrixPrediction';
 import BackgroundEffects from './components/ui/BackgroundEffects';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { navItems } from './data/content';
@@ -180,6 +182,7 @@ function HomePage() {
       <main>
         <Hero />
         <Episodes />
+        <Prediction />
         <About />
         <Journey />
         <Schedule />
@@ -226,6 +229,7 @@ function AppShell() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/drivers" element={<DriversPage />} />
+        <Route path="/predictions/dutch-grand-prix" element={<DutchGrandPrixPrediction />} />
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/admin/race-history" element={<AdminPanel />} />
         <Route path="*" element={<Navigate to="/" replace />} />

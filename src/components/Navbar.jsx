@@ -414,16 +414,26 @@ export default function Navbar({ activeSection }) {
                     </p>
                   )}
 
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={handleLogout}
-                    disabled={isSigningOut}
-                    className="mt-2 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-zinc-200 transition hover:bg-red-500/10 hover:text-red-300 disabled:cursor-wait disabled:opacity-60"
-                  >
-                    <LogOut className="h-4 w-4" aria-hidden="true" />
-                    {isSigningOut ? 'Logging Out...' : 'Log Out'}
-                  </button>
+                  <div className="space-y-1 py-2">
+                    <Link
+                      to="/predictions/dutch-grand-prix"
+                      role="menuitem"
+                      onClick={() => setIsAccountOpen(false)}
+                      className="flex w-full items-center rounded-xl px-3 py-2.5 text-sm font-bold text-zinc-200 transition hover:bg-yellow-400/10 hover:text-yellow-300"
+                    >
+                      My Predictions
+                    </Link>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={handleLogout}
+                      disabled={isSigningOut}
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-bold text-zinc-200 transition hover:bg-red-500/10 hover:text-red-300 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      <LogOut className="h-4 w-4" aria-hidden="true" />
+                      {isSigningOut ? 'Logging Out...' : 'Log Out'}
+                    </button>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

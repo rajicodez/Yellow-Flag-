@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { BRAND, navItems, socialLinks, studio } from '../data/content';
 import { SocialIcon } from './ui/BackgroundEffects';
 
@@ -22,9 +23,12 @@ export default function Footer() {
           <ul className="mt-4 space-y-3">
             {navItems.map((item) => (
               <li key={item.id}>
-                <a href={`#${item.id}`} className="text-zinc-300 transition hover:text-yellow-300">
+                <Link
+                  to={item.path ?? (item.id === 'home' ? '/' : { pathname: '/', hash: item.id })}
+                  className="text-zinc-300 transition hover:text-yellow-300"
+                >
                   {item.label}
-                </a>
+                </Link>
               </li>
             ))}
           </ul>
