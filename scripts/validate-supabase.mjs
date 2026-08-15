@@ -15,16 +15,27 @@ assert.deepEqual(migrationNames, [
   '202608150004_official_answers_scoring.sql',
   '202608150005_prediction_leaderboards.sql',
   '202608150006_race_question_option_validation.sql',
+  '202608150007_podium_uniqueness_validation.sql',
 ]);
 
 const migrations = await Promise.all(
   migrationNames.map(name => readFile(path.join(migrationDirectory, name), 'utf8'))
 );
 const combined = migrations.join('\n');
-const optionValidationMigration = migrations.at(-1);
+const migrationByName = new Map(migrationNames.map((name, index) => [name, migrations[index]]));
+const optionValidationMigration = migrationByName.get(
+  '202608150006_race_question_option_validation.sql'
+);
+const podiumValidationMigration = migrationByName.get(
+  '202608150007_podium_uniqueness_validation.sql'
+);
 const seed = await readFile(path.join(root, 'supabase', 'seed.sql'), 'utf8');
 const optionValidationTest = await readFile(
   path.join(root, 'supabase', 'tests', '002_race_question_option_validation_test.sql'),
+  'utf8'
+);
+const podiumValidationTest = await readFile(
+  path.join(root, 'supabase', 'tests', '003_podium_uniqueness_validation_test.sql'),
   'utf8'
 );
 const predictionClient = await readFile(
@@ -166,4 +177,70 @@ for (const testLabel of ['A\\.', 'B\\.', 'C\\.', 'D\\.', 'E\\.', 'F\\.', 'G\\.',
   assert.match(optionValidationTest, new RegExp(testLabel));
 }
 
-console.log(`Validated ${migrationNames.length} migrations, the exact Dutch GP option allow-list, its pre-write RPC enforcement, and 28 SQL regression assertions.`);
+assert.match(
+  podiumValidationMigration,
+  /md5\(live_definition\)\s*<>\s*'faaad203c5e8da2bd48d462e58f30d0a'/i
+);
+assert.doesNotMatch(
+  podiumValidationMigration,
+  /create\s+table\b|alter\s+table\b|drop\s+table\b/i
+);
+assert.match(
+  podiumValidationMigration,
+  /btrim\(p_answers ->> 'race_winner'\) = btrim\(p_answers ->> 'p2_finisher'\)/i
+);
+assert.match(
+  podiumValidationMigration,
+  /btrim\(p_answers ->> 'race_winner'\) = btrim\(p_answers ->> 'p3_finisher'\)/i
+);
+assert.match(
+  podiumValidationMigration,
+  /btrim\(p_answers ->> 'p2_finisher'\) = btrim\(p_answers ->> 'p3_finisher'\)/i
+);
+assert.match(
+  podiumValidationMigration,
+  /Winner, P2 and P3 must be three different drivers\./i
+);
+
+const podiumFunctionStart = podiumValidationMigration.lastIndexOf(
+  'create or replace function public.submit_prediction'
+);
+assert.ok(podiumFunctionStart >= 0, 'podium-hardened submit_prediction is present');
+const podiumFunction = podiumValidationMigration.slice(podiumFunctionStart);
+const podiumAllowListRead = podiumFunction.indexOf(
+  'from public.race_question_options as option'
+);
+const podiumError = podiumFunction.indexOf(
+  'Winner, P2 and P3 must be three different drivers.'
+);
+const podiumFirstWrite = podiumFunction.indexOf('insert into public.prediction_entries');
+assert.ok(
+  podiumAllowListRead >= 0 && podiumAllowListRead < podiumError,
+  'podium validation follows exact option validation'
+);
+assert.ok(
+  podiumError < podiumFirstWrite,
+  'podium validation precedes the first prediction write'
+);
+assert.match(podiumFunction, /if now\(\) >= selected_race\.closes_at then/i);
+assert.match(podiumFunction, /public\.has_role\('host'::public\.app_role\)/i);
+assert.match(podiumFunction, /public\.jsonb_object_length\(p_answers\)/i);
+assert.match(podiumFunction, /security definer[\s\S]*set search_path = ''/i);
+assert.match(
+  podiumFunction,
+  /revoke all on function public\.submit_prediction\([\s\S]*from public, anon/i
+);
+assert.match(
+  podiumFunction,
+  /grant execute on function public\.submit_prediction\([\s\S]*to authenticated/i
+);
+
+assert.match(podiumValidationTest, /select plan\(25\)/i);
+for (const testLabel of [
+  'A\\.', 'B\\.', 'C\\.', 'D\\.', 'E\\.', 'F\\.', 'G\\.',
+  'H\\.', 'I\\.', 'J\\.', 'K\\.', 'L\\.', 'M\\.', 'N\\.',
+]) {
+  assert.match(podiumValidationTest, new RegExp(testLabel));
+}
+
+console.log(`Validated ${migrationNames.length} migrations, exact option and podium enforcement before writes, and 53 SQL regression assertions.`);

@@ -4,8 +4,9 @@
 > describe a proposed Phase 1 schema and do not match the currently deployed
 > legacy production schema. Do not run an unrestricted linked `supabase db push`
 > against production. Migration `006` is a standalone, guarded migration built
-> from a read-only audit of the live schema. It was applied through the production
-> SQL editor on 2026-08-15 after transaction-wrapped verification. The project did
+> from a read-only audit of the live schema. Migrations `006` and `007` were applied
+> through the production SQL editor on 2026-08-15 after transaction-wrapped
+> verification. The project did
 > not have `supabase_migrations.schema_migrations`, so this deployment is not yet
 > represented in CLI history. Reconcile that history before any future linked push,
 > and proceed only when its dry run contains no legacy `000`–`005` migrations.
@@ -48,6 +49,9 @@ Supabase applies the timestamped files in `migrations/` order:
 7. `202608150006_race_question_option_validation.sql` targets the reconciled live
    schema, adds exact per-question option allow-lists for the Dutch GP, and
    validates every submitted value before any prediction write.
+8. `202608150007_podium_uniqueness_validation.sql` is guarded against the captured
+   live `submit_prediction` definition and requires winner, P2, and P3 to be
+   distinct before any prediction write. It makes no table or data changes.
 
 Migrations are additive: they do not delete `host_profiles`, rename live columns,
 or erase prediction data. The preflight deliberately refuses to guess how an
