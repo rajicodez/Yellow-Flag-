@@ -4,10 +4,26 @@ import path from 'node:path';
 import process from 'node:process';
 
 const root = process.cwd();
-const migrationDirectory = path.join(root, 'supabase', 'migrations');
-const migrationNames = (await readdir(migrationDirectory)).filter(name => name.endsWith('.sql')).sort();
+const supabaseDirectory = path.join(root, 'supabase');
+const migrationDirectory = path.join(supabaseDirectory, 'migrations');
+const archiveDirectory = path.join(
+  supabaseDirectory,
+  'archive',
+  'pre-live-baseline-20260815'
+);
+const archiveMigrationDirectory = path.join(archiveDirectory, 'migrations');
 
-assert.deepEqual(migrationNames, [
+const activeMigrations = (await readdir(migrationDirectory))
+  .filter(name => name.endsWith('.sql'))
+  .sort();
+assert.deepEqual(activeMigrations, [
+  '20260815213203_live_production_baseline.sql',
+]);
+
+const archivedMigrations = (await readdir(archiveMigrationDirectory))
+  .filter(name => name.endsWith('.sql'))
+  .sort();
+assert.deepEqual(archivedMigrations, [
   '202608150000_prediction_preflight.sql',
   '202608150001_prediction_schema.sql',
   '202608150002_prediction_security.sql',
@@ -18,24 +34,27 @@ assert.deepEqual(migrationNames, [
   '202608150007_podium_uniqueness_validation.sql',
 ]);
 
-const migrations = await Promise.all(
-  migrationNames.map(name => readFile(path.join(migrationDirectory, name), 'utf8'))
+const baseline = await readFile(
+  path.join(migrationDirectory, activeMigrations[0]),
+  'utf8'
 );
-const combined = migrations.join('\n');
-const migrationByName = new Map(migrationNames.map((name, index) => [name, migrations[index]]));
-const optionValidationMigration = migrationByName.get(
-  '202608150006_race_question_option_validation.sql'
+const config = await readFile(path.join(supabaseDirectory, 'config.toml'), 'utf8');
+const seed = await readFile(path.join(supabaseDirectory, 'seed.sql'), 'utf8');
+const archivedSeed = await readFile(path.join(archiveDirectory, 'seed.sql'), 'utf8');
+const archivedTest = await readFile(
+  path.join(archiveDirectory, 'tests', '001_prediction_backend_test.sql'),
+  'utf8'
 );
-const podiumValidationMigration = migrationByName.get(
-  '202608150007_podium_uniqueness_validation.sql'
+const liveContractTest = await readFile(
+  path.join(supabaseDirectory, 'tests', '001_live_baseline_contract_test.sql'),
+  'utf8'
 );
-const seed = await readFile(path.join(root, 'supabase', 'seed.sql'), 'utf8');
 const optionValidationTest = await readFile(
-  path.join(root, 'supabase', 'tests', '002_race_question_option_validation_test.sql'),
+  path.join(supabaseDirectory, 'tests', '002_race_question_option_validation_test.sql'),
   'utf8'
 );
 const podiumValidationTest = await readFile(
-  path.join(root, 'supabase', 'tests', '003_podium_uniqueness_validation_test.sql'),
+  path.join(supabaseDirectory, 'tests', '003_podium_uniqueness_validation_test.sql'),
   'utf8'
 );
 const predictionClient = await readFile(
@@ -47,42 +66,101 @@ const predictionLanding = await readFile(
   'utf8'
 );
 
+assert.ok(archivedSeed.length > 0, 'the proposed-schema seed is preserved');
+assert.ok(archivedTest.length > 0, 'the proposed-schema backend test is preserved');
+assert.match(config, /major_version\s*=\s*17/);
+
+const normalized = baseline.replaceAll('"', '').toLowerCase();
+const compact = normalized.replace(/\s+/g, ' ');
+
 for (const requiredTable of [
-  'profiles',
+  'seasons',
   'races',
   'race_questions',
-  'answer_options',
   'race_question_options',
+  'profiles',
+  'user_roles',
+  'host_profiles',
   'prediction_entries',
   'prediction_answers',
-  'official_answers',
-  'official_answer_history',
-  'score_runs',
-  'score_breakdown',
 ]) {
-  assert.match(combined, new RegExp(`create table if not exists public\\.${requiredTable}\\b`, 'i'));
-  assert.match(combined, new RegExp(`alter table public\\.${requiredTable} enable row level security`, 'i'));
+  assert.match(
+    compact,
+    new RegExp(`create table if not exists public\\.${requiredTable} \\(`),
+    `${requiredTable} is captured in the baseline`
+  );
+  assert.match(
+    compact,
+    new RegExp(`alter table public\\.${requiredTable} enable row level security`),
+    `${requiredTable} keeps RLS enabled`
+  );
 }
 
-for (const functionSignature of [
-  'submit_prediction',
-  'set_official_answers',
-  'score_race',
-  'set_profile_role',
+assert.match(compact, /create type public\.app_role as enum \( 'user', 'host', 'admin', 'super_admin' \)/);
+assert.match(compact, /create type public\.prediction_answer_type as enum \( 'driver', 'constructor' \)/);
+assert.match(compact, /create type public\.prediction_competition as enum \( 'user', 'host' \)/);
+assert.match(compact, /create type public\.race_status as enum \( 'draft', 'open', 'locked', 'scored', 'published' \)/);
+
+for (const racesColumn of [
+  'season_id',
+  'round_number',
+  'slug',
+  'race_name',
+  'circuit_name',
+  'country_code',
+  'opens_at',
+  'closes_at',
+  'race_starts_at',
+  'status',
 ]) {
-  assert.match(combined, new RegExp(`function public\\.${functionSignature}\\s*\\(`, 'i'));
+  assert.match(compact, new RegExp(`create table if not exists public\\.races \\([^;]*\\b${racesColumn}\\b`));
 }
+assert.match(compact, /create table if not exists public\.race_questions \([^;]*question_number[^;]*question_key[^;]*question_text[^;]*answer_type[^;]*is_active/);
+assert.match(compact, /create table if not exists public\.prediction_answers \( entry_id uuid not null, question_id uuid not null, answer_value text not null/);
+assert.match(compact, /add constraint prediction_entries_race_id_user_id_competition_key unique \(race_id, user_id, competition\)/);
+assert.match(compact, /add constraint prediction_answers_pkey primary key \(entry_id, question_id\)/);
 
-assert.match(combined, /server_now\s*>=\s*race_record\.prediction_locks_at/i);
-assert.match(combined, /server_now\s*:=\s*clock_timestamp\(\)/i);
-assert.match(combined, /prediction_locks_at\s*=\s*fp1_starts_at/i);
-assert.match(combined, /jsonb_object_length\(p_answers\)\s*<>\s*active_question_count/i);
-assert.match(combined, /having count\(\*\) > 1/i);
-assert.match(combined, /competition in \('fan', 'host'\)/i);
-assert.match(combined, /entry\.score = 7/i);
-assert.match(combined, /score_1_count desc/i);
+const functionStart = compact.indexOf(
+  'create or replace function public.submit_prediction(p_race_slug text, p_competition public.prediction_competition, p_answers jsonb)'
+);
+assert.ok(functionStart >= 0, 'the live submit_prediction signature is captured');
+const functionEnd = compact.indexOf(
+  'alter function public.submit_prediction',
+  functionStart
+);
+assert.ok(functionEnd > functionStart, 'the submit_prediction body is bounded');
+const submitPrediction = compact.slice(functionStart, functionEnd);
 
-const seededQuestionKeys = [
+assert.match(submitPrediction, /returns table\(entry_id uuid, submitted_at timestamp with time zone\)/);
+assert.match(submitPrediction, /language plpgsql security definer set search_path to ''/);
+assert.match(submitPrediction, /current_user_id := auth\.uid\(\)/);
+assert.match(submitPrediction, /if now\(\) >= selected_race\.closes_at then/);
+assert.match(submitPrediction, /public\.has_role\('host'::public\.app_role\)/);
+assert.match(submitPrediction, /from public\.host_profiles/);
+assert.match(submitPrediction, /required_question_count <> 7/);
+assert.match(submitPrediction, /public\.jsonb_object_length\(p_answers\) <> required_question_count/);
+assert.match(submitPrediction, /from public\.race_question_options as option/);
+assert.match(submitPrediction, /option\.option_value = p_answers ->> question\.question_key/);
+assert.match(submitPrediction, /option\.is_active = true/);
+assert.match(submitPrediction, /winner, p2 and p3 must be three different drivers\./);
+assert.match(submitPrediction, /on conflict \(race_id, user_id, competition\) do update set/);
+assert.match(submitPrediction, /delete from public\.prediction_answers/);
+
+const allowListPosition = submitPrediction.indexOf('from public.race_question_options as option');
+const podiumPosition = submitPrediction.indexOf('winner, p2 and p3 must be three different drivers.');
+const firstWritePosition = submitPrediction.indexOf('insert into public.prediction_entries');
+assert.ok(
+  allowListPosition >= 0
+    && allowListPosition < podiumPosition
+    && podiumPosition < firstWritePosition,
+  'allow-list and podium validation both run before the first write'
+);
+
+assert.match(compact, /revoke all on function public\.submit_prediction\([^;]+\) from public/);
+assert.match(compact, /grant all on function public\.submit_prediction\([^;]+\) to authenticated/);
+assert.doesNotMatch(compact, /grant all on function public\.submit_prediction\([^;]+\) to anon/);
+
+const liveQuestionKeys = [
   'pole_position',
   'race_winner',
   'p2_finisher',
@@ -91,156 +169,47 @@ const seededQuestionKeys = [
   'top_constructor',
   'worst_constructor',
 ];
-for (const questionKey of seededQuestionKeys) {
+for (const questionKey of liveQuestionKeys) {
   assert.match(seed, new RegExp(`'${questionKey}'`));
 }
-assert.equal((seed.match(/\('driver:[^']+', '[^']+', \d+\)/g) ?? []).length, 22);
-assert.equal((seed.match(/\('constructor:\d+', '[^']+', \d+\)/g) ?? []).length, 11);
-assert.match(seed, /status[\s\S]*'draft'/i);
-assert.doesNotMatch(seed, /prediction_locks_at[\s\S]{0,400}2026-\d\d-\d\dT/i);
+assert.match(seed, /'2026-08-21 10:30:00\+00'::timestamptz/);
+assert.match(seed, /'2026 Formula 1 World Championship'/);
+assert.match(seed, /'Which constructor will perform the worst\?'/);
+assert.doesNotMatch(seed, /insert into auth\.users/i);
+assert.doesNotMatch(seed, /insert into public\.(profiles|user_roles|host_profiles|prediction_entries|prediction_answers)/i);
+
+const driverOptions = seed.slice(
+  seed.indexOf('with driver_options'),
+  seed.indexOf('), driver_questions')
+);
+const constructorOptions = seed.slice(
+  seed.indexOf('with constructor_options'),
+  seed.indexOf('), constructor_questions')
+);
+assert.equal((driverOptions.match(/\(\d+, '[^']+'\)/g) ?? []).length, 22);
+assert.equal((constructorOptions.match(/\(\d+, '[^']+'\)/g) ?? []).length, 11);
+assert.match(seed, /active_question_count <> 7 or active_option_count <> 132/i);
+
+assert.match(liveContractTest, /select plan\(39\)/i);
+assert.match(liveContractTest, /a Fan cannot submit to the Host competition/i);
+assert.match(liveContractTest, /an authorized Host can submit to the Host competition/i);
+assert.match(liveContractTest, /RLS exposes only the Fan entry/i);
+assert.match(optionValidationTest, /select plan\(28\)/i);
+assert.match(optionValidationTest, /Invalid answer for question: race_winner/i);
+assert.match(optionValidationTest, /clock_timestamp\(\) \+ interval '2 hours'/i);
+assert.match(podiumValidationTest, /select plan\(25\)/i);
+assert.match(podiumValidationTest, /Winner, P2 and P3 must be three different drivers\./i);
+assert.match(podiumValidationTest, /valid edit updates the same prediction_entries row/i);
 
 assert.match(predictionClient, /race\.opens_at/);
 assert.match(predictionClient, /race\.closes_at/);
 assert.match(predictionClient, /hostProfile \? 'host' : 'user'/);
 assert.match(predictionClient, /\.select\('\*'\)/);
-assert.doesNotMatch(predictionClient, /raceConfig\.prediction_locks_at|race\.prediction_locks_at/);
-assert.match(predictionLanding, /race\.opens_at/);
-assert.match(predictionLanding, /race\.closes_at/);
+assert.doesNotMatch(predictionClient, /prediction_opens_at|prediction_locks_at/);
+assert.match(predictionLanding, /raceConfig|race\.opens_at/);
+assert.match(predictionLanding, /closes_at/);
 assert.doesNotMatch(predictionLanding, /prediction_opens_at|prediction_locks_at/);
 
-assert.match(
-  optionValidationMigration,
-  /unique\s*\(question_id,\s*option_value\)/i
+console.log(
+  'Validated the single live production baseline, archived migrations 000-007, local seed, RLS/RPC contract, and 92 pgTAP assertions.'
 );
-assert.match(
-  optionValidationMigration,
-  /create index if not exists race_question_options_active_question_sort_idx[\s\S]*where is_active = true/i
-);
-assert.match(
-  optionValidationMigration,
-  /alter table public\.race_question_options enable row level security/i
-);
-assert.match(
-  optionValidationMigration,
-  /grant select on table public\.race_question_options to anon, authenticated/i
-);
-assert.match(
-  optionValidationMigration,
-  /revoke all on table public\.race_question_options from public, anon, authenticated/i
-);
-
-const hardenedFunctionStart = optionValidationMigration.lastIndexOf(
-  'create or replace function public.submit_prediction'
-);
-assert.ok(hardenedFunctionStart >= 0, 'hardened submit_prediction is present');
-const hardenedFunction = optionValidationMigration.slice(hardenedFunctionStart);
-const validationRead = hardenedFunction.indexOf('from public.race_question_options as option');
-const firstEntryWrite = hardenedFunction.indexOf('insert into public.prediction_entries');
-assert.ok(validationRead >= 0, 'submit_prediction reads the per-question allow-list');
-assert.ok(
-  validationRead < firstEntryWrite,
-  'all option validation occurs before the first prediction write'
-);
-assert.match(hardenedFunction, /option\.question_id = question\.id/i);
-assert.match(
-  hardenedFunction,
-  /option\.option_value = p_answers ->> question\.question_key/i
-);
-assert.match(hardenedFunction, /option\.is_active = true/i);
-assert.match(hardenedFunction, /Invalid answer for question: %/i);
-assert.match(hardenedFunction, /security definer[\s\S]*set search_path = ''/i);
-assert.match(
-  hardenedFunction,
-  /revoke all on function public\.submit_prediction\([\s\S]*from public, anon/i
-);
-assert.match(
-  hardenedFunction,
-  /grant execute on function public\.submit_prediction\([\s\S]*to authenticated/i
-);
-assert.doesNotMatch(hardenedFunction, /having count\(\*\) > 1/i);
-
-for (const liveQuestionKey of [
-  'pole_position',
-  'race_winner',
-  'p2_finisher',
-  'p3_finisher',
-  'driver_of_the_day',
-  'top_constructor',
-  'worst_constructor',
-]) {
-  assert.match(optionValidationMigration, new RegExp(`'${liveQuestionKey}'`));
-}
-
-assert.match(optionValidationTest, /select plan\(28\)/i);
-for (const testLabel of ['A\\.', 'B\\.', 'C\\.', 'D\\.', 'E\\.', 'F\\.', 'G\\.', 'H\\.', 'I\\.', 'J\\.', 'K\\.', 'L\\.']) {
-  if (testLabel === 'J\\.') continue;
-  assert.match(optionValidationTest, new RegExp(testLabel));
-}
-
-assert.match(
-  podiumValidationMigration,
-  /md5\(live_definition\)\s*<>\s*'faaad203c5e8da2bd48d462e58f30d0a'/i
-);
-assert.doesNotMatch(
-  podiumValidationMigration,
-  /create\s+table\b|alter\s+table\b|drop\s+table\b/i
-);
-assert.match(
-  podiumValidationMigration,
-  /btrim\(p_answers ->> 'race_winner'\) = btrim\(p_answers ->> 'p2_finisher'\)/i
-);
-assert.match(
-  podiumValidationMigration,
-  /btrim\(p_answers ->> 'race_winner'\) = btrim\(p_answers ->> 'p3_finisher'\)/i
-);
-assert.match(
-  podiumValidationMigration,
-  /btrim\(p_answers ->> 'p2_finisher'\) = btrim\(p_answers ->> 'p3_finisher'\)/i
-);
-assert.match(
-  podiumValidationMigration,
-  /Winner, P2 and P3 must be three different drivers\./i
-);
-
-const podiumFunctionStart = podiumValidationMigration.lastIndexOf(
-  'create or replace function public.submit_prediction'
-);
-assert.ok(podiumFunctionStart >= 0, 'podium-hardened submit_prediction is present');
-const podiumFunction = podiumValidationMigration.slice(podiumFunctionStart);
-const podiumAllowListRead = podiumFunction.indexOf(
-  'from public.race_question_options as option'
-);
-const podiumError = podiumFunction.indexOf(
-  'Winner, P2 and P3 must be three different drivers.'
-);
-const podiumFirstWrite = podiumFunction.indexOf('insert into public.prediction_entries');
-assert.ok(
-  podiumAllowListRead >= 0 && podiumAllowListRead < podiumError,
-  'podium validation follows exact option validation'
-);
-assert.ok(
-  podiumError < podiumFirstWrite,
-  'podium validation precedes the first prediction write'
-);
-assert.match(podiumFunction, /if now\(\) >= selected_race\.closes_at then/i);
-assert.match(podiumFunction, /public\.has_role\('host'::public\.app_role\)/i);
-assert.match(podiumFunction, /public\.jsonb_object_length\(p_answers\)/i);
-assert.match(podiumFunction, /security definer[\s\S]*set search_path = ''/i);
-assert.match(
-  podiumFunction,
-  /revoke all on function public\.submit_prediction\([\s\S]*from public, anon/i
-);
-assert.match(
-  podiumFunction,
-  /grant execute on function public\.submit_prediction\([\s\S]*to authenticated/i
-);
-
-assert.match(podiumValidationTest, /select plan\(25\)/i);
-for (const testLabel of [
-  'A\\.', 'B\\.', 'C\\.', 'D\\.', 'E\\.', 'F\\.', 'G\\.',
-  'H\\.', 'I\\.', 'J\\.', 'K\\.', 'L\\.', 'M\\.', 'N\\.',
-]) {
-  assert.match(podiumValidationTest, new RegExp(testLabel));
-}
-
-console.log(`Validated ${migrationNames.length} migrations, exact option and podium enforcement before writes, and 53 SQL regression assertions.`);

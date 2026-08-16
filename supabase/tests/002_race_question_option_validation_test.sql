@@ -1,5 +1,5 @@
--- Run against a disposable local/staging database containing the reconciled
--- live schema plus 202608150006_race_question_option_validation.sql.
+-- Run against the disposable local database built from the captured live
+-- baseline and local-only seed.
 -- The transaction rolls back the synthetic auth user and prediction fixtures.
 
 begin;
@@ -115,6 +115,15 @@ select ok(
   ),
   'submit_prediction remains SECURITY DEFINER with an empty search_path'
 );
+
+-- Keep the functional checks deterministic after the production race date.
+-- This transaction-local change is rolled back and never runs against linked.
+update public.races
+set opens_at = clock_timestamp() - interval '1 hour',
+    closes_at = clock_timestamp() + interval '2 hours',
+    race_starts_at = clock_timestamp() + interval '2 days',
+    status = 'open'::public.race_status
+where slug = '2026-dutch-grand-prix';
 
 insert into auth.users (
   instance_id,

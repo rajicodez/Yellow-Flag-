@@ -1,5 +1,5 @@
--- Run against a disposable or transaction-wrapped database containing the
--- reconciled live schema and migration 202608150007. All fixtures roll back.
+-- Run against the disposable local database built from the captured live
+-- baseline and local-only seed. All fixtures roll back.
 
 begin;
 
@@ -108,6 +108,15 @@ select is(
   '2026-08-21 10:30:00+00'::timestamptz,
   'K. Dutch GP closes_at remains the verified FP1 timestamp'
 );
+
+-- Preserve the fixed-time assertion above, then use a transaction-local open
+-- window so this regression test remains deterministic after the race date.
+update public.races
+set opens_at = clock_timestamp() - interval '1 hour',
+    closes_at = clock_timestamp() + interval '2 hours',
+    race_starts_at = clock_timestamp() + interval '2 days',
+    status = 'open'::public.race_status
+where slug = '2026-dutch-grand-prix';
 
 insert into auth.users (
   instance_id,
