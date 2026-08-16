@@ -18,6 +18,7 @@ const activeMigrations = (await readdir(migrationDirectory))
   .sort();
 assert.deepEqual(activeMigrations, [
   '20260815213203_live_production_baseline.sql',
+  '20260816090000_official_results_scoring.sql',
 ]);
 
 const archivedMigrations = (await readdir(archiveMigrationDirectory))
@@ -38,6 +39,10 @@ const baseline = await readFile(
   path.join(migrationDirectory, activeMigrations[0]),
   'utf8'
 );
+const scoringMigration = await readFile(
+  path.join(migrationDirectory, activeMigrations[1]),
+  'utf8'
+);
 const config = await readFile(path.join(supabaseDirectory, 'config.toml'), 'utf8');
 const seed = await readFile(path.join(supabaseDirectory, 'seed.sql'), 'utf8');
 const archivedSeed = await readFile(path.join(archiveDirectory, 'seed.sql'), 'utf8');
@@ -55,6 +60,10 @@ const optionValidationTest = await readFile(
 );
 const podiumValidationTest = await readFile(
   path.join(supabaseDirectory, 'tests', '003_podium_uniqueness_validation_test.sql'),
+  'utf8'
+);
+const officialScoringTest = await readFile(
+  path.join(supabaseDirectory, 'tests', '004_official_results_scoring_test.sql'),
   'utf8'
 );
 const predictionClient = await readFile(
@@ -200,6 +209,29 @@ assert.match(optionValidationTest, /clock_timestamp\(\) \+ interval '2 hours'/i)
 assert.match(podiumValidationTest, /select plan\(25\)/i);
 assert.match(podiumValidationTest, /Winner, P2 and P3 must be three different drivers\./i);
 assert.match(podiumValidationTest, /valid edit updates the same prediction_entries row/i);
+assert.match(officialScoringTest, /select plan\(69\)/i);
+assert.match(officialScoringTest, /repeating identical scoring succeeds idempotently/i);
+assert.match(officialScoringTest, /equal Fan scores share race rank one/i);
+
+const normalizedScoring = scoringMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
+for (const scoringTable of [
+  'official_answers',
+  'official_answer_history',
+  'scoring_runs',
+  'score_breakdown',
+  'prediction_scores',
+]) {
+  assert.match(normalizedScoring, new RegExp(`create table public\\.${scoringTable} \\(`));
+  assert.match(normalizedScoring, new RegExp(`alter table public\\.${scoringTable} enable row level security`));
+}
+assert.match(normalizedScoring, /create or replace function public\.set_official_answers\( p_race_id uuid, p_answers jsonb \)/);
+assert.match(normalizedScoring, /create or replace function public\.score_race\( p_race_id uuid, p_notes text default null \)/);
+assert.match(normalizedScoring, /create or replace function public\.publish_race_results\(p_race_id uuid\)/);
+assert.match(normalizedScoring, /create or replace view public\.race_prediction_leaderboard/);
+assert.match(normalizedScoring, /create or replace view public\.season_prediction_leaderboard/);
+assert.match(normalizedScoring, /partition by entry\.race_id, entry\.competition order by score\.score desc/);
+assert.match(normalizedScoring, /score_7_count desc, score_6_count desc, score_5_count desc/);
+assert.match(normalizedScoring, /revoke references, trigger, truncate on table public\.prediction_entries from anon, authenticated/);
 
 assert.match(predictionClient, /race\.opens_at/);
 assert.match(predictionClient, /race\.closes_at/);
@@ -211,5 +243,5 @@ assert.match(predictionLanding, /closes_at/);
 assert.doesNotMatch(predictionLanding, /prediction_opens_at|prediction_locks_at/);
 
 console.log(
-  'Validated the single live production baseline, archived migrations 000-007, local seed, RLS/RPC contract, and 92 pgTAP assertions.'
+  'Validated the live production baseline, forward scoring migration, archived migrations 000-007, local seed, RLS/RPC contracts, and 161 pgTAP assertions.'
 );

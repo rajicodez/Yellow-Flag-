@@ -3,6 +3,7 @@ dist
 .DS_Store
 *.local
 supabase/.temp/
+supabase/.branches/
 
 # Local secrets (Gemini/Qdrant keys)
 .env

@@ -4,6 +4,10 @@ The authoritative migration starting point is:
 
 `migrations/20260815213203_live_production_baseline.sql`
 
+The first reviewed forward migration is:
+
+`migrations/20260816090000_official_results_scoring.sql`
+
 It was generated from project `qvjkqsubsabsspdaazzr` with `supabase db pull`
 on 2026-08-15. The initial pull was explicitly told **not** to update remote
 migration history. Production schema and application data were not changed by
@@ -106,3 +110,28 @@ against production. Never mark or replay archived migrations `000`–`007`.
 After reconciliation, every future production change must be a new reviewed,
 forward-only migration created after the baseline timestamp. Do not redesign
 the production schema from the archived proposal.
+
+Baseline reconciliation was completed on 2026-08-16: local and remote history
+both contain `20260815213203`, and a linked push dry run reported that the remote
+database was up to date. Production still does **not** contain the forward
+scoring migration; it must be reviewed and deployed separately.
+
+## Forward scoring contract
+
+`20260816090000_official_results_scoring.sql` adds:
+
+- admin-only official answers with immutable audit history;
+- transactional, versioned and idempotent scoring with per-question breakdowns;
+- one current score per prediction entry, from zero through seven;
+- a separate publication RPC so scoring does not automatically expose results;
+- race standings partitioned by `user` and `host`, with equal scores sharing rank;
+- season standings ranked by total, then counts of 7/7, 6/7, and downward;
+- published-answer immutability and automatic invalidation after an unpublished
+  answer correction; and
+- removal of unnecessary `REFERENCES`, `TRIGGER`, and `TRUNCATE` grants from
+  client roles.
+
+The admin frontend authenticates with Supabase, verifies `admin` or
+`super_admin` through `user_roles`, and calls only the protected RPCs for answer
+entry, scoring, and publication. Test `004_official_results_scoring_test.sql`
+covers this contract with 69 transaction-wrapped assertions.

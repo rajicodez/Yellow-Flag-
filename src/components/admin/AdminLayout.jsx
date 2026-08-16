@@ -80,19 +80,24 @@ function SidebarContent({ activeScreen, onNavigate, onLogout }) {
           className="flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-bold text-zinc-400 transition hover:bg-red-500/10 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-400/50"
         >
           <LogOut className="h-4 w-4" aria-hidden="true" />
-          Demo Log Out
+          Log Out
         </button>
       </div>
     </>
   );
 }
 
-export default function AdminLayout({ activeScreen, onNavigate, onLogout, children }) {
+export default function AdminLayout({ activeScreen, adminUser, onNavigate, onLogout, children }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const currentPage = useMemo(
     () => adminNavigation.find((item) => item.id === activeScreen) ?? adminNavigation[0],
     [activeScreen]
   );
+  const adminName = adminUser?.display_name
+    || adminUser?.user_metadata?.full_name
+    || adminUser?.email
+    || 'Administrator';
+  const adminInitial = adminName.trim().charAt(0).toUpperCase() || 'A';
 
   const handleNavigate = (id) => {
     onNavigate(id);
@@ -170,11 +175,11 @@ export default function AdminLayout({ activeScreen, onNavigate, onLogout, childr
 
               <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-white/5 p-1.5 pr-2.5 sm:pr-4">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full border border-yellow-400/35 bg-yellow-400/10 font-display text-xs font-black text-yellow-300">
-                  A
+                  {adminInitial}
                 </span>
                 <div className="hidden min-w-0 sm:block">
-                  <p className="text-xs font-bold text-white">Administrator</p>
-                  <div className="mt-0.5"><RoleBadge role="super_admin" /></div>
+                  <p className="max-w-40 truncate text-xs font-bold text-white">{adminName}</p>
+                  <div className="mt-0.5"><RoleBadge role={adminUser?.role ?? 'admin'} /></div>
                 </div>
               </div>
             </div>
