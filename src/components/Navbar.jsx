@@ -416,7 +416,7 @@ export default function Navbar({ activeSection }) {
 
                   <div className="space-y-1 py-2">
                     <Link
-                      to="/#prediction"
+                      to="/predictions/mine"
                       role="menuitem"
                       onClick={() => setIsAccountOpen(false)}
                       className="flex w-full items-center rounded-xl px-3 py-2.5 text-sm font-bold text-zinc-200 transition hover:bg-yellow-400/10 hover:text-yellow-300"

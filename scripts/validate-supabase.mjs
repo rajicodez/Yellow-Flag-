@@ -101,6 +101,10 @@ const predictionLanding = await readFile(
   path.join(root, 'src', 'components', 'Prediction.jsx'),
   'utf8'
 );
+const myPredictions = await readFile(
+  path.join(root, 'src', 'components', 'predictions', 'MyPredictions.jsx'),
+  'utf8'
+);
 const adminRaceWorkspace = await readFile(
   path.join(root, 'src', 'components', 'admin', 'useAdminRaceWorkspace.js'),
   'utf8'
@@ -326,10 +330,15 @@ assert.match(predictionLanding, /competition=host/);
 assert.match(predictionLanding, /Continue with Lakindu or Kasun's approved Google account/);
 assert.doesNotMatch(predictionLanding, /signInWithPassword|host-password|current-password/);
 assert.doesNotMatch(predictionLanding, /prediction_opens_at|prediction_locks_at/);
+assert.match(myPredictions, /from\('prediction_entries'\)/);
+assert.match(myPredictions, /from\('prediction_answers'\)/);
+assert.match(myPredictions, /from\('race_prediction_leaderboard'\)/);
+assert.match(myPredictions, /entry\.competition === 'host' \? '\?competition=host'/);
 assert.match(adminRaceWorkspace, /rpc\('admin_upsert_race'/);
 assert.match(adminRaceWorkspace, /rpc\('admin_save_race_questions'/);
 assert.match(adminRaceWorkspace, /from\('race_questions'\)/);
 assert.match(appRoutes, /path="\/predictions\/:raceSlug"/);
+assert.match(appRoutes, /path="\/predictions\/mine"/);
 
 console.log(
   'Validated the live production baseline, scoring, Auth provisioning, guarded race/user administration migrations, archived migrations 000-007, local seed, RLS/RPC contracts, and 230 pgTAP assertions.'
