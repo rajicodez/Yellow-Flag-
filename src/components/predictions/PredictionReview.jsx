@@ -1,16 +1,15 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Edit2, CheckCircle2, ShieldCheck } from 'lucide-react';
-import { dutchGPQuestions } from '../../data/dutchGPQuestions';
 import { driversData } from '../../data/drivers';
 import { f1Teams2026 } from '../../data/teams';
 
-export default function PredictionReview({ answers, onSubmit, onEdit, isSubmitting }) {
-  const totalQuestions = dutchGPQuestions.length;
-  const answeredQuestions = dutchGPQuestions.filter(q => Boolean(answers[q.id])).length;
+export default function PredictionReview({ answers, questions, onSubmit, onEdit, isSubmitting }) {
+  const totalQuestions = questions.length;
+  const answeredQuestions = questions.filter(q => Boolean(answers[q.id])).length;
   
   const getAnswerDisplay = (questionId, answer) => {
-    const question = dutchGPQuestions.find(q => q.id === questionId);
+    const question = questions.find(q => q.id === questionId);
     
     let imageUrl = null;
     let label = answer || 'Not answered';
@@ -44,7 +43,7 @@ export default function PredictionReview({ answers, onSubmit, onEdit, isSubmitti
 
       {/* Answers List */}
       <div className="flex flex-col gap-4 mb-8">
-        {dutchGPQuestions.map((q, index) => {
+        {questions.map((q, index) => {
           const answer = answers[q.id];
           const display = getAnswerDisplay(q.id, answer);
 

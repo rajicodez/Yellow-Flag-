@@ -20,6 +20,7 @@ assert.deepEqual(activeMigrations, [
   '20260815213203_live_production_baseline.sql',
   '20260816090000_official_results_scoring.sql',
   '20260817043000_restore_auth_profile_provisioning.sql',
+  '20260817090000_admin_race_question_management.sql',
 ]);
 
 const archivedMigrations = (await readdir(archiveMigrationDirectory))
@@ -46,6 +47,10 @@ const scoringMigration = await readFile(
 );
 const profileProvisioningMigration = await readFile(
   path.join(migrationDirectory, activeMigrations[2]),
+  'utf8'
+);
+const raceManagementMigration = await readFile(
+  path.join(migrationDirectory, activeMigrations[3]),
   'utf8'
 );
 const config = await readFile(path.join(supabaseDirectory, 'config.toml'), 'utf8');
@@ -75,6 +80,10 @@ const profileProvisioningTest = await readFile(
   path.join(supabaseDirectory, 'tests', '005_auth_profile_provisioning_test.sql'),
   'utf8'
 );
+const raceManagementTest = await readFile(
+  path.join(supabaseDirectory, 'tests', '006_admin_race_question_management_test.sql'),
+  'utf8'
+);
 const predictionClient = await readFile(
   path.join(root, 'src', 'components', 'predictions', 'DutchGrandPrixPrediction.jsx'),
   'utf8'
@@ -83,6 +92,11 @@ const predictionLanding = await readFile(
   path.join(root, 'src', 'components', 'Prediction.jsx'),
   'utf8'
 );
+const adminRaceWorkspace = await readFile(
+  path.join(root, 'src', 'components', 'admin', 'useAdminRaceWorkspace.js'),
+  'utf8'
+);
+const appRoutes = await readFile(path.join(root, 'src', 'App.jsx'), 'utf8');
 
 assert.ok(archivedSeed.length > 0, 'the proposed-schema seed is preserved');
 assert.ok(archivedTest.length > 0, 'the proposed-schema backend test is preserved');
@@ -223,6 +237,9 @@ assert.match(officialScoringTest, /repeating identical scoring succeeds idempote
 assert.match(officialScoringTest, /equal Fan scores share race rank one/i);
 assert.match(profileProvisioningTest, /select plan\(7\)/i);
 assert.match(profileProvisioningTest, /new Auth user receives exactly one baseline user role/i);
+assert.match(raceManagementTest, /select plan\(29\)/i);
+assert.match(raceManagementTest, /question replacement is blocked after a submission exists/i);
+assert.match(raceManagementTest, /race administration cannot bypass the scoring flow/i);
 
 const normalizedProvisioning = profileProvisioningMigration
   .replaceAll('"', '')
@@ -255,15 +272,35 @@ assert.match(normalizedScoring, /partition by entry\.race_id, entry\.competition
 assert.match(normalizedScoring, /score_7_count desc, score_6_count desc, score_5_count desc/);
 assert.match(normalizedScoring, /revoke references, trigger, truncate on table public\.prediction_entries from anon, authenticated/);
 
+const normalizedRaceManagement = raceManagementMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
+assert.match(normalizedRaceManagement, /create or replace function public\.admin_upsert_race\(/);
+assert.match(normalizedRaceManagement, /create or replace function public\.admin_save_race_questions\(/);
+assert.match(normalizedRaceManagement, /security definer set search_path = ''/);
+assert.match(normalizedRaceManagement, /raise exception 'race_has_submissions'/);
+assert.match(normalizedRaceManagement, /raise exception 'completed_race_immutable'/);
+assert.match(normalizedRaceManagement, /raise exception 'seven_configured_questions_required_to_open'/);
+assert.match(normalizedRaceManagement, /raise exception 'standard_question_keys_and_types_required'/);
+assert.match(normalizedRaceManagement, /revoke all on function public\.admin_upsert_race\([^;]+\) from public, anon/);
+assert.match(normalizedRaceManagement, /revoke all on function public\.admin_save_race_questions\(uuid, jsonb\) from public, anon/);
+
 assert.match(predictionClient, /race\.opens_at/);
 assert.match(predictionClient, /race\.closes_at/);
 assert.match(predictionClient, /hostProfile \? 'host' : 'user'/);
 assert.match(predictionClient, /\.select\('\*'\)/);
+assert.match(predictionClient, /useParams\(\)/);
+assert.match(predictionClient, /race_question_options/);
+assert.match(predictionClient, /p_race_slug: raceConfig\.slug/);
+assert.doesNotMatch(predictionClient, /import \{ dutchGPQuestions \}/);
 assert.doesNotMatch(predictionClient, /prediction_opens_at|prediction_locks_at/);
 assert.match(predictionLanding, /raceConfig|race\.opens_at/);
 assert.match(predictionLanding, /closes_at/);
+assert.match(predictionLanding, /\.neq\('status', 'draft'\)/);
 assert.doesNotMatch(predictionLanding, /prediction_opens_at|prediction_locks_at/);
+assert.match(adminRaceWorkspace, /rpc\('admin_upsert_race'/);
+assert.match(adminRaceWorkspace, /rpc\('admin_save_race_questions'/);
+assert.match(adminRaceWorkspace, /from\('race_questions'\)/);
+assert.match(appRoutes, /path="\/predictions\/:raceSlug"/);
 
 console.log(
-  'Validated the live production baseline, forward scoring and Auth provisioning migrations, archived migrations 000-007, local seed, RLS/RPC contracts, and 168 pgTAP assertions.'
+  'Validated the live production baseline, scoring, Auth provisioning, and guarded race-management migrations, archived migrations 000-007, local seed, RLS/RPC contracts, and 197 pgTAP assertions.'
 );

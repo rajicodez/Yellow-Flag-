@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Trophy, Home, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
-export default function PredictionSuccess({ submissionTime, onBackToQuestions }) {
+export default function PredictionSuccess({ raceName, submissionTime, onBackToQuestions }) {
   const navigate = useNavigate();
 
   const formattedTime = new Date(submissionTime).toLocaleString('en-US', {
@@ -27,7 +27,7 @@ export default function PredictionSuccess({ submissionTime, onBackToQuestions })
       </h2>
 
       <p className="text-zinc-300 font-medium text-lg mb-2">
-        Dutch Grand Prix
+        {raceName}
       </p>
       
       <p className="text-zinc-500 text-sm mb-8">

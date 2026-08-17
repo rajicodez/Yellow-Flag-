@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, CalendarCheck2, Flag } from 'lucide-react';
+import { AlertTriangle, CalendarCheck2 } from 'lucide-react';
 import { activeF1Season, f1Schedule2026 } from '../../data/schedule';
 import { Field, inputClass, Modal } from './AdminUI';
 import UpcomingRaceSelect from './UpcomingRaceSelect';
@@ -41,13 +41,13 @@ function CalendarField({ label, value, placeholder = 'Select an upcoming race fi
   );
 }
 
-export default function RaceFormModal({ race, races = [], open, onClose, onDemoSave }) {
+export default function RaceFormModal({ race, races = [], open, onClose, onSave }) {
   const isEditing = Boolean(race);
   const [selectedCalendarId, setSelectedCalendarId] = useState('');
   const [predictionOpens, setPredictionOpens] = useState('');
   const [predictionCloses, setPredictionCloses] = useState('');
   const [status, setStatus] = useState('Draft');
-  const [sprintWeekend, setSprintWeekend] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [pendingCalendarId, setPendingCalendarId] = useState('');
   const keepCurrentRef = useRef(null);
@@ -60,7 +60,12 @@ export default function RaceFormModal({ race, races = [], open, onClose, onDemoS
     .sort((first, second) => new Date(first.raceStart) - new Date(second.raceStart)), []);
 
   const addedRaceIds = useMemo(
-    () => new Set(races.map((existingRace) => existingRace.calendarId).filter(Boolean)),
+    () => new Set(races.map((existingRace) => (
+      existingRace.calendarId
+      ?? f1Schedule2026.find((calendarRace) => (
+        calendarRace.season === existingRace.season && calendarRace.round === existingRace.round
+      ))?.id
+    )).filter(Boolean)),
     [races]
   );
 
@@ -73,7 +78,7 @@ export default function RaceFormModal({ race, races = [], open, onClose, onDemoS
     setPredictionOpens(race?.predictionOpens ?? '');
     setPredictionCloses(race?.predictionCloses ?? '');
     setStatus(race?.status ?? 'Draft');
-    setSprintWeekend(Boolean(race?.sprintWeekend));
+    setSaving(false);
     setErrors({});
     setPendingCalendarId('');
   }, [open, race]);
@@ -89,7 +94,7 @@ export default function RaceFormModal({ race, races = [], open, onClose, onDemoS
     setPredictionOpens('');
     setPredictionCloses('');
     setStatus('Draft');
-    setSprintWeekend(false);
+    setSaving(false);
     setErrors({});
     setPendingCalendarId('');
   };
@@ -110,7 +115,6 @@ export default function RaceFormModal({ race, races = [], open, onClose, onDemoS
     setPredictionOpens('');
     setPredictionCloses('');
     setStatus('Draft');
-    setSprintWeekend(nextRace.sprintWeekend);
     setErrors({});
     setPendingCalendarId('');
   };
@@ -125,7 +129,6 @@ export default function RaceFormModal({ race, races = [], open, onClose, onDemoS
       predictionOpens
       || predictionCloses
       || status !== 'Draft'
-      || sprintWeekend !== selectedCalendarRace?.sprintWeekend
     );
 
     if (editableFieldsChanged) {
@@ -136,7 +139,7 @@ export default function RaceFormModal({ race, races = [], open, onClose, onDemoS
     applyCalendarRace(calendarId);
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     const nextErrors = {};
     const formData = new FormData(event.currentTarget);
@@ -175,12 +178,18 @@ export default function RaceFormModal({ race, races = [], open, onClose, onDemoS
       predictionOpens: submittedPredictionOpens,
       predictionCloses: submittedPredictionCloses,
       status,
-      sprintWeekend,
-      questions: sprintWeekend ? 9 : 7,
+      sprintWeekend: false,
+      questions: race?.questions ?? 0,
     };
 
-    onDemoSave({ race: savedRace, isEditing });
-    resetTemporaryState();
+    setSaving(true);
+    try {
+      await onSave({ race: savedRace, isEditing });
+      resetTemporaryState();
+    } catch (error) {
+      setErrors({ server: error.message || 'Unable to save this race.' });
+      setSaving(false);
+    }
   };
 
   const raceDate = officialRace?.raceStart
@@ -195,7 +204,7 @@ export default function RaceFormModal({ race, races = [], open, onClose, onDemoS
       open={open}
       onClose={closeForm}
       title={isEditing ? 'Edit Race' : 'Create Race'}
-      description="Review calendar details and set the UI-only prediction window."
+      description="Review calendar details and save the official prediction window to Supabase."
       size="lg"
     >
       <form onSubmit={handleSubmit} noValidate className="grid min-w-0 gap-5 sm:grid-cols-2">
@@ -276,40 +285,21 @@ export default function RaceFormModal({ race, races = [], open, onClose, onDemoS
             <option>Draft</option>
             <option>Open</option>
             <option>Closed</option>
-            <option>Scored</option>
           </select>
         </Field>
 
-        <div className="rounded-xl border border-white/10 bg-black/25 p-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-bold text-zinc-200">Sprint Weekend</p>
-              <p className="mt-1 text-xs text-zinc-500">{sprintWeekend ? '9 questions · maximum 9 points' : '7 questions · maximum 7 points'}</p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={sprintWeekend}
-              onClick={() => setSprintWeekend((current) => !current)}
-              className={`relative h-7 w-12 shrink-0 rounded-full border transition focus:outline-none focus:ring-2 focus:ring-yellow-400/50 ${sprintWeekend ? 'border-yellow-300 bg-yellow-400' : 'border-white/15 bg-zinc-800'}`}
-            >
-              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${sprintWeekend ? 'left-6' : 'left-1'}`} />
-              <span className="sr-only">Toggle Sprint Weekend</span>
-            </button>
-          </div>
-          {sprintWeekend && (
-            <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-yellow-300">
-              <Flag className="h-3 w-3" aria-hidden="true" /> Sprint Weekend
-            </span>
-          )}
+        <div className="rounded-xl border border-white/10 bg-black/25 p-4 text-sm text-zinc-400">
+          Every race uses the meeting-approved seven-question, seven-point format.
         </div>
+
+        {errors.server && <p role="alert" className="text-sm font-semibold text-red-300 sm:col-span-2">{errors.server}</p>}
 
         <div className="flex flex-col-reverse gap-3 border-t border-white/10 pt-5 sm:col-span-2 sm:flex-row sm:justify-end">
           <button type="button" onClick={closeForm} className="rounded-xl border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-zinc-300 transition hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-yellow-400/50">
             Cancel
           </button>
-          <button type="submit" className="rounded-xl bg-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-black transition hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-200">
-            {isEditing ? 'Save Race Changes' : 'Create Race'}
+          <button type="submit" disabled={saving} className="rounded-xl bg-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-black transition hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-200 disabled:cursor-wait disabled:opacity-60">
+            {saving ? 'Saving...' : isEditing ? 'Save Race Changes' : 'Create Race'}
           </button>
         </div>
       </form>

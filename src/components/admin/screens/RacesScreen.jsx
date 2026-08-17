@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { MoreHorizontal, Pencil, Plus, Search } from 'lucide-react';
 import RaceFormModal from '../RaceFormModal';
-import { DemoLabel, EmptyNotice, inputClass, Panel, ScreenHeading, StatusBadge } from '../AdminUI';
+import { EmptyNotice, inputClass, Panel, ScreenHeading, StatusBadge } from '../AdminUI';
 import { getRaceStableId } from '../useAdminRaceWorkspace';
 
 const predictionDateFormatter = new Intl.DateTimeFormat('en-GB', {
@@ -17,7 +17,7 @@ function formatPredictionDate(value) {
   return `${predictionDateFormatter.format(new Date(`${date}T00:00:00+05:30`))}, ${time}`;
 }
 
-export default function RacesScreen({ ensureQuestionsForRace, races, selectedRaceId, setRaces, setSelectedRaceId }) {
+export default function RacesScreen({ races, saveRace, selectedRaceId, setSelectedRaceId, workspaceError, workspaceLoading }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('All');
   const [selectedRace, setSelectedRace] = useState(null);
@@ -45,23 +45,10 @@ export default function RacesScreen({ ensureQuestionsForRace, races, selectedRac
     setSelectedRace(null);
   };
 
-  const handleDemoSave = ({ race: savedRace, isEditing }) => {
-    const raceWithDisplayDates = {
-      ...savedRace,
-      opensAt: formatPredictionDate(savedRace.predictionOpens),
-      closesAt: formatPredictionDate(savedRace.predictionCloses),
-    };
-
-    setRaces((currentRaces) => isEditing
-      ? currentRaces.map((currentRace) => currentRace.id === raceWithDisplayDates.id ? raceWithDisplayDates : currentRace)
-      : [...currentRaces, raceWithDisplayDates]
-    );
-
-    ensureQuestionsForRace(raceWithDisplayDates, { createIfMissing: !isEditing });
-    setSelectedRaceId(getRaceStableId(raceWithDisplayDates));
-
+  const handleSave = async ({ race: savedRace, isEditing }) => {
+    await saveRace(savedRace, isEditing);
     closeModal();
-    setNotice(`${savedRace.name} ${isEditing ? 'updated' : 'added'} to the UI-only race list.`);
+    setNotice(`${savedRace.name} ${isEditing ? 'updated' : 'created'} in Supabase.`);
   };
 
   return (
@@ -69,7 +56,7 @@ export default function RacesScreen({ ensureQuestionsForRace, races, selectedRac
       <ScreenHeading
         eyebrow="Race Calendar"
         title="Race Management"
-        description="Create, review, and prepare race prediction windows. Every row and action on this screen uses demonstration data."
+        description="Create and manage the real prediction windows stored in Supabase. Scored and published races are protected from editing."
         action={
           <button type="button" onClick={openCreate} className="flex items-center justify-center gap-2 rounded-xl bg-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-black transition hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-200">
             <Plus className="h-4 w-4" aria-hidden="true" /> Create Race
@@ -78,6 +65,7 @@ export default function RacesScreen({ ensureQuestionsForRace, races, selectedRac
       />
 
       {notice && <div role="status" className="rounded-xl border border-yellow-400/25 bg-yellow-400/10 px-4 py-3 text-sm font-semibold text-yellow-200">{notice}</div>}
+      {workspaceError && <div role="alert" className="rounded-xl border border-red-400/25 bg-red-400/10 px-4 py-3 text-sm font-semibold text-red-200">{workspaceError}</div>}
 
       <Panel className="overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-white/10 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
@@ -87,13 +75,14 @@ export default function RacesScreen({ ensureQuestionsForRace, races, selectedRac
           </div>
           <div className="flex items-center gap-3">
             <select value={status} onChange={(event) => setStatus(event.target.value)} className={inputClass} aria-label="Filter races by status">
-              <option>All</option><option>Draft</option><option>Open</option><option>Closed</option><option>Scored</option>
+              <option>All</option><option>Draft</option><option>Open</option><option>Closed</option><option>Scored</option><option>Published</option>
             </select>
-            <DemoLabel />
           </div>
         </div>
 
-        {filteredRaces.length ? (
+        {workspaceLoading ? (
+          <div className="p-10 text-center text-sm font-bold text-zinc-400">Loading races from Supabase...</div>
+        ) : filteredRaces.length ? (
           <div className="overflow-x-auto">
             <table className="min-w-[1050px] w-full text-left text-sm">
               <thead className="bg-black/35 text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">
@@ -121,7 +110,7 @@ export default function RacesScreen({ ensureQuestionsForRace, races, selectedRac
                           <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                         </summary>
                         <div className="absolute right-0 z-20 mt-2 w-36 rounded-xl border border-white/10 bg-[#18181b] p-1.5 shadow-2xl">
-                          <button type="button" onClick={() => openEdit(race)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-white/5 hover:text-yellow-300">
+                          <button type="button" onClick={() => openEdit(race)} disabled={['Scored', 'Published'].includes(race.status)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-white/5 hover:text-yellow-300 disabled:cursor-not-allowed disabled:opacity-40">
                             <Pencil className="h-3.5 w-3.5" aria-hidden="true" /> Edit Race
                           </button>
                         </div>
@@ -132,10 +121,10 @@ export default function RacesScreen({ ensureQuestionsForRace, races, selectedRac
               </tbody>
             </table>
           </div>
-        ) : <div className="p-6"><EmptyNotice>No demonstration races match those filters.</EmptyNotice></div>}
+        ) : <div className="p-6"><EmptyNotice>No races match those filters.</EmptyNotice></div>}
       </Panel>
 
-      <RaceFormModal race={selectedRace} races={races} open={modalOpen} onClose={closeModal} onDemoSave={handleDemoSave} />
+      <RaceFormModal race={selectedRace} races={races} open={modalOpen} onClose={closeModal} onSave={handleSave} />
     </div>
   );
 }

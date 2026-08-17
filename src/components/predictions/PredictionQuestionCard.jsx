@@ -16,6 +16,9 @@ export default function PredictionQuestionCard({
   isLast,
   validationError
 }) {
+  const allowedValues = new Set((question.options ?? []).map((option) => option.value));
+  const drivers = driversData.filter((driver) => !allowedValues.size || allowedValues.has(driver.name));
+  const teams = f1Teams2026.filter((team) => !allowedValues.size || allowedValues.has(team.name));
   
   const handleSelectDriver = (driverName) => {
     onAnswer(question.id, driverName);
@@ -78,7 +81,7 @@ export default function PredictionQuestionCard({
       <div className="flex-1 min-h-[400px]">
         {question.type === 'driver' && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-            {driversData.map(driver => (
+            {drivers.map(driver => (
               <DriverOptionCard 
                 key={driver.id} 
                 driver={driver} 
@@ -91,7 +94,7 @@ export default function PredictionQuestionCard({
 
         {question.type === 'team' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {f1Teams2026.map(team => (
+            {teams.map(team => (
               <TeamOptionCard 
                 key={team.id} 
                 team={team} 

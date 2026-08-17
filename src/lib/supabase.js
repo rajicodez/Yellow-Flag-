@@ -15,7 +15,7 @@ export const supabase = isSupabaseConfigured
     })
   : null;
 
-export async function signInWithGoogle(redirectPath = '/predictions/dutch-grand-prix') {
+export async function signInWithGoogle(redirectPath = '/') {
   if (!supabase) {
     throw new Error('Supabase authentication is not configured.');
   }

@@ -11,7 +11,6 @@ import {
   supabase,
 } from '../lib/supabase';
 
-const RACE_SLUG = '2026-dutch-grand-prix';
 const EMPTY_COUNTDOWN = { days: '--', hours: '--', minutes: '--' };
 
 function getRaceTiming(race) {
@@ -33,7 +32,7 @@ function getRaceTiming(race) {
     minutes: String(Math.floor((remaining % 3_600_000) / 60_000)).padStart(2, '0'),
   };
 
-  if (status === 'closed' || now >= closesAt) {
+  if (['locked', 'scored', 'published'].includes(status) || now >= closesAt) {
     return { state: 'closed', countdown };
   }
 
@@ -214,7 +213,7 @@ function HostLoginModal({ isOpen, onCancel, onAuthenticated }) {
   );
 }
 
-function UserLoginModal({ isOpen, onCancel }) {
+function UserLoginModal({ isOpen, onCancel, redirectPath }) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const googleButtonRef = useRef(null);
@@ -242,7 +241,7 @@ function UserLoginModal({ isOpen, onCancel }) {
     setIsLoading(true);
 
     try {
-      await signInWithGoogle();
+      await signInWithGoogle(redirectPath);
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -349,17 +348,21 @@ export default function Prediction() {
       try {
         const { data, error } = await supabase
           .from('races')
-          .select('opens_at, closes_at, status')
-          .eq('slug', RACE_SLUG)
-          .maybeSingle();
+          .select('slug, race_name, circuit_name, country_code, race_starts_at, opens_at, closes_at, status')
+          .neq('status', 'draft')
+          .order('race_starts_at', { ascending: true });
 
         if (error) throw error;
-        if (!data || !Number.isFinite(Date.parse(data.closes_at))) {
+        const now = Date.now();
+        const selectedRace = (data ?? []).find((race) => race.status === 'open' && Date.parse(race.closes_at) > now)
+          ?? (data ?? []).find((race) => Date.parse(race.race_starts_at) > now)
+          ?? (data ?? []).at(-1);
+        if (!selectedRace || !Number.isFinite(Date.parse(selectedRace.closes_at))) {
           throw new Error('Race configuration is incomplete.');
         }
 
         if (isMounted) {
-          setRaceConfig(data);
+          setRaceConfig(selectedRace);
           setRaceConfigError('');
         }
       } catch {
@@ -407,7 +410,7 @@ export default function Prediction() {
 
   const handleHostAuthenticated = () => {
     setIsHostLoginOpen(false);
-    navigate('/predictions/dutch-grand-prix');
+    navigate(`/predictions/${raceConfig.slug}`);
   };
 
   const handlePredictionClick = async () => {
@@ -425,7 +428,7 @@ export default function Prediction() {
       if (error) throw error;
 
       if (data.session?.user) {
-        navigate('/predictions/dutch-grand-prix');
+        navigate(`/predictions/${raceConfig.slug}`);
       } else {
         setIsUserLoginOpen(true);
       }
@@ -475,21 +478,21 @@ export default function Prediction() {
 
             {/* Title */}
             <h2 className="font-display text-5xl font-black uppercase leading-[0.95] tracking-[0.02em] text-white md:text-7xl">
-              Dutch Grand Prix<br />
+              {raceConfig?.race_name ?? 'Grand Prix'}<br />
               <span className="text-yellow-400">Prediction</span>
             </h2>
 
             {/* Circuit Name & Flag */}
             <div className="mt-4 flex items-center gap-3 font-display text-xl font-bold uppercase tracking-widest text-zinc-400">
-              Circuit Zandvoort
-              <img 
-                src="https://flagcdn.com/w40/nl.png" 
-                srcSet="https://flagcdn.com/w80/nl.png 2x" 
+              {raceConfig?.circuit_name ?? 'Formula 1'}
+              {raceConfig?.country_code && <img
+                src={`https://flagcdn.com/w40/${raceConfig.country_code.toLowerCase()}.png`}
+                srcSet={`https://flagcdn.com/w80/${raceConfig.country_code.toLowerCase()}.png 2x`}
                 width="24" 
                 height="16" 
-                alt="Netherlands Flag" 
+                alt={`${raceConfig.country_code} flag`}
                 className="rounded-sm shadow-sm"
-              />
+              />}
             </div>
 
             {/* Countdown Timer */}
@@ -663,6 +666,7 @@ export default function Prediction() {
       <UserLoginModal
         isOpen={isUserLoginOpen}
         onCancel={closeUserLogin}
+        redirectPath={raceConfig?.slug ? `/predictions/${raceConfig.slug}` : '/'}
       />
     </section>
   );

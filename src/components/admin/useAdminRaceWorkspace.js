@@ -1,258 +1,322 @@
-import { useCallback, useMemo, useState } from 'react';
-import { defaultGrandPrixQuestions, demoRaces, sprintGrandPrixQuestions } from './data';
+import { useCallback, useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import { defaultGrandPrixQuestions } from './data';
+import { getAdminRosterForSeason } from './rosters';
 
+const statusLabels = {
+  draft: 'Draft',
+  open: 'Open',
+  locked: 'Closed',
+  scored: 'Scored',
+  published: 'Published',
+};
+
+const databaseStatuses = {
+  Draft: 'draft',
+  Open: 'open',
+  Closed: 'locked',
+};
+
+const countryNames = typeof Intl.DisplayNames === 'function'
+  ? new Intl.DisplayNames(['en'], { type: 'region' })
+  : null;
+
+const countryCodesByName = {
+  Australia: 'AU',
+  Austria: 'AT',
+  Azerbaijan: 'AZ',
+  Bahrain: 'BH',
+  Belgium: 'BE',
+  Brazil: 'BR',
+  Canada: 'CA',
+  China: 'CN',
+  Hungary: 'HU',
+  Italy: 'IT',
+  Japan: 'JP',
+  Mexico: 'MX',
+  Monaco: 'MC',
+  Netherlands: 'NL',
+  Qatar: 'QA',
+  'Saudi Arabia': 'SA',
+  Singapore: 'SG',
+  Spain: 'ES',
+  'United Arab Emirates': 'AE',
+  'United Kingdom': 'GB',
+  'United States': 'US',
+};
+
+const displayDateTime = (value) => value
+  ? new Intl.DateTimeFormat('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'Asia/Colombo',
+    }).format(new Date(value))
+  : 'Not set';
+
+const toLocalDateTimeInput = (value) => {
+  if (!value) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'Asia/Colombo',
+  }).formatToParts(new Date(value));
+  const part = (type) => parts.find((item) => item.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`;
+};
+
+const fromSriLankaInput = (value) => value ? new Date(`${value}:00+05:30`).toISOString() : null;
 const cloneQuestions = (questions) => questions.map((question) => ({ ...question }));
 
 export function getRaceStableId(race) {
-  return race ? String(race.calendarId ?? race.id) : '';
+  return race ? String(race.id) : '';
 }
 
-export function createDefaultQuestionSet(race) {
-  const standardQuestions = cloneQuestions(defaultGrandPrixQuestions);
-  return race?.sprintWeekend
-    ? [...standardQuestions, ...cloneQuestions(sprintGrandPrixQuestions)]
-    : standardQuestions;
+export function createDefaultQuestionSet() {
+  return cloneQuestions(defaultGrandPrixQuestions).map((question, index) => ({
+    ...question,
+    questionNumber: index + 1,
+    active: true,
+  }));
 }
 
-function syncSprintQuestions(questions, sprintWeekend) {
-  const standardQuestions = cloneQuestions((questions ?? []).filter((question) => !question.sprint));
-  if (!sprintWeekend) return standardQuestions;
+function mapRace(row, questionCount) {
+  const season = row.seasons?.year ?? new Date(row.race_starts_at).getFullYear();
+  const countryCode = String(row.country_code ?? '').toUpperCase();
+  const country = countryNames?.of(countryCode) ?? countryCode;
 
-  const existingSprintQuestions = (questions ?? []).filter((question) => question.sprint);
-  return [
-    ...standardQuestions,
-    ...cloneQuestions(existingSprintQuestions.length ? existingSprintQuestions : sprintGrandPrixQuestions),
-  ];
+  return {
+    id: row.id,
+    name: row.race_name,
+    slug: row.slug,
+    circuit: row.circuit_name,
+    country,
+    countryCode,
+    round: row.round_number,
+    season,
+    seasonName: row.seasons?.name ?? `${season} Formula 1 World Championship`,
+    raceStart: row.race_starts_at,
+    predictionOpens: toLocalDateTimeInput(row.opens_at),
+    predictionCloses: toLocalDateTimeInput(row.closes_at),
+    opensAt: displayDateTime(row.opens_at),
+    closesAt: displayDateTime(row.closes_at),
+    status: statusLabels[row.status] ?? row.status,
+    databaseStatus: row.status,
+    sprintWeekend: false,
+    questions: questionCount,
+  };
 }
 
-function createInitialQuestionsByRaceId(races) {
-  return races.reduce((result, race) => {
-    if (race.questions > 0) result[getRaceStableId(race)] = createDefaultQuestionSet(race);
-    return result;
-  }, {});
-}
-
-function getInitialSelectedRaceId(races, questionsByRaceId) {
-  const activeRace = races.find((race) => race.status === 'Open');
-  if (activeRace) return getRaceStableId(activeRace);
-
-  const now = Date.now();
-  const upcomingConfiguredRace = [...races]
-    .filter((race) => questionsByRaceId[getRaceStableId(race)] && new Date(race.raceStart).getTime() >= now)
-    .sort((first, second) => new Date(first.raceStart) - new Date(second.raceStart))[0];
-
-  return getRaceStableId(upcomingConfiguredRace ?? races[0]);
-}
-
-function cloneQuestionsByRaceId(source) {
-  return Object.fromEntries(
-    Object.entries(source).map(([raceId, questions]) => [raceId, cloneQuestions(questions)])
-  );
-}
-
-function hasCustomizedSprintQuestions(questions) {
-  const sprintQuestions = (questions ?? []).filter((question) => question.sprint);
-  if (!sprintQuestions.length) return false;
-
-  return sprintQuestions.some((question) => {
-    const defaultQuestion = sprintGrandPrixQuestions.find((candidate) => candidate.id === question.id);
-    return !defaultQuestion || ['key', 'text', 'type', 'points', 'active'].some(
-      (field) => question[field] !== defaultQuestion[field]
-    );
-  });
+function mapQuestion(row) {
+  return {
+    id: row.id,
+    questionNumber: row.question_number,
+    key: row.question_key,
+    text: row.question_text,
+    type: row.answer_type === 'constructor' ? 'Constructor' : 'Driver',
+    points: row.points,
+    active: row.is_active,
+  };
 }
 
 export default function useAdminRaceWorkspace() {
-  const initialQuestions = useMemo(() => createInitialQuestionsByRaceId(demoRaces), []);
-  const [races, setRaces] = useState(() => demoRaces.map((race) => ({ ...race })));
-  const [selectedRaceId, setSelectedRaceId] = useState(
-    () => getInitialSelectedRaceId(demoRaces, initialQuestions)
-  );
-  const [questionsByRaceId, setQuestionsByRaceId] = useState(
-    () => cloneQuestionsByRaceId(initialQuestions)
-  );
-  const [savedQuestionsByRaceId, setSavedQuestionsByRaceId] = useState(
-    () => cloneQuestionsByRaceId(initialQuestions)
-  );
+  const [races, setRaces] = useState([]);
+  const [selectedRaceId, setSelectedRaceId] = useState('');
+  const [questionsByRaceId, setQuestionsByRaceId] = useState({});
+  const [savedQuestionsByRaceId, setSavedQuestionsByRaceId] = useState({});
   const [dirtyRaceIds, setDirtyRaceIds] = useState(() => new Set());
-  const [sprintCustomizedRaceIds, setSprintCustomizedRaceIds] = useState(() => new Set());
+  const [workspaceLoading, setWorkspaceLoading] = useState(true);
+  const [workspaceError, setWorkspaceError] = useState('');
+
+  const loadWorkspace = useCallback(async () => {
+    if (!supabase) {
+      setWorkspaceError('Supabase is not configured.');
+      setWorkspaceLoading(false);
+      return;
+    }
+
+    setWorkspaceLoading(true);
+    setWorkspaceError('');
+
+    try {
+      const [{ data: raceRows, error: raceError }, { data: questionRows, error: questionError }] = await Promise.all([
+        supabase
+          .from('races')
+          .select('id, round_number, slug, race_name, circuit_name, country_code, opens_at, closes_at, race_starts_at, status, seasons(year, name)')
+          .order('race_starts_at', { ascending: false }),
+        supabase
+          .from('race_questions')
+          .select('id, race_id, question_number, question_key, question_text, answer_type, points, is_active')
+          .order('question_number', { ascending: true }),
+      ]);
+
+      if (raceError) throw raceError;
+      if (questionError) throw questionError;
+
+      const nextQuestionsByRaceId = {};
+      for (const row of questionRows ?? []) {
+        const raceId = String(row.race_id);
+        if (!nextQuestionsByRaceId[raceId]) nextQuestionsByRaceId[raceId] = [];
+        nextQuestionsByRaceId[raceId].push(mapQuestion(row));
+      }
+
+      const nextRaces = (raceRows ?? []).map((row) => (
+        mapRace(row, nextQuestionsByRaceId[String(row.id)]?.length ?? 0)
+      ));
+
+      setRaces(nextRaces);
+      setQuestionsByRaceId(nextQuestionsByRaceId);
+      setSavedQuestionsByRaceId(Object.fromEntries(
+        Object.entries(nextQuestionsByRaceId).map(([raceId, questions]) => [raceId, cloneQuestions(questions)])
+      ));
+      setDirtyRaceIds(new Set());
+      setSelectedRaceId((current) => {
+        if (nextRaces.some((race) => getRaceStableId(race) === current)) return current;
+        const preferred = nextRaces.find((race) => race.status === 'Open') ?? nextRaces[0];
+        return getRaceStableId(preferred);
+      });
+    } catch (error) {
+      setWorkspaceError(error.message || 'Unable to load race administration data.');
+    } finally {
+      setWorkspaceLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadWorkspace();
+  }, [loadWorkspace]);
 
   const selectedRace = races.find((race) => getRaceStableId(race) === selectedRaceId) ?? null;
   const questions = questionsByRaceId[selectedRaceId] ?? [];
 
-  const updateRaceQuestionMetadata = useCallback((raceId, questionSet, sprintWeekend) => {
-    setRaces((currentRaces) => currentRaces.map((race) => (
-      getRaceStableId(race) === raceId
-        ? { ...race, questions: questionSet.length, sprintWeekend }
-        : race
-    )));
-  }, []);
+  const saveRace = useCallback(async (race, isEditing) => {
+    const status = databaseStatuses[race.status];
+    if (!status) throw new Error('Scored and published races are managed from Results & Scoring.');
 
-  const ensureQuestionsForRace = useCallback((race, { createIfMissing = true } = {}) => {
-    const raceId = getRaceStableId(race);
-    if (!raceId) return;
+    const countryCode = race.countryCode || countryCodesByName[race.country];
+    if (!countryCode) throw new Error(`Country code is not configured for ${race.country}.`);
 
-    setQuestionsByRaceId((current) => {
-      if (!current[raceId]?.length && !createIfMissing) {
-        updateRaceQuestionMetadata(raceId, [], race.sprintWeekend);
-        return current;
-      }
-      const nextQuestions = current[raceId]?.length
-        ? syncSprintQuestions(current[raceId], race.sprintWeekend)
-        : createDefaultQuestionSet(race);
-
-      setSavedQuestionsByRaceId((saved) => ({
-        ...saved,
-        [raceId]: cloneQuestions(nextQuestions),
-      }));
-      updateRaceQuestionMetadata(raceId, nextQuestions, race.sprintWeekend);
-      return { ...current, [raceId]: nextQuestions };
+    const { data, error } = await supabase.rpc('admin_upsert_race', {
+      p_race_id: isEditing ? race.id : null,
+      p_season_year: race.season,
+      p_season_name: race.seasonName || `${race.season} Formula 1 World Championship`,
+      p_round_number: race.round,
+      p_slug: race.slug.startsWith(`${race.season}-`) ? race.slug : `${race.season}-${race.slug}`,
+      p_race_name: race.name,
+      p_circuit_name: race.circuit,
+      p_country_code: countryCode,
+      p_opens_at: fromSriLankaInput(race.predictionOpens),
+      p_closes_at: fromSriLankaInput(race.predictionCloses),
+      p_race_starts_at: race.raceStart,
+      p_status: status,
     });
 
-    setDirtyRaceIds((current) => {
-      const next = new Set(current);
-      next.delete(raceId);
-      return next;
-    });
-  }, [updateRaceQuestionMetadata]);
+    if (error) throw error;
+    await loadWorkspace();
+    return data;
+  }, [loadWorkspace]);
 
   const createQuestionsForRace = useCallback((raceId) => {
-    const race = races.find((candidate) => getRaceStableId(candidate) === raceId);
-    if (!race) return;
-    const nextQuestions = createDefaultQuestionSet(race);
-
+    const nextQuestions = createDefaultQuestionSet();
     setQuestionsByRaceId((current) => ({ ...current, [raceId]: nextQuestions }));
-    setSavedQuestionsByRaceId((current) => ({
+    setDirtyRaceIds((current) => new Set(current).add(raceId));
+  }, []);
+
+  const updateQuestion = useCallback((raceId, questionId, updates) => {
+    setQuestionsByRaceId((current) => ({
       ...current,
-      [raceId]: cloneQuestions(nextQuestions),
+      [raceId]: (current[raceId] ?? []).map((question) => (
+        question.id === questionId ? { ...question, ...updates } : question
+      )),
+    }));
+    setDirtyRaceIds((current) => new Set(current).add(raceId));
+  }, []);
+
+  const saveQuestionDraft = useCallback(async (raceId) => {
+    const race = races.find((candidate) => getRaceStableId(candidate) === raceId);
+    const questionSet = questionsByRaceId[raceId] ?? [];
+    if (!race) throw new Error('Select a race before saving questions.');
+
+    const roster = getAdminRosterForSeason(race.season);
+    if (!roster.drivers.length || !roster.constructors.length) {
+      throw new Error(`No prediction roster is configured for ${race.season}.`);
+    }
+
+    const payload = questionSet.map((question, index) => {
+      const isConstructor = question.type === 'Constructor';
+      const options = (isConstructor ? roster.constructors : roster.drivers).map((option, optionIndex) => ({
+        option_value: isConstructor ? option.fullName : option.name,
+        option_label: isConstructor ? option.fullName : option.name,
+        sort_order: optionIndex + 1,
+        is_active: true,
+      }));
+
+      return {
+        question_number: question.questionNumber ?? index + 1,
+        question_key: question.key,
+        question_text: question.text,
+        answer_type: isConstructor ? 'constructor' : 'driver',
+        is_active: question.active !== false,
+        options,
+      };
+    });
+
+    const { error } = await supabase.rpc('admin_save_race_questions', {
+      p_race_id: race.id,
+      p_questions: payload,
+    });
+    if (error) throw error;
+    await loadWorkspace();
+  }, [loadWorkspace, questionsByRaceId, races]);
+
+  const discardQuestionChanges = useCallback((raceId) => {
+    setQuestionsByRaceId((current) => ({
+      ...current,
+      [raceId]: cloneQuestions(savedQuestionsByRaceId[raceId] ?? []),
     }));
     setDirtyRaceIds((current) => {
       const next = new Set(current);
       next.delete(raceId);
       return next;
     });
-    setSprintCustomizedRaceIds((current) => {
-      const next = new Set(current);
-      next.delete(raceId);
-      return next;
-    });
-    updateRaceQuestionMetadata(raceId, nextQuestions, race.sprintWeekend);
-  }, [races, updateRaceQuestionMetadata]);
-
-  const updateQuestion = useCallback((raceId, questionId, updates) => {
-    setQuestionsByRaceId((current) => {
-      if (!current[raceId]) return current;
-      const nextQuestions = current[raceId].map((question) => (
-        question.id === questionId ? { ...question, ...updates } : question
-      ));
-      return { ...current, [raceId]: nextQuestions };
-    });
-    setDirtyRaceIds((current) => new Set(current).add(raceId));
-    if (Number(questionId) > 7) {
-      setSprintCustomizedRaceIds((current) => new Set(current).add(raceId));
-    }
-  }, []);
-
-  const enableSprintWeekend = useCallback((raceId = selectedRaceId) => {
-    setQuestionsByRaceId((current) => {
-      if (!current[raceId]) return current;
-      const nextQuestions = syncSprintQuestions(current[raceId], true);
-      updateRaceQuestionMetadata(raceId, nextQuestions, true);
-      return { ...current, [raceId]: nextQuestions };
-    });
-    setDirtyRaceIds((current) => new Set(current).add(raceId));
-  }, [selectedRaceId, updateRaceQuestionMetadata]);
-
-  const disableSprintWeekend = useCallback((raceId = selectedRaceId) => {
-    setQuestionsByRaceId((current) => {
-      if (!current[raceId]) return current;
-      const nextQuestions = syncSprintQuestions(current[raceId], false);
-      updateRaceQuestionMetadata(raceId, nextQuestions, false);
-      return { ...current, [raceId]: nextQuestions };
-    });
-    setDirtyRaceIds((current) => new Set(current).add(raceId));
-    setSprintCustomizedRaceIds((current) => {
-      const next = new Set(current);
-      next.delete(raceId);
-      return next;
-    });
-  }, [selectedRaceId, updateRaceQuestionMetadata]);
-
-  const saveQuestionDraft = useCallback((raceId) => {
-    setQuestionsByRaceId((current) => {
-      if (!current[raceId]) return current;
-      setSavedQuestionsByRaceId((saved) => ({
-        ...saved,
-        [raceId]: cloneQuestions(current[raceId]),
-      }));
-      return current;
-    });
-    setDirtyRaceIds((current) => {
-      const next = new Set(current);
-      next.delete(raceId);
-      return next;
-    });
-  }, []);
-
-  const discardQuestionChanges = useCallback((raceId) => {
-    setSavedQuestionsByRaceId((saved) => {
-      const savedQuestions = saved[raceId];
-      setQuestionsByRaceId((current) => {
-        if (!savedQuestions) {
-          const next = { ...current };
-          delete next[raceId];
-          return next;
-        }
-        return { ...current, [raceId]: cloneQuestions(savedQuestions) };
-      });
-
-      const sprintWeekend = Boolean(savedQuestions?.some((question) => question.sprint));
-      updateRaceQuestionMetadata(raceId, savedQuestions ?? [], sprintWeekend);
-      setSprintCustomizedRaceIds((current) => {
-        const next = new Set(current);
-        if (hasCustomizedSprintQuestions(savedQuestions)) next.add(raceId);
-        else next.delete(raceId);
-        return next;
-      });
-      return saved;
-    });
-
-    setDirtyRaceIds((current) => {
-      const next = new Set(current);
-      next.delete(raceId);
-      return next;
-    });
-  }, [updateRaceQuestionMetadata]);
+  }, [savedQuestionsByRaceId]);
 
   const totalQuestions = questions.length;
   const activeQuestions = questions.filter((question) => question.active).length;
   const maximumPoints = questions.reduce((total, question) => total + question.points, 0);
-  const isSprintWeekend = Boolean(selectedRace?.sprintWeekend);
-
-  const sprintWeekend = {
-    activeQuestions,
-    disableSprintWeekend: () => disableSprintWeekend(selectedRaceId),
-    enableSprintWeekend: () => enableSprintWeekend(selectedRaceId),
-    isSprintWeekend,
-    maximumPoints,
-    questions,
-    sprintQuestionsEdited: sprintCustomizedRaceIds.has(selectedRaceId),
-    totalQuestions,
-    updateQuestion: (questionId, updates) => updateQuestion(selectedRaceId, questionId, updates),
-  };
 
   return {
     createQuestionsForRace,
     dirtyRaceIds,
     discardQuestionChanges,
-    ensureQuestionsForRace,
+    ensureQuestionsForRace: () => {},
+    loadWorkspace,
     questionsByRaceId,
     races,
     saveQuestionDraft,
+    saveRace,
     selectedRace,
     selectedRaceId,
     setRaces,
     setSelectedRaceId,
-    sprintWeekend,
+    sprintWeekend: {
+      activeQuestions,
+      disableSprintWeekend: () => {},
+      enableSprintWeekend: () => {},
+      isSprintWeekend: false,
+      maximumPoints,
+      questions,
+      sprintQuestionsEdited: false,
+      totalQuestions,
+      updateQuestion: (questionId, updates) => updateQuestion(selectedRaceId, questionId, updates),
+    },
+    workspaceError,
+    workspaceLoading,
   };
 }

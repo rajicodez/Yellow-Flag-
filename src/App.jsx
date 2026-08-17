@@ -246,8 +246,8 @@ function AppShell() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/drivers" element={<DriversPage />} />
-        <Route path="/predictions/dutch-grand-prix" element={<DutchGrandPrixPrediction />} />
         <Route path="/predictions/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/predictions/:raceSlug" element={<DutchGrandPrixPrediction />} />
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/admin/race-history" element={<AdminPanel />} />
         <Route path="*" element={<Navigate to="/" replace />} />

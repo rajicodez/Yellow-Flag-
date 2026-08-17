@@ -121,7 +121,7 @@ export const defaultGrandPrixQuestions = [
   },
   {
     id: 3,
-    key: 'second_place',
+    key: 'p2_finisher',
     text: 'Who will finish in P2?',
     type: 'Driver',
     points: 1,
@@ -129,7 +129,7 @@ export const defaultGrandPrixQuestions = [
   },
   {
     id: 4,
-    key: 'third_place',
+    key: 'p3_finisher',
     text: 'Who will finish in P3?',
     type: 'Driver',
     points: 1,
@@ -145,7 +145,7 @@ export const defaultGrandPrixQuestions = [
   },
   {
     id: 6,
-    key: 'best_constructor',
+    key: 'top_constructor',
     text: 'Which constructor will score the most points?',
     type: 'Constructor',
     points: 1,
@@ -180,7 +180,7 @@ export const dutchGrandPrixQuestions = [
   },
   {
     id: 3,
-    key: 'second_place',
+    key: 'p2_finisher',
     text: 'Who will finish in P2?',
     type: 'Driver',
     points: 1,
@@ -188,7 +188,7 @@ export const dutchGrandPrixQuestions = [
   },
   {
     id: 4,
-    key: 'third_place',
+    key: 'p3_finisher',
     text: 'Who will finish in P3?',
     type: 'Driver',
     points: 1,
@@ -204,7 +204,7 @@ export const dutchGrandPrixQuestions = [
   },
   {
     id: 6,
-    key: 'best_constructor',
+    key: 'top_constructor',
     text: 'Which constructor will score the most points?',
     type: 'Constructor',
     points: 1,

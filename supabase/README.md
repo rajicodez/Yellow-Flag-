@@ -12,6 +12,10 @@ The Auth provisioning repair is:
 
 `migrations/20260817043000_restore_auth_profile_provisioning.sql`
 
+Guarded race and question administration is:
+
+`migrations/20260817090000_admin_race_question_management.sql`
+
 It was generated from project `qvjkqsubsabsspdaazzr` with `supabase db pull`
 on 2026-08-15. The initial pull was explicitly told **not** to update remote
 migration history. Production schema and application data were not changed by
@@ -98,6 +102,9 @@ synthetic users and rolls every test fixture back:
   unchanged prior data, same-entry edits, grants, RLS, and deadline behavior.
 - `005_auth_profile_provisioning_test.sql` checks that the managed Auth trigger
   creates a public profile and baseline user role without granting admin access.
+- `006_admin_race_question_management_test.sql` checks draft visibility,
+  Admin-only race/question writes, the seven-question opening gate, immutable
+  completed races, and submission-safe timing/status updates.
 
 ## Migration-history reconciliation
 
@@ -149,3 +156,17 @@ reliably recreate a trigger owned by Supabase's managed `auth` schema. Migration
 `20260817043000` restores exactly one `auth.users` insert trigger and backfills
 missing profiles and baseline `user` roles for existing Auth accounts. All
 backfills are conflict-safe and preserve Admin, Super Admin, and Host roles.
+
+## Race and question administration
+
+Migration `20260817090000` adds two Admin-only, `SECURITY DEFINER` RPCs:
+
+- `admin_upsert_race(...)` creates draft races and updates editable race
+  windows. A race cannot open until all seven canonical questions have active
+  options. Scored and published races cannot be edited through this function.
+- `admin_save_race_questions(uuid, jsonb)` atomically replaces the canonical
+  seven-question set and its server-authoritative answer options only before a
+  submission or official answer exists.
+
+Admins receive read policies for draft races and their question configuration;
+Fans continue to see only non-draft races and active public questions.
