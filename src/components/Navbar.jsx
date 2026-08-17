@@ -238,7 +238,7 @@ export default function Navbar({ activeSection }) {
   };
 
   const linkClass = (isActive) =>
-    `whitespace-nowrap rounded-full px-2 py-2 text-[10px] font-bold uppercase tracking-[0.08em] transition xl:px-3 xl:text-[11px] xl:tracking-[0.1em] min-[1750px]:text-xs min-[1750px]:tracking-[0.14em] ${
+    `whitespace-nowrap rounded-full px-2 py-2 text-xs font-bold uppercase tracking-[0.08em] transition xl:px-3 xl:tracking-[0.1em] min-[1750px]:tracking-[0.14em] ${
       isActive
         ? 'bg-yellow-400/15 text-yellow-300 shadow-[0_0_20px_rgba(250,204,21,0.15)]'
         : 'text-zinc-300 hover:text-yellow-300'
