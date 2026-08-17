@@ -156,7 +156,7 @@ export default function AdminPanel() {
       onNavigate={handleNavigate}
       onLogout={handleLogout}
     >
-      <ActiveScreen {...raceWorkspace} onNavigate={handleNavigate} />
+      <ActiveScreen {...raceWorkspace} adminRole={access.role} onNavigate={handleNavigate} />
     </AdminLayout>
   );
 }

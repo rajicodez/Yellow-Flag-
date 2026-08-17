@@ -21,6 +21,7 @@ assert.deepEqual(activeMigrations, [
   '20260816090000_official_results_scoring.sql',
   '20260817043000_restore_auth_profile_provisioning.sql',
   '20260817090000_admin_race_question_management.sql',
+  '20260817120000_admin_user_access_management.sql',
 ]);
 
 const archivedMigrations = (await readdir(archiveMigrationDirectory))
@@ -53,6 +54,10 @@ const raceManagementMigration = await readFile(
   path.join(migrationDirectory, activeMigrations[3]),
   'utf8'
 );
+const userAccessMigration = await readFile(
+  path.join(migrationDirectory, activeMigrations[4]),
+  'utf8'
+);
 const config = await readFile(path.join(supabaseDirectory, 'config.toml'), 'utf8');
 const seed = await readFile(path.join(supabaseDirectory, 'seed.sql'), 'utf8');
 const archivedSeed = await readFile(path.join(archiveDirectory, 'seed.sql'), 'utf8');
@@ -82,6 +87,10 @@ const profileProvisioningTest = await readFile(
 );
 const raceManagementTest = await readFile(
   path.join(supabaseDirectory, 'tests', '006_admin_race_question_management_test.sql'),
+  'utf8'
+);
+const userAccessTest = await readFile(
+  path.join(supabaseDirectory, 'tests', '007_admin_user_access_management_test.sql'),
   'utf8'
 );
 const predictionClient = await readFile(
@@ -240,6 +249,9 @@ assert.match(profileProvisioningTest, /new Auth user receives exactly one baseli
 assert.match(raceManagementTest, /select plan\(29\)/i);
 assert.match(raceManagementTest, /question replacement is blocked after a submission exists/i);
 assert.match(raceManagementTest, /race administration cannot bypass the scoring flow/i);
+assert.match(userAccessTest, /select plan\(33\)/i);
+assert.match(userAccessTest, /a Host must also receive Admin access/i);
+assert.match(userAccessTest, /an idempotent assignment creates no duplicate audit record/i);
 
 const normalizedProvisioning = profileProvisioningMigration
   .replaceAll('"', '')
@@ -283,6 +295,18 @@ assert.match(normalizedRaceManagement, /raise exception 'standard_question_keys_
 assert.match(normalizedRaceManagement, /revoke all on function public\.admin_upsert_race\([^;]+\) from public, anon/);
 assert.match(normalizedRaceManagement, /revoke all on function public\.admin_save_race_questions\(uuid, jsonb\) from public, anon/);
 
+const normalizedUserAccess = userAccessMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
+assert.match(normalizedUserAccess, /create table public\.user_access_history \(/);
+assert.match(normalizedUserAccess, /alter table public\.user_access_history enable row level security/);
+assert.match(normalizedUserAccess, /create or replace function public\.admin_list_users\(\)/);
+assert.match(normalizedUserAccess, /create or replace function public\.admin_update_user_access\(/);
+assert.match(normalizedUserAccess, /security definer set search_path = ''/);
+assert.match(normalizedUserAccess, /raise exception 'super_admin_role_required'/);
+assert.match(normalizedUserAccess, /raise exception 'host_requires_admin_access'/);
+assert.match(normalizedUserAccess, /insert into public\.user_access_history/);
+assert.match(normalizedUserAccess, /revoke all on function public\.admin_list_users\(\) from public, anon/);
+assert.match(normalizedUserAccess, /revoke all on function public\.admin_update_user_access\(uuid, boolean, text\) from public, anon/);
+
 assert.match(predictionClient, /race\.opens_at/);
 assert.match(predictionClient, /race\.closes_at/);
 assert.match(predictionClient, /hostProfile \? 'host' : 'user'/);
@@ -302,5 +326,5 @@ assert.match(adminRaceWorkspace, /from\('race_questions'\)/);
 assert.match(appRoutes, /path="\/predictions\/:raceSlug"/);
 
 console.log(
-  'Validated the live production baseline, scoring, Auth provisioning, and guarded race-management migrations, archived migrations 000-007, local seed, RLS/RPC contracts, and 197 pgTAP assertions.'
+  'Validated the live production baseline, scoring, Auth provisioning, guarded race/user administration migrations, archived migrations 000-007, local seed, RLS/RPC contracts, and 230 pgTAP assertions.'
 );
