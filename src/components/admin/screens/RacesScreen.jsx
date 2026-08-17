@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { MoreHorizontal, Pencil, Plus, Search } from 'lucide-react';
+import { FlaskConical, MoreHorizontal, Pencil, Plus, Search } from 'lucide-react';
+import DemoRaceModal from '../DemoRaceModal';
 import RaceFormModal from '../RaceFormModal';
 import { EmptyNotice, inputClass, Panel, ScreenHeading, StatusBadge } from '../AdminUI';
 import { getRaceStableId } from '../useAdminRaceWorkspace';
@@ -17,11 +18,12 @@ function formatPredictionDate(value) {
   return `${predictionDateFormatter.format(new Date(`${date}T00:00:00+05:30`))}, ${time}`;
 }
 
-export default function RacesScreen({ races, saveRace, selectedRaceId, setSelectedRaceId, workspaceError, workspaceLoading }) {
+export default function RacesScreen({ createDemoRace, races, saveRace, selectedRaceId, setSelectedRaceId, workspaceError, workspaceLoading }) {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('All');
   const [selectedRace, setSelectedRace] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [demoModalOpen, setDemoModalOpen] = useState(false);
   const [notice, setNotice] = useState('');
 
   const filteredRaces = useMemo(() => races.filter((race) => {
@@ -57,11 +59,14 @@ export default function RacesScreen({ races, saveRace, selectedRaceId, setSelect
         eyebrow="Race Calendar"
         title="Race Management"
         description="Create and manage the real prediction windows stored in Supabase. Scored and published races are protected from editing."
-        action={
+        action={<div className="flex flex-col gap-2 sm:flex-row">
+          <button type="button" onClick={() => setDemoModalOpen(true)} className="flex items-center justify-center gap-2 rounded-xl border border-violet-400/35 bg-violet-400/10 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-violet-200 transition hover:bg-violet-400/20 focus:outline-none focus:ring-2 focus:ring-violet-300/50">
+            <FlaskConical className="h-4 w-4" aria-hidden="true" /> Create Demo Race
+          </button>
           <button type="button" onClick={openCreate} className="flex items-center justify-center gap-2 rounded-xl bg-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-black transition hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-200">
             <Plus className="h-4 w-4" aria-hidden="true" /> Create Race
           </button>
-        }
+        </div>}
       />
 
       {notice && <div role="status" className="rounded-xl border border-yellow-400/25 bg-yellow-400/10 px-4 py-3 text-sm font-semibold text-yellow-200">{notice}</div>}
@@ -95,6 +100,7 @@ export default function RacesScreen({ races, saveRace, selectedRaceId, setSelect
                       <div className="flex flex-wrap items-center gap-2">
                         <button type="button" onClick={() => setSelectedRaceId(getRaceStableId(race))} className="text-left font-bold text-white transition hover:text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/50" aria-label={`Select ${race.name}`}>{race.name}</button>
                         {race.sprintWeekend && <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-yellow-300">Sprint</span>}
+                        {race.isDemo && <span className="rounded-full border border-violet-400/30 bg-violet-400/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-violet-200">Demo</span>}
                         {getRaceStableId(race) === selectedRaceId && <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-yellow-300">Selected Race</span>}
                       </div>
                       <p className="mt-1 text-xs text-zinc-500">{race.circuit} · {race.country}</p>
@@ -125,6 +131,10 @@ export default function RacesScreen({ races, saveRace, selectedRaceId, setSelect
       </Panel>
 
       <RaceFormModal race={selectedRace} races={races} open={modalOpen} onClose={closeModal} onSave={handleSave} />
+      <DemoRaceModal open={demoModalOpen} onClose={() => setDemoModalOpen(false)} onCreate={async (details) => {
+        const created = await createDemoRace(details);
+        setNotice(`${created.race_name ?? details.name} created with seven questions and opened for predictions.`);
+      }} />
     </div>
   );
 }

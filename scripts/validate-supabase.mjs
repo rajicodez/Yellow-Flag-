@@ -23,6 +23,7 @@ assert.deepEqual(activeMigrations, [
   '20260817090000_admin_race_question_management.sql',
   '20260817120000_admin_user_access_management.sql',
   '20260817150000_public_host_championship.sql',
+  '20260817180000_isolated_demo_races.sql',
 ]);
 
 const archivedMigrations = (await readdir(archiveMigrationDirectory))
@@ -61,6 +62,10 @@ const userAccessMigration = await readFile(
 );
 const hostChampionshipMigration = await readFile(
   path.join(migrationDirectory, activeMigrations[5]),
+  'utf8'
+);
+const demoRaceMigration = await readFile(
+  path.join(migrationDirectory, activeMigrations[6]),
   'utf8'
 );
 const config = await readFile(path.join(supabaseDirectory, 'config.toml'), 'utf8');
@@ -131,6 +136,14 @@ const adminRaceHistory = await readFile(
   'utf8'
 );
 const appRoutes = await readFile(path.join(root, 'src', 'App.jsx'), 'utf8');
+const adminRacesScreen = await readFile(
+  path.join(root, 'src', 'components', 'admin', 'screens', 'RacesScreen.jsx'),
+  'utf8'
+);
+const demoRaceModal = await readFile(
+  path.join(root, 'src', 'components', 'admin', 'DemoRaceModal.jsx'),
+  'utf8'
+);
 
 assert.ok(archivedSeed.length > 0, 'the proposed-schema seed is preserved');
 assert.ok(archivedTest.length > 0, 'the proposed-schema backend test is preserved');
@@ -385,6 +398,13 @@ assert.match(adminRaceHistory, /officialAnswersByRaceId/);
 assert.doesNotMatch(adminRaceHistory, /demoResultsByRaceId|demoLeaderboardByRaceId|DemoLabel/);
 assert.match(appRoutes, /path="\/predictions\/:raceSlug"/);
 assert.match(appRoutes, /path="\/predictions\/mine"/);
+const normalizedDemoRace = demoRaceMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
+assert.match(normalizedDemoRace, /add column if not exists is_demo boolean not null default false/);
+assert.match(normalizedDemoRace, /create or replace function public\.admin_create_demo_race\(/);
+assert.match(normalizedDemoRace, /perform public\.admin_save_race_questions\(saved_race_id, p_questions\)/);
+assert.match(normalizedDemoRace, /and not race\.is_demo/);
+assert.match(adminRacesScreen, /Create Demo Race/);
+assert.match(demoRaceModal, /Demo scores never count toward season or Hosts Championship totals/);
 
 console.log(
   'Validated the live production baseline, scoring, Auth provisioning, guarded race/user administration, public Host championship migrations, archived migrations 000-007, local seed, RLS/RPC contracts, and 245 pgTAP assertions.'

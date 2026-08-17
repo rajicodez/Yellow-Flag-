@@ -109,6 +109,7 @@ function mapRace(row, questionCount) {
     status: statusLabels[row.status] ?? row.status,
     databaseStatus: row.status,
     sprintWeekend: false,
+    isDemo: Boolean(row.is_demo),
     questions: questionCount,
   };
 }
@@ -148,7 +149,7 @@ export default function useAdminRaceWorkspace() {
       const [{ data: raceRows, error: raceError }, { data: questionRows, error: questionError }] = await Promise.all([
         supabase
           .from('races')
-          .select('id, round_number, slug, race_name, circuit_name, country_code, opens_at, closes_at, race_starts_at, status, seasons(year, name)')
+          .select('id, round_number, slug, race_name, circuit_name, country_code, opens_at, closes_at, race_starts_at, status, is_demo, seasons(year, name)')
           .order('race_starts_at', { ascending: false }),
         supabase
           .from('race_questions')
@@ -228,6 +229,39 @@ export default function useAdminRaceWorkspace() {
     setDirtyRaceIds((current) => new Set(current).add(raceId));
   }, []);
 
+  const createDemoRace = useCallback(async ({ name, opensAt, closesAt }) => {
+    const roster = getAdminRosterForSeason(2026);
+    const questions = createDefaultQuestionSet();
+    const payload = questions.map((question, index) => {
+      const isConstructor = question.type === 'Constructor';
+      const options = (isConstructor ? roster.constructors : roster.drivers).map((option, optionIndex) => ({
+        option_value: isConstructor ? option.fullName : option.name,
+        option_label: isConstructor ? option.fullName : option.name,
+        sort_order: optionIndex + 1,
+        is_active: true,
+      }));
+      return {
+        question_number: index + 1,
+        question_key: question.key,
+        question_text: question.text,
+        answer_type: isConstructor ? 'constructor' : 'driver',
+        is_active: true,
+        options,
+      };
+    });
+
+    const { data, error } = await supabase.rpc('admin_create_demo_race', {
+      p_race_name: name,
+      p_opens_at: fromSriLankaInput(opensAt),
+      p_closes_at: fromSriLankaInput(closesAt),
+      p_questions: payload,
+    });
+    if (error) throw error;
+    await loadWorkspace();
+    setSelectedRaceId(String(data.race_id));
+    return data;
+  }, [loadWorkspace]);
+
   const updateQuestion = useCallback((raceId, questionId, updates) => {
     setQuestionsByRaceId((current) => ({
       ...current,
@@ -292,6 +326,7 @@ export default function useAdminRaceWorkspace() {
   const maximumPoints = questions.reduce((total, question) => total + question.points, 0);
 
   return {
+    createDemoRace,
     createQuestionsForRace,
     dirtyRaceIds,
     discardQuestionChanges,
