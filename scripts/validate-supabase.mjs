@@ -24,6 +24,7 @@ assert.deepEqual(activeMigrations, [
   '20260817120000_admin_user_access_management.sql',
   '20260817150000_public_host_championship.sql',
   '20260817180000_isolated_demo_races.sql',
+  '20260817181000_reload_postgrest_schema.sql',
 ]);
 
 const archivedMigrations = (await readdir(archiveMigrationDirectory))
@@ -66,6 +67,10 @@ const hostChampionshipMigration = await readFile(
 );
 const demoRaceMigration = await readFile(
   path.join(migrationDirectory, activeMigrations[6]),
+  'utf8'
+);
+const postgrestReloadMigration = await readFile(
+  path.join(migrationDirectory, activeMigrations[7]),
   'utf8'
 );
 const config = await readFile(path.join(supabaseDirectory, 'config.toml'), 'utf8');
@@ -405,6 +410,7 @@ assert.match(normalizedDemoRace, /perform public\.admin_save_race_questions\(sav
 assert.match(normalizedDemoRace, /and not race\.is_demo/);
 assert.match(adminRacesScreen, /Create Demo Race/);
 assert.match(demoRaceModal, /Demo scores never count toward season or Hosts Championship totals/);
+assert.match(postgrestReloadMigration, /notify pgrst, 'reload schema'/i);
 
 console.log(
   'Validated the live production baseline, scoring, Auth provisioning, guarded race/user administration, public Host championship migrations, archived migrations 000-007, local seed, RLS/RPC contracts, and 245 pgTAP assertions.'
