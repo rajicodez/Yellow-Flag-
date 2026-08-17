@@ -112,7 +112,7 @@ export default function AdminLayout({ activeScreen, adminUser, onNavigate, onLog
   }, [drawerOpen]);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#080809] text-white">
+    <div className="admin-font min-h-screen overflow-x-hidden bg-[#080809] text-white">
       <aside className="fixed inset-y-0 left-0 z-50 hidden w-72 flex-col border-r border-white/10 bg-[#0d0d0f] lg:flex">
         <SidebarContent activeScreen={activeScreen} onNavigate={handleNavigate} onLogout={onLogout} />
       </aside>

@@ -47,7 +47,7 @@ export default function AdminLogin({ initialError = '', onAuthenticated }) {
   };
 
   return (
-    <main className="admin-grid-background relative flex min-h-screen items-center justify-center overflow-hidden bg-[#070708] px-4 py-10 text-white sm:px-6">
+    <main className="admin-font admin-grid-background relative flex min-h-screen items-center justify-center overflow-hidden bg-[#070708] px-4 py-10 text-white sm:px-6">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(250,204,21,0.11),transparent_32%),radial-gradient(circle_at_90%_90%,rgba(220,38,38,0.08),transparent_28%)]" />
       <div className="pointer-events-none absolute left-0 top-24 h-px w-1/3 bg-gradient-to-r from-red-600/70 to-transparent" />
       <div className="pointer-events-none absolute bottom-20 right-0 h-px w-2/5 bg-gradient-to-l from-yellow-400/60 to-transparent" />

@@ -29,7 +29,7 @@ const screenForPath = (pathname) => (
 
 function AdminAccessLoading() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#070708] text-white">
+    <main className="admin-font flex min-h-screen items-center justify-center bg-[#070708] text-white">
       <div role="status" className="flex items-center gap-3 text-sm font-bold text-zinc-300">
         <LoaderCircle className="h-5 w-5 animate-spin text-yellow-400" aria-hidden="true" />
         Verifying administrator access...
