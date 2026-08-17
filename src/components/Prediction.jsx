@@ -572,24 +572,24 @@ export default function Prediction() {
                   )}
                 </div>
 
-                <div className="mt-6 flex w-full flex-row justify-around gap-3 sm:mt-0 sm:w-auto sm:flex-col sm:justify-center">
-                <div className="flex items-center gap-4 rounded-xl border border-white/5 bg-white/5 px-6 py-4 backdrop-blur-sm transition-colors hover:bg-white/10">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-yellow-400/25 bg-yellow-400/10 text-yellow-400">
-                    <HelpCircle className="h-6 w-6" strokeWidth={2} />
+                <div className="mt-6 grid w-full grid-cols-2 gap-2 sm:mt-0 sm:flex sm:w-auto sm:flex-col sm:justify-center sm:gap-3">
+                <div className="flex min-w-0 items-center gap-2 rounded-xl border border-white/5 bg-white/5 px-2 py-3 backdrop-blur-sm transition-colors hover:bg-white/10 sm:gap-4 sm:px-6 sm:py-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-yellow-400/25 bg-yellow-400/10 text-yellow-400 sm:h-12 sm:w-12">
+                    <HelpCircle className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2} />
                   </div>
-                  <div>
-                    <div className="font-display text-2xl font-black leading-none text-white">7</div>
-                    <div className="mt-1 text-xs font-bold uppercase tracking-widest text-yellow-400">Questions</div>
+                  <div className="min-w-0">
+                    <div className="font-display text-xl font-black leading-none text-white sm:text-2xl">7</div>
+                    <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.08em] text-yellow-400 sm:text-xs sm:tracking-widest">Questions</div>
                   </div>
                 </div>
                 
-                <div className="flex items-center gap-4 rounded-xl border border-white/5 bg-white/5 px-6 py-4 backdrop-blur-sm transition-colors hover:bg-white/10">
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-yellow-400/25 bg-yellow-400/10 text-yellow-400">
-                    <Star className="h-6 w-6" strokeWidth={2} />
+                <div className="flex min-w-0 items-center gap-2 rounded-xl border border-white/5 bg-white/5 px-2 py-3 backdrop-blur-sm transition-colors hover:bg-white/10 sm:gap-4 sm:px-6 sm:py-4">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-yellow-400/25 bg-yellow-400/10 text-yellow-400 sm:h-12 sm:w-12">
+                    <Star className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2} />
                   </div>
-                  <div>
-                    <div className="font-display text-2xl font-black leading-none text-white">Max 7</div>
-                    <div className="mt-1 text-xs font-bold uppercase tracking-widest text-yellow-400">Points</div>
+                  <div className="min-w-0">
+                    <div className="whitespace-nowrap font-display text-xl font-black leading-none text-white sm:text-2xl">Max 7</div>
+                    <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.08em] text-yellow-400 sm:text-xs sm:tracking-widest">Points</div>
                   </div>
                 </div>
               </div>
