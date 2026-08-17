@@ -25,6 +25,7 @@ assert.deepEqual(activeMigrations, [
   '20260817150000_public_host_championship.sql',
   '20260817180000_isolated_demo_races.sql',
   '20260817181000_reload_postgrest_schema.sql',
+  '20260817183000_admin_race_overrides.sql',
 ]);
 
 const archivedMigrations = (await readdir(archiveMigrationDirectory))
@@ -71,6 +72,10 @@ const demoRaceMigration = await readFile(
 );
 const postgrestReloadMigration = await readFile(
   path.join(migrationDirectory, activeMigrations[7]),
+  'utf8'
+);
+const raceOverrideMigration = await readFile(
+  path.join(migrationDirectory, activeMigrations[8]),
   'utf8'
 );
 const config = await readFile(path.join(supabaseDirectory, 'config.toml'), 'utf8');
@@ -147,6 +152,11 @@ const adminRacesScreen = await readFile(
 );
 const demoRaceModal = await readFile(
   path.join(root, 'src', 'components', 'admin', 'DemoRaceModal.jsx'),
+  'utf8'
+);
+const scheduleData = await readFile(path.join(root, 'src', 'data', 'schedule.js'), 'utf8');
+const dashboardScreen = await readFile(
+  path.join(root, 'src', 'components', 'admin', 'screens', 'DashboardScreen.jsx'),
   'utf8'
 );
 
@@ -394,8 +404,10 @@ assert.match(myPredictions, /from\('prediction_entries'\)/);
 assert.match(myPredictions, /from\('prediction_answers'\)/);
 assert.match(myPredictions, /from\('race_prediction_leaderboard'\)/);
 assert.match(myPredictions, /entry\.competition === 'host' \? '\?competition=host'/);
-assert.match(adminRaceWorkspace, /rpc\('admin_upsert_race'/);
+assert.match(adminRaceWorkspace, /'admin_override_race' : 'admin_upsert_race'/);
 assert.match(adminRaceWorkspace, /rpc\('admin_save_race_questions'/);
+assert.match(adminRaceWorkspace, /rpc\('admin_close_race_now'/);
+assert.match(adminRaceWorkspace, /rpc\('admin_open_race_now'/);
 assert.match(adminRaceWorkspace, /from\('race_questions'\)/);
 assert.match(adminRaceHistory, /useAdminResults\(\)/);
 assert.match(adminRaceHistory, /from\('race_prediction_leaderboard'\)/);
@@ -411,6 +423,17 @@ assert.match(normalizedDemoRace, /and not race\.is_demo/);
 assert.match(adminRacesScreen, /Create Demo Race/);
 assert.match(demoRaceModal, /Demo scores never count toward season or Hosts Championship totals/);
 assert.match(postgrestReloadMigration, /notify pgrst, 'reload schema'/i);
+const normalizedRaceOverride = raceOverrideMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
+assert.match(normalizedRaceOverride, /create table if not exists public\.race_admin_events/);
+assert.match(normalizedRaceOverride, /create or replace function public\.admin_override_race\(/);
+assert.match(normalizedRaceOverride, /create or replace function public\.admin_close_race_now\(p_race_id uuid\)/);
+assert.match(normalizedRaceOverride, /create or replace function public\.admin_open_race_now\(p_race_id uuid\)/);
+assert.match(normalizedRaceOverride, /set opens_at = least\(opens_at, closed_at - interval '1 second'\), closes_at = closed_at/);
+assert.match(normalizedRaceOverride, /core_race_identity_locked_after_submissions/);
+assert.match(dashboardScreen, /Close Predictions Now/);
+assert.match(dashboardScreen, /Open Predictions Now/);
+assert.match(scheduleData, /Italian GP'.*raceTime: '06 Sep, 06:30 PM'/);
+assert.match(scheduleData, /Spanish GP'.*track: 'Madring'.*raceTime: '13 Sep, 06:30 PM'/);
 
 console.log(
   'Validated the live production baseline, scoring, Auth provisioning, guarded race/user administration, public Host championship migrations, archived migrations 000-007, local seed, RLS/RPC contracts, and 245 pgTAP assertions.'

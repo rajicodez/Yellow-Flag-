@@ -4,19 +4,15 @@ import { activeF1Season, f1Schedule2026 } from '../../data/schedule';
 import { Field, inputClass, Modal } from './AdminUI';
 import UpcomingRaceSelect from './UpcomingRaceSelect';
 
-const raceDateFormatter = new Intl.DateTimeFormat('en-GB', {
-  day: '2-digit',
-  month: 'long',
-  year: 'numeric',
-  timeZone: 'Asia/Colombo',
-});
-
-const raceTimeFormatter = new Intl.DateTimeFormat('en-GB', {
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: true,
-  timeZone: 'Asia/Colombo',
-});
+const toSriLankaInput = (value) => {
+  if (!value) return '';
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+    hourCycle: 'h23', timeZone: 'Asia/Colombo',
+  }).formatToParts(new Date(value));
+  const part = (type) => parts.find((item) => item.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`;
+};
 
 function createSlug(name) {
   return name
@@ -27,26 +23,13 @@ function createSlug(name) {
     .replace(/^-+|-+$/g, '');
 }
 
-function CalendarField({ label, value, placeholder = 'Select an upcoming race first' }) {
-  return (
-    <Field label={label} hint={value ? 'Auto-filled from race calendar' : undefined}>
-      <input
-        value={value ?? ''}
-        placeholder={placeholder}
-        readOnly
-        disabled={!value}
-        className={`${inputClass} cursor-default bg-white/[0.035] text-zinc-300 disabled:cursor-not-allowed disabled:opacity-55`}
-      />
-    </Field>
-  );
-}
-
 export default function RaceFormModal({ race, races = [], open, onClose, onSave }) {
   const isEditing = Boolean(race);
   const [selectedCalendarId, setSelectedCalendarId] = useState('');
   const [predictionOpens, setPredictionOpens] = useState('');
   const [predictionCloses, setPredictionCloses] = useState('');
   const [status, setStatus] = useState('Draft');
+  const [details, setDetails] = useState({ name: '', circuit: '', country: '', countryCode: '', round: '', season: activeF1Season, raceStart: '' });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [pendingCalendarId, setPendingCalendarId] = useState('');
@@ -70,14 +53,17 @@ export default function RaceFormModal({ race, races = [], open, onClose, onSave 
   );
 
   const selectedCalendarRace = f1Schedule2026.find((calendarRace) => calendarRace.id === selectedCalendarId);
-  const officialRace = isEditing ? race : selectedCalendarRace;
-
   useEffect(() => {
     if (!open) return;
     setSelectedCalendarId(race?.calendarId ?? '');
     setPredictionOpens(race?.predictionOpens ?? '');
     setPredictionCloses(race?.predictionCloses ?? '');
     setStatus(race?.status ?? 'Draft');
+    setDetails({
+      name: race?.name ?? '', circuit: race?.circuit ?? '', country: race?.country ?? '',
+      countryCode: race?.countryCode ?? '', round: race?.round ?? '', season: race?.season ?? activeF1Season,
+      raceStart: toSriLankaInput(race?.raceStart),
+    });
     setSaving(false);
     setErrors({});
     setPendingCalendarId('');
@@ -94,6 +80,7 @@ export default function RaceFormModal({ race, races = [], open, onClose, onSave 
     setPredictionOpens('');
     setPredictionCloses('');
     setStatus('Draft');
+    setDetails({ name: '', circuit: '', country: '', countryCode: '', round: '', season: activeF1Season, raceStart: '' });
     setSaving(false);
     setErrors({});
     setPendingCalendarId('');
@@ -115,6 +102,11 @@ export default function RaceFormModal({ race, races = [], open, onClose, onSave 
     setPredictionOpens('');
     setPredictionCloses('');
     setStatus('Draft');
+    setDetails({
+      name: nextRace.name, circuit: nextRace.circuit, country: nextRace.country,
+      countryCode: '', round: nextRace.round, season: nextRace.season,
+      raceStart: toSriLankaInput(nextRace.raceStart),
+    });
     setErrors({});
     setPendingCalendarId('');
   };
@@ -145,6 +137,7 @@ export default function RaceFormModal({ race, races = [], open, onClose, onSave 
     const formData = new FormData(event.currentTarget);
     const submittedPredictionOpens = String(formData.get('predictionOpens') ?? '');
     const submittedPredictionCloses = String(formData.get('predictionCloses') ?? '');
+    const submittedRaceStart = String(formData.get('raceStart') ?? '');
 
     if (!isEditing && !selectedCalendarRace) {
       nextErrors.race = 'Select an upcoming race before continuing.';
@@ -154,8 +147,13 @@ export default function RaceFormModal({ race, races = [], open, onClose, onSave 
 
     if (!submittedPredictionOpens || !submittedPredictionCloses) {
       nextErrors.prediction = 'Prediction opening and closing times are required.';
-    } else if (new Date(submittedPredictionCloses).getTime() <= new Date(submittedPredictionOpens).getTime()) {
+    } else if (new Date(`${submittedPredictionCloses}:00+05:30`).getTime() <= new Date(`${submittedPredictionOpens}:00+05:30`).getTime()) {
       nextErrors.prediction = 'Prediction closing time must be later than the opening time.';
+    }
+    if (!details.name.trim() || !details.circuit.trim() || !details.country.trim() || !details.round || !details.season || !submittedRaceStart) {
+      nextErrors.details = 'Complete all race details before saving.';
+    } else if (new Date(`${submittedRaceStart}:00+05:30`).getTime() <= new Date(`${submittedPredictionCloses}:00+05:30`).getTime()) {
+      nextErrors.details = 'Race start time must be later than the prediction closing time.';
     }
 
     if (Object.keys(nextErrors).length) {
@@ -163,18 +161,18 @@ export default function RaceFormModal({ race, races = [], open, onClose, onSave 
       return;
     }
 
-    const sourceRace = isEditing ? race : selectedCalendarRace;
     const savedRace = {
       ...race,
-      id: race?.id ?? sourceRace.id,
-      calendarId: sourceRace.calendarId ?? sourceRace.id,
-      name: sourceRace.name,
-      slug: createSlug(sourceRace.name),
-      circuit: sourceRace.circuit,
-      country: sourceRace.country,
-      round: sourceRace.round,
-      season: sourceRace.season,
-      raceStart: sourceRace.raceStart,
+      id: race?.id ?? selectedCalendarRace.id,
+      calendarId: race?.calendarId ?? selectedCalendarRace.id,
+      name: details.name.trim(),
+      slug: race?.slug ?? createSlug(details.name),
+      circuit: details.circuit.trim(),
+      country: details.country.trim(),
+      countryCode: details.countryCode.trim().toUpperCase() || undefined,
+      round: Number(details.round),
+      season: Number(details.season),
+      raceStart: new Date(`${submittedRaceStart}:00+05:30`).toISOString(),
       predictionOpens: submittedPredictionOpens,
       predictionCloses: submittedPredictionCloses,
       status,
@@ -191,13 +189,6 @@ export default function RaceFormModal({ race, races = [], open, onClose, onSave 
       setSaving(false);
     }
   };
-
-  const raceDate = officialRace?.raceStart
-    ? raceDateFormatter.format(new Date(officialRace.raceStart))
-    : '';
-  const raceStartTime = officialRace?.raceStart
-    ? `${raceTimeFormatter.format(new Date(officialRace.raceStart))} · Sri Lanka time`
-    : '';
 
   return (
     <Modal
@@ -231,21 +222,22 @@ export default function RaceFormModal({ race, races = [], open, onClose, onSave 
         <div className="flex flex-col gap-3 border-b border-white/10 pb-4 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h4 className="text-sm font-black uppercase tracking-[0.14em] text-white">Official race details</h4>
-            <p className="mt-1 text-xs text-zinc-500">Read-only values shared with the public race calendar.</p>
+            <p className="mt-1 text-xs text-zinc-500">Calendar values are suggested defaults. Administrators can correct official changes.</p>
           </div>
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-yellow-400/25 bg-yellow-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-yellow-300">
-            <CalendarCheck2 className="h-3 w-3" aria-hidden="true" /> Auto-filled from race calendar
+            <CalendarCheck2 className="h-3 w-3" aria-hidden="true" /> Editable calendar defaults
           </span>
         </div>
 
-        <CalendarField label="Race name" value={officialRace?.name} />
-        <CalendarField label="Slug" value={officialRace?.name ? createSlug(officialRace.name) : ''} />
-        <CalendarField label="Circuit" value={officialRace?.circuit} />
-        <CalendarField label="Country" value={officialRace?.country} />
-        <CalendarField label="Round" value={officialRace?.round ? String(officialRace.round) : ''} />
-        <CalendarField label="Season" value={officialRace?.season ? String(officialRace.season) : ''} />
-        <CalendarField label="Race date" value={raceDate} />
-        <CalendarField label="Race start time" value={raceStartTime} />
+        <Field label="Race name"><input value={details.name} onChange={(event) => setDetails((current) => ({ ...current, name: event.target.value }))} className={inputClass} required /></Field>
+        <Field label="Slug" hint={isEditing ? 'Stable after creation' : 'Generated automatically'}><input value={race?.slug ?? createSlug(details.name)} readOnly className={`${inputClass} bg-white/[0.035] text-zinc-400`} /></Field>
+        <Field label="Circuit / track"><input value={details.circuit} onChange={(event) => setDetails((current) => ({ ...current, circuit: event.target.value }))} className={inputClass} required /></Field>
+        <Field label="Country"><input value={details.country} onChange={(event) => setDetails((current) => ({ ...current, country: event.target.value }))} className={inputClass} required /></Field>
+        <Field label="Country code" hint="Optional ISO code, e.g. IT"><input value={details.countryCode} onChange={(event) => setDetails((current) => ({ ...current, countryCode: event.target.value.slice(0, 2).toUpperCase() }))} className={inputClass} maxLength={2} /></Field>
+        <Field label="Round"><input type="number" min="1" value={details.round} onChange={(event) => setDetails((current) => ({ ...current, round: event.target.value }))} className={inputClass} required /></Field>
+        <Field label="Season"><input type="number" min="2020" max="2100" value={details.season} onChange={(event) => setDetails((current) => ({ ...current, season: event.target.value }))} className={inputClass} required /></Field>
+        <Field label="Race start" hint="Sri Lanka time"><input type="datetime-local" name="raceStart" value={details.raceStart} onChange={(event) => setDetails((current) => ({ ...current, raceStart: event.target.value }))} className={inputClass} required /></Field>
+        {errors.details && <p role="alert" className="-mt-2 text-xs font-semibold text-red-300 sm:col-span-2">{errors.details}</p>}
 
         <div className="border-b border-white/10 pb-4 sm:col-span-2">
           <h4 className="text-sm font-black uppercase tracking-[0.14em] text-white">Admin-controlled details</h4>

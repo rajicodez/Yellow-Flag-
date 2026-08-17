@@ -203,7 +203,7 @@ export default function useAdminRaceWorkspace() {
     const countryCode = race.countryCode || countryCodesByName[race.country];
     if (!countryCode) throw new Error(`Country code is not configured for ${race.country}.`);
 
-    const { data, error } = await supabase.rpc('admin_upsert_race', {
+    const { data, error } = await supabase.rpc(isEditing ? 'admin_override_race' : 'admin_upsert_race', {
       p_race_id: isEditing ? race.id : null,
       p_season_year: race.season,
       p_season_name: race.seasonName || `${race.season} Formula 1 World Championship`,
@@ -218,6 +218,20 @@ export default function useAdminRaceWorkspace() {
       p_status: status,
     });
 
+    if (error) throw error;
+    await loadWorkspace();
+    return data;
+  }, [loadWorkspace]);
+
+  const closeRaceNow = useCallback(async (raceId) => {
+    const { data, error } = await supabase.rpc('admin_close_race_now', { p_race_id: raceId });
+    if (error) throw error;
+    await loadWorkspace();
+    return data;
+  }, [loadWorkspace]);
+
+  const openRaceNow = useCallback(async (raceId) => {
+    const { data, error } = await supabase.rpc('admin_open_race_now', { p_race_id: raceId });
     if (error) throw error;
     await loadWorkspace();
     return data;
@@ -326,6 +340,8 @@ export default function useAdminRaceWorkspace() {
   const maximumPoints = questions.reduce((total, question) => total + question.points, 0);
 
   return {
+    closeRaceNow,
+    openRaceNow,
     createDemoRace,
     createQuestionsForRace,
     dirtyRaceIds,

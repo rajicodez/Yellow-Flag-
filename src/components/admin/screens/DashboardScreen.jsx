@@ -81,9 +81,10 @@ function useDashboardData(raceId) {
   return { ...data, loading, error, refresh };
 }
 
-export default function DashboardScreen({ races, selectedRace, saveRace, sprintWeekend, onNavigate }) {
+export default function DashboardScreen({ closeRaceNow, openRaceNow, races, selectedRace, saveRace, sprintWeekend, onNavigate }) {
   const [raceModalOpen, setRaceModalOpen] = useState(false);
   const [closeModalOpen, setCloseModalOpen] = useState(false);
+  const [openModalOpen, setOpenModalOpen] = useState(false);
   const [notice, setNotice] = useState('');
   const [saving, setSaving] = useState(false);
   const [actionError, setActionError] = useState('');
@@ -115,12 +116,28 @@ export default function DashboardScreen({ races, selectedRace, saveRace, sprintW
     setSaving(true);
     setActionError('');
     try {
-      await saveRace({ ...currentRace, status: 'Closed' }, true);
+      await closeRaceNow(currentRace.id);
       setCloseModalOpen(false);
       setNotice(`Predictions for ${currentRace.name} are now closed.`);
       await dashboard.refresh();
     } catch (closeError) {
       setActionError(closeError.message || 'Unable to close predictions.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const openPredictions = async () => {
+    if (!currentRace) return;
+    setSaving(true);
+    setActionError('');
+    try {
+      const result = await openRaceNow(currentRace.id);
+      setOpenModalOpen(false);
+      setNotice(`Predictions for ${currentRace.name} are open now until ${dateTimeFormatter.format(new Date(result.closes_at))}.`);
+      await dashboard.refresh();
+    } catch (openError) {
+      setActionError(openError.message || 'Unable to open predictions.');
     } finally {
       setSaving(false);
     }
@@ -166,6 +183,7 @@ export default function DashboardScreen({ races, selectedRace, saveRace, sprintW
               </div>
               <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <button type="button" onClick={() => setRaceModalOpen(true)} disabled={['Scored', 'Published'].includes(currentRace.status)} className="flex items-center justify-center gap-2 rounded-xl border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-white transition hover:border-yellow-400/40 hover:text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/50 disabled:cursor-not-allowed disabled:opacity-40"><Pencil className="h-4 w-4" aria-hidden="true" /> Edit Race</button>
+                <button type="button" onClick={() => setOpenModalOpen(true)} disabled={currentRace.status === 'Open' || ['Scored', 'Published'].includes(currentRace.status)} className="rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-emerald-300 transition hover:bg-emerald-400/20 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 disabled:cursor-not-allowed disabled:opacity-40">Open Predictions Now</button>
                 <button type="button" onClick={() => setCloseModalOpen(true)} disabled={currentRace.status !== 'Open'} className="rounded-xl border border-red-500/25 bg-red-500/10 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-red-300 transition hover:bg-red-500/20 focus:outline-none focus:ring-2 focus:ring-red-400/50 disabled:cursor-not-allowed disabled:opacity-40">Close Predictions</button>
                 <button type="button" onClick={() => onNavigate('raceHistory')} className="flex items-center justify-center gap-2 rounded-xl border border-yellow-400/25 bg-yellow-400/10 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-yellow-300 transition hover:border-yellow-400/50 hover:bg-yellow-400/15 focus:outline-none focus:ring-2 focus:ring-yellow-400/50"><History className="h-4 w-4" aria-hidden="true" /> View Previous Results</button>
               </div>
@@ -180,10 +198,15 @@ export default function DashboardScreen({ races, selectedRace, saveRace, sprintW
       )}
 
       <RaceFormModal race={currentRace} races={races} open={raceModalOpen} onClose={() => setRaceModalOpen(false)} onSave={handleSaveRace} />
-      <Modal open={closeModalOpen} onClose={() => !saving && setCloseModalOpen(false)} title="Close Predictions?" description="This immediately prevents any new or updated entries for this race.">
-        <p className="text-sm leading-6 text-zinc-300">Confirm that FP1 has begun for {currentRace?.name}. This action updates the live database.</p>
+      <Modal open={openModalOpen} onClose={() => !saving && setOpenModalOpen(false)} title="Open Predictions Now?" description="This immediately makes the selected race available for Fan and Host submissions.">
+        <p className="text-sm leading-6 text-zinc-300">If the configured deadline has already passed, the system automatically provides a new 30-minute prediction window. You can adjust it from Edit Race.</p>
         {actionError && <p role="alert" className="mt-4 text-sm font-semibold text-red-300">{actionError}</p>}
-        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" disabled={saving} onClick={() => setCloseModalOpen(false)} className="rounded-xl border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-zinc-300 disabled:opacity-50">Cancel</button><button type="button" disabled={saving} onClick={closePredictions} className="rounded-xl bg-red-500 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-white disabled:cursor-wait disabled:opacity-60">{saving ? 'Closing...' : 'Close at FP1'}</button></div>
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" disabled={saving} onClick={() => setOpenModalOpen(false)} className="rounded-xl border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-zinc-300 disabled:opacity-50">Cancel</button><button type="button" disabled={saving} onClick={openPredictions} className="rounded-xl bg-emerald-400 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-black disabled:cursor-wait disabled:opacity-60">{saving ? 'Opening...' : 'Open Predictions Now'}</button></div>
+      </Modal>
+      <Modal open={closeModalOpen} onClose={() => !saving && setCloseModalOpen(false)} title="Close Predictions?" description="This immediately prevents any new or updated entries for this race.">
+        <p className="text-sm leading-6 text-zinc-300">This immediately locks {currentRace?.name}, moves its effective deadline to now, and enables official answers and scoring. Use it at FP1 or to finish a demo rehearsal early.</p>
+        {actionError && <p role="alert" className="mt-4 text-sm font-semibold text-red-300">{actionError}</p>}
+        <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button type="button" disabled={saving} onClick={() => setCloseModalOpen(false)} className="rounded-xl border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-zinc-300 disabled:opacity-50">Cancel</button><button type="button" disabled={saving} onClick={closePredictions} className="rounded-xl bg-red-500 px-5 py-3 text-xs font-black uppercase tracking-[0.16em] text-white disabled:cursor-wait disabled:opacity-60">{saving ? 'Closing...' : 'Close Predictions Now'}</button></div>
       </Modal>
     </div>
   );
