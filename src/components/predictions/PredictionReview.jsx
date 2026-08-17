@@ -4,7 +4,7 @@ import { Edit2, CheckCircle2, ShieldCheck } from 'lucide-react';
 import { driversData } from '../../data/drivers';
 import { f1Teams2026 } from '../../data/teams';
 
-export default function PredictionReview({ answers, questions, onSubmit, onEdit, isSubmitting }) {
+export default function PredictionReview({ answers, questions, onSubmit, onEdit, onBackToQuestions, isSubmitting }) {
   const totalQuestions = questions.length;
   const answeredQuestions = questions.filter(q => Boolean(answers[q.id])).length;
   
@@ -72,7 +72,8 @@ export default function PredictionReview({ answers, questions, onSubmit, onEdit,
                 
                 <button
                   onClick={() => onEdit(index + 1)}
-                  className="p-2 text-zinc-400 hover:text-yellow-400 transition-colors"
+                  disabled={isSubmitting}
+                  className="p-2 text-zinc-400 hover:text-yellow-400 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   aria-label={`Edit question ${index + 1}`}
                 >
                   <Edit2 className="h-5 w-5" />
@@ -86,8 +87,9 @@ export default function PredictionReview({ answers, questions, onSubmit, onEdit,
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-white/10">
         <button
-          onClick={() => onEdit(totalQuestions)}
-          className="flex-1 px-6 py-4 rounded-xl border border-white/20 bg-transparent font-display font-bold uppercase tracking-widest text-white transition-colors hover:bg-white/5"
+          onClick={onBackToQuestions}
+          disabled={isSubmitting}
+          className="flex-1 px-6 py-4 rounded-xl border border-white/20 bg-transparent font-display font-bold uppercase tracking-widest text-white transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Back to Questions
         </button>

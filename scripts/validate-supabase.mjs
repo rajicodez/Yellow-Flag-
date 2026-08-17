@@ -106,6 +106,14 @@ const predictionClient = await readFile(
   path.join(root, 'src', 'components', 'predictions', 'DutchGrandPrixPrediction.jsx'),
   'utf8'
 );
+const predictionQuestionCard = await readFile(
+  path.join(root, 'src', 'components', 'predictions', 'PredictionQuestionCard.jsx'),
+  'utf8'
+);
+const predictionReview = await readFile(
+  path.join(root, 'src', 'components', 'predictions', 'PredictionReview.jsx'),
+  'utf8'
+);
 const predictionLanding = await readFile(
   path.join(root, 'src', 'components', 'Prediction.jsx'),
   'utf8'
@@ -347,6 +355,13 @@ assert.match(predictionClient, /race_question_options/);
 assert.match(predictionClient, /p_race_slug: raceConfig\.slug/);
 assert.doesNotMatch(predictionClient, /import \{ dutchGPQuestions \}/);
 assert.doesNotMatch(predictionClient, /prediction_opens_at|prediction_locks_at/);
+assert.match(predictionClient, /isEditingFromReview/);
+assert.match(predictionClient, /setReviewEditSnapshot/);
+assert.match(predictionClient, /onEdit=\{handleEditQuestion\}/);
+assert.match(predictionClient, /onBackToQuestions=\{handleBackToQuestions\}/);
+assert.match(predictionQuestionCard, /Save Change/);
+assert.match(predictionQuestionCard, /Cancel Edit/);
+assert.match(predictionReview, /onBackToQuestions/);
 assert.match(predictionLanding, /raceConfig|race\.opens_at/);
 assert.match(predictionLanding, /closes_at/);
 assert.match(predictionLanding, /\.neq\('status', 'draft'\)/);

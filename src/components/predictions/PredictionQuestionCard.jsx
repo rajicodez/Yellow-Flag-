@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, ChevronLeft, AlertCircle } from 'lucide-react';
+import { ChevronRight, ChevronLeft, AlertCircle, CheckCircle2 } from 'lucide-react';
 import DriverOptionCard from './DriverOptionCard';
 import TeamOptionCard from './TeamOptionCard';
 import { driversData } from '../../data/drivers';
@@ -14,7 +14,9 @@ export default function PredictionQuestionCard({
   onPrev, 
   isFirst, 
   isLast,
-  validationError
+  validationError,
+  isReviewEdit = false,
+  onCancelEdit,
 }) {
   const allowedValues = new Set((question.options ?? []).map((option) => option.value));
   const drivers = driversData.filter((driver) => !allowedValues.size || allowedValues.has(driver.name));
@@ -49,6 +51,11 @@ export default function PredictionQuestionCard({
       
       {/* Question Header */}
       <div className="mb-6 border-b border-white/10 pb-6">
+        {isReviewEdit && (
+          <p className="mb-4 rounded-lg border border-yellow-400/20 bg-yellow-400/10 px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-yellow-300">
+            Editing one answer · Save to return to review
+          </p>
+        )}
         <div className="flex items-center gap-2 text-yellow-400 mb-2">
           <span className="font-display text-xs font-bold tracking-widest uppercase rounded bg-yellow-400/10 px-2 py-1">
             {question.category}
@@ -110,22 +117,24 @@ export default function PredictionQuestionCard({
       {/* Navigation Footer */}
       <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-6">
         <button
-          onClick={onPrev}
-          disabled={isFirst}
+          onClick={isReviewEdit ? onCancelEdit : onPrev}
+          disabled={!isReviewEdit && isFirst}
           className={`flex items-center gap-2 px-6 py-3 font-display font-bold uppercase tracking-widest transition-colors ${
-            isFirst ? 'text-zinc-600 cursor-not-allowed' : 'text-white hover:text-yellow-400'
+            !isReviewEdit && isFirst ? 'text-zinc-600 cursor-not-allowed' : 'text-white hover:text-yellow-400'
           }`}
         >
           <ChevronLeft className="h-5 w-5" />
-          Previous
+          {isReviewEdit ? 'Cancel Edit' : 'Previous'}
         </button>
 
         <button
           onClick={onNext}
           className="group flex items-center gap-2 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 px-8 py-3 font-display font-black uppercase tracking-widest text-black transition-all hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(250,204,21,0.4)]"
         >
-          {isLast ? 'Review' : 'Next'}
-          <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-1" strokeWidth={3} />
+          {isReviewEdit ? 'Save Change' : isLast ? 'Review' : 'Next'}
+          {isReviewEdit
+            ? <CheckCircle2 className="h-5 w-5" strokeWidth={3} />
+            : <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-1" strokeWidth={3} />}
         </button>
       </div>
 

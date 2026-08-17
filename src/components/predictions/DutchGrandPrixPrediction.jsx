@@ -187,6 +187,8 @@ export default function DutchGrandPrixPrediction() {
   const [raceQuestions, setRaceQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [stage, setStage] = useState('questions'); // 'questions', 'review', 'success'
+  const [isEditingFromReview, setIsEditingFromReview] = useState(false);
+  const [reviewEditSnapshot, setReviewEditSnapshot] = useState(null);
   const [validationError, setValidationError] = useState('');
   const [isClosed, setIsClosed] = useState(true);
   const [submissionData, setSubmissionData] = useState(null);
@@ -501,6 +503,14 @@ export default function DutchGrandPrixPrediction() {
     }
 
     setValidationError('');
+
+    if (isEditingFromReview) {
+      setIsEditingFromReview(false);
+      setReviewEditSnapshot(null);
+      setStage('review');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     
     if (currentQuestionIndex < raceQuestions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
@@ -517,6 +527,44 @@ export default function DutchGrandPrixPrediction() {
       setCurrentQuestionIndex(prev => prev - 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
+  };
+
+  const handleCancelReviewEdit = () => {
+    if (reviewEditSnapshot) {
+      setAnswers((previousAnswers) => ({
+        ...previousAnswers,
+        [reviewEditSnapshot.questionId]: reviewEditSnapshot.answer,
+      }));
+    }
+    setValidationError('');
+    setIsEditingFromReview(false);
+    setReviewEditSnapshot(null);
+    setStage('review');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleEditQuestion = (num) => {
+    const question = raceQuestions[num - 1];
+    if (!question) return;
+
+    setValidationError('');
+    setReviewEditSnapshot({
+      questionId: question.id,
+      answer: answers[question.id],
+    });
+    setCurrentQuestionIndex(num - 1);
+    setIsEditingFromReview(true);
+    setStage('questions');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleBackToQuestions = () => {
+    setValidationError('');
+    setCurrentQuestionIndex(raceQuestions.length - 1);
+    setIsEditingFromReview(false);
+    setReviewEditSnapshot(null);
+    setStage('questions');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleNavigateQuestion = (num) => {
@@ -905,6 +953,8 @@ export default function DutchGrandPrixPrediction() {
                     isFirst={currentQuestionIndex === 0}
                     isLast={currentQuestionIndex === raceQuestions.length - 1}
                     validationError={validationError}
+                    isReviewEdit={isEditingFromReview}
+                    onCancelEdit={handleCancelReviewEdit}
                   />
                 </motion.div>
               )}
@@ -925,7 +975,8 @@ export default function DutchGrandPrixPrediction() {
                     answers={answers}
                     questions={raceQuestions}
                     onSubmit={handleSubmit}
-                    onEdit={handleNavigateQuestion}
+                    onEdit={handleEditQuestion}
+                    onBackToQuestions={handleBackToQuestions}
                     isSubmitting={isSubmitting}
                   />
                 </motion.div>
@@ -940,7 +991,11 @@ export default function DutchGrandPrixPrediction() {
                   <PredictionSuccess 
                     raceName={raceConfig.race_name}
                     submissionTime={submissionData?.submittedAt}
-                    onBackToQuestions={() => setStage('review')}
+                    onBackToQuestions={() => {
+                      setIsEditingFromReview(false);
+                      setReviewEditSnapshot(null);
+                      setStage('review');
+                    }}
                   />
                 </motion.div>
               )}
@@ -963,6 +1018,7 @@ export default function DutchGrandPrixPrediction() {
                         questions={raceQuestions}
                         onSubmit={() => {}}
                         onEdit={() => {}}
+                        onBackToQuestions={() => {}}
                         isSubmitting={true} // disable buttons
                       />
                     </div>
@@ -982,7 +1038,7 @@ export default function DutchGrandPrixPrediction() {
               onComplete={handleCountdownComplete} 
             />
             
-            {stage === 'questions' && !isClosed && (
+            {stage === 'questions' && !isClosed && !isEditingFromReview && (
               <div className="bg-[#121212]/80 rounded-xl border border-white/10 p-5 shadow-lg backdrop-blur-md">
                 <PredictionProgress 
                   currentQuestion={currentQuestionIndex + 1}
