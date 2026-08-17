@@ -598,30 +598,19 @@ export default function Prediction() {
 
             {/* Hosts Championship Card */}
             <div className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#121212] p-6 sm:p-8">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                 <div className="flex items-center gap-3 text-white">
                   <Trophy className="h-5 w-5 text-yellow-400" strokeWidth={2} />
                   <span className="font-display text-lg font-bold uppercase tracking-wider">Hosts Championship</span>
                 </div>
-                {/* Red Dots Pattern / Host Login */}
                 <button
                   ref={hostLoginTriggerRef}
                   type="button"
                   onClick={() => setIsHostLoginOpen(true)}
-                  aria-label="Host Login"
-                  className="group relative flex cursor-pointer gap-1.5 border-0 bg-transparent p-0"
+                  className="group inline-flex shrink-0 items-center gap-2 rounded-xl border border-yellow-400/35 bg-yellow-400/10 px-4 py-2.5 font-display text-xs font-black uppercase tracking-[0.14em] text-yellow-300 transition hover:border-yellow-300 hover:bg-yellow-400 hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#121212]"
                 >
-                  <span className="grid grid-cols-5 gap-1.5 opacity-50">
-                    {[...Array(10)].map((_, i) => (
-                      <span key={i} className="h-1.5 w-1.5 rounded-full bg-red-600" />
-                    ))}
-                  </span>
-                  <span
-                    role="tooltip"
-                    className="pointer-events-none absolute -top-8 right-0 whitespace-nowrap rounded border border-red-500/30 bg-black px-2 py-1 text-[10px] font-bold tracking-widest text-red-400 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-                  >
-                    HOST LOGIN
-                  </span>
+                  Host Prediction
+                  <ChevronsRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={3} aria-hidden="true" />
                 </button>
               </div>
 
