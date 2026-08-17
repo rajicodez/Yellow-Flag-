@@ -423,6 +423,14 @@ export default function Navbar({ activeSection }) {
                     >
                       My Predictions
                     </Link>
+                    <Link
+                      to="/predictions/leaderboard"
+                      role="menuitem"
+                      onClick={() => setIsAccountOpen(false)}
+                      className="flex w-full items-center rounded-xl px-3 py-2.5 text-sm font-bold text-zinc-200 transition hover:bg-yellow-400/10 hover:text-yellow-300"
+                    >
+                      Prediction Leaderboard
+                    </Link>
                     <button
                       type="button"
                       role="menuitem"

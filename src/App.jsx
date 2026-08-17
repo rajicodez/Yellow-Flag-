@@ -18,6 +18,7 @@ import Teams from './components/Teams';
 import Tracks from './components/Tracks';
 import AdminPanel from './components/admin/AdminPanel';
 import DutchGrandPrixPrediction from './components/predictions/DutchGrandPrixPrediction';
+import PredictionLeaderboard from './components/predictions/PredictionLeaderboard';
 import BackgroundEffects from './components/ui/BackgroundEffects';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { navItems } from './data/content';
@@ -213,6 +214,22 @@ function DriversPage() {
   );
 }
 
+function LeaderboardPage() {
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+  }, []);
+
+  return (
+    <>
+      <Navbar activeSection="leaderboard" />
+      <main>
+        <PredictionLeaderboard />
+      </main>
+      <Footer />
+    </>
+  );
+}
+
 function AppShell() {
   const location = useLocation();
   const isAdminRoute = location.pathname.startsWith('/admin');
@@ -230,6 +247,7 @@ function AppShell() {
         <Route path="/" element={<HomePage />} />
         <Route path="/drivers" element={<DriversPage />} />
         <Route path="/predictions/dutch-grand-prix" element={<DutchGrandPrixPrediction />} />
+        <Route path="/predictions/leaderboard" element={<LeaderboardPage />} />
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/admin/race-history" element={<AdminPanel />} />
         <Route path="*" element={<Navigate to="/" replace />} />

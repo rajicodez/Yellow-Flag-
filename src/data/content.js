@@ -15,6 +15,7 @@ export const navItems = [
   { id: 'home', label: 'Home' },
   { id: 'episodes', label: 'Episodes' },
   { id: 'predictions', label: 'Predictions', path: '/predictions/dutch-grand-prix' },
+  { id: 'leaderboard', label: 'Leaderboard', path: '/predictions/leaderboard' },
   { id: 'about', label: 'About' },
   { id: 'schedule', label: 'Schedule' },
   { id: 'tracks', label: 'Tracks' },
