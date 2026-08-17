@@ -260,11 +260,11 @@ export default function Navbar({ activeSection }) {
             : 'bg-transparent'
         }`}
       >
-      <div className="mx-auto flex max-w-[1800px] flex-wrap items-center justify-between gap-x-3 gap-y-0 px-5 py-3 md:px-8 min-[1750px]:flex-nowrap min-[1750px]:py-4">
+      <div className="mx-auto flex max-w-[1800px] flex-wrap items-center justify-between gap-x-3 gap-y-0 px-5 py-3 md:px-8 xl:flex-nowrap xl:py-4">
         <button
           type="button"
           onClick={() => handleNav('home')}
-          className="group flex items-center text-left"
+          className="group order-1 flex shrink-0 items-center text-left"
         >
           <img
             src="/logo.jpeg"
@@ -292,7 +292,7 @@ export default function Navbar({ activeSection }) {
           </span>
         </button>
 
-        <nav className="order-3 hidden w-full items-center justify-center gap-0.5 lg:flex min-[1750px]:order-none min-[1750px]:min-w-0 min-[1750px]:w-auto">
+        <nav className="order-3 hidden w-full items-center justify-center gap-0.5 lg:flex xl:order-2 xl:min-w-0 xl:flex-1 xl:w-auto">
           {navItems.map((item) =>
             item.path ? (
               <Link
@@ -316,7 +316,7 @@ export default function Navbar({ activeSection }) {
           )}
         </nav>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="order-2 flex shrink-0 items-center gap-2 xl:order-3">
           <button
             type="button"
             className="rounded-xl border border-white/10 p-3 text-white transition hover:border-yellow-400/30 hover:text-yellow-300 lg:hidden"
