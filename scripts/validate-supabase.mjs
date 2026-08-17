@@ -109,6 +109,10 @@ const adminRaceWorkspace = await readFile(
   path.join(root, 'src', 'components', 'admin', 'useAdminRaceWorkspace.js'),
   'utf8'
 );
+const adminRaceHistory = await readFile(
+  path.join(root, 'src', 'components', 'admin', 'screens', 'RaceHistoryScreen.jsx'),
+  'utf8'
+);
 const appRoutes = await readFile(path.join(root, 'src', 'App.jsx'), 'utf8');
 
 assert.ok(archivedSeed.length > 0, 'the proposed-schema seed is preserved');
@@ -337,6 +341,10 @@ assert.match(myPredictions, /entry\.competition === 'host' \? '\?competition=hos
 assert.match(adminRaceWorkspace, /rpc\('admin_upsert_race'/);
 assert.match(adminRaceWorkspace, /rpc\('admin_save_race_questions'/);
 assert.match(adminRaceWorkspace, /from\('race_questions'\)/);
+assert.match(adminRaceHistory, /useAdminResults\(\)/);
+assert.match(adminRaceHistory, /from\('race_prediction_leaderboard'\)/);
+assert.match(adminRaceHistory, /officialAnswersByRaceId/);
+assert.doesNotMatch(adminRaceHistory, /demoResultsByRaceId|demoLeaderboardByRaceId|DemoLabel/);
 assert.match(appRoutes, /path="\/predictions\/:raceSlug"/);
 assert.match(appRoutes, /path="\/predictions\/mine"/);
 
