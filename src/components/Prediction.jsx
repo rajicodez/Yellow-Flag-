@@ -13,13 +13,16 @@ import {
 
 const EMPTY_COUNTDOWN = { days: '--', hours: '--', minutes: '--' };
 
+const ZANDVOORT_PHOTO = {
+  src: '/images/circuits/dutch-grand-prix.jpg',
+  alt: 'Aerial view of Circuit Zandvoort beside the North Sea',
+  credit: 'Quistnix / Wikimedia Commons',
+  sourceUrl: 'https://commons.wikimedia.org/wiki/File:Circuit_Park_Zandvoort_aerial_photo.jpg',
+};
+
 const CIRCUIT_PHOTOS = {
-  'dutch-grand-prix': {
-    src: '/images/circuits/dutch-grand-prix.jpg',
-    alt: 'Aerial view of Circuit Zandvoort beside the North Sea',
-    credit: 'Quistnix / Wikimedia Commons',
-    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Circuit_Park_Zandvoort_aerial_photo.jpg',
-  },
+  'dutch-grand-prix': ZANDVOORT_PHOTO,
+  '2026-dutch-grand-prix': ZANDVOORT_PHOTO,
 };
 
 function getCircuitPhoto(race) {
