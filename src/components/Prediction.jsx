@@ -13,6 +13,20 @@ import {
 
 const EMPTY_COUNTDOWN = { days: '--', hours: '--', minutes: '--' };
 
+const CIRCUIT_PHOTOS = {
+  'dutch-grand-prix': {
+    src: '/images/circuits/dutch-grand-prix.jpg',
+    alt: 'Aerial view of Circuit Zandvoort beside the North Sea',
+    credit: 'Quistnix / Wikimedia Commons',
+    sourceUrl: 'https://commons.wikimedia.org/wiki/File:Circuit_Park_Zandvoort_aerial_photo.jpg',
+  },
+};
+
+function getCircuitPhoto(race) {
+  if (!race?.slug) return null;
+  return CIRCUIT_PHOTOS[race.slug] ?? null;
+}
+
 function getRaceTiming(race) {
   if (!race) return { state: 'unavailable', countdown: EMPTY_COUNTDOWN };
 
@@ -438,6 +452,7 @@ export default function Prediction() {
         : raceTiming.state === 'closed'
           ? 'Predictions Closed'
           : 'Predictions Unavailable';
+  const circuitPhoto = getCircuitPhoto(raceConfig);
 
   return (
     <section id="prediction" className="relative scroll-mt-24 py-16 md:py-24">
@@ -519,40 +534,42 @@ export default function Prediction() {
           {/* Right Column: Cards */}
           <Reveal delay={0.2} className="flex flex-col gap-6">
             
-            {/* Circuit Outline & Stats Card */}
-            <div className="relative flex flex-col items-center justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#121212] p-6 sm:flex-row sm:p-8">
-              {/* Grid Background Pattern */}
-              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '16px 16px' }} />
-              
-              {/* Zandvoort SVG Outline (Approximate placeholder path) */}
-              <div className="relative flex-1 p-4 drop-shadow-[0_0_15px_rgba(250,204,21,0.3)]">
-                <svg viewBox="0 0 300 200" className="w-full h-auto max-w-[280px]">
-                  <path 
-                    d="M 50 120 C 30 110, 20 80, 40 50 C 60 20, 100 30, 120 50 L 150 70 L 170 50 C 190 30, 220 20, 250 30 C 280 40, 290 70, 260 100 L 210 130 C 190 140, 150 150, 120 120 L 90 90 L 70 140 C 60 160, 40 160, 50 120 Z" 
-                    fill="none" 
-                    stroke="#FBBF24" 
-                    strokeWidth="6" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                  />
-                  {/* Start/Finish Line Indicator */}
-                  <g transform="translate(145, 145) rotate(-20)">
-                    <rect x="0" y="0" width="4" height="4" fill="white" />
-                    <rect x="4" y="0" width="4" height="4" fill="black" />
-                    <rect x="0" y="4" width="4" height="4" fill="black" />
-                    <rect x="4" y="4" width="4" height="4" fill="white" />
-                    <rect x="8" y="0" width="4" height="4" fill="white" />
-                    <rect x="12" y="0" width="4" height="4" fill="black" />
-                    <rect x="8" y="4" width="4" height="4" fill="black" />
-                    <rect x="12" y="4" width="4" height="4" fill="white" />
-                    <rect x="-4" y="0" width="4" height="4" fill="black" />
-                    <rect x="-4" y="4" width="4" height="4" fill="white" />
-                  </g>
-                </svg>
-              </div>
+            {/* Upcoming circuit photo & stats card */}
+            <div className="relative min-h-[340px] overflow-hidden rounded-2xl border border-white/10 bg-[#121212] shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+              {circuitPhoto ? (
+                <img
+                  src={circuitPhoto.src}
+                  alt={circuitPhoto.alt}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_30%,rgba(250,204,21,0.2),transparent_45%),linear-gradient(135deg,#242015,#090909_65%)]" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/20 via-black/45 to-black/90" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-black/15" />
 
-              {/* Stats Column */}
-              <div className="relative mt-8 flex w-full flex-row justify-around gap-4 sm:mt-0 sm:w-auto sm:flex-col">
+              <div className="relative flex min-h-[340px] flex-col justify-between p-6 sm:flex-row sm:items-stretch sm:p-8">
+                <div className="flex max-w-xs flex-col justify-end pr-4">
+                  <span className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-yellow-300">Next Grand Prix</span>
+                  <h3 className="font-display text-2xl font-black uppercase leading-tight text-white sm:text-3xl">
+                    {raceConfig?.circuit_name ?? 'Formula 1 Circuit'}
+                  </h3>
+                  <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-zinc-300">
+                    {raceConfig?.race_name ?? 'Upcoming race'}
+                  </p>
+                  {circuitPhoto && (
+                    <a
+                      href={circuitPhoto.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 w-fit text-[9px] font-semibold text-white/45 transition hover:text-white/75"
+                    >
+                      Photo: {circuitPhoto.credit} · CC BY-SA 3.0
+                    </a>
+                  )}
+                </div>
+
+                <div className="mt-6 flex w-full flex-row justify-around gap-3 sm:mt-0 sm:w-auto sm:flex-col sm:justify-center">
                 <div className="flex items-center gap-4 rounded-xl border border-white/5 bg-white/5 px-6 py-4 backdrop-blur-sm transition-colors hover:bg-white/10">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-yellow-400/25 bg-yellow-400/10 text-yellow-400">
                     <HelpCircle className="h-6 w-6" strokeWidth={2} />
@@ -572,6 +589,7 @@ export default function Prediction() {
                     <div className="mt-1 text-xs font-bold uppercase tracking-widest text-yellow-400">Points</div>
                   </div>
                 </div>
+              </div>
               </div>
             </div>
 
