@@ -19,6 +19,7 @@ const activeMigrations = (await readdir(migrationDirectory))
 assert.deepEqual(activeMigrations, [
   '20260815213203_live_production_baseline.sql',
   '20260816090000_official_results_scoring.sql',
+  '20260817043000_restore_auth_profile_provisioning.sql',
 ]);
 
 const archivedMigrations = (await readdir(archiveMigrationDirectory))
@@ -43,6 +44,10 @@ const scoringMigration = await readFile(
   path.join(migrationDirectory, activeMigrations[1]),
   'utf8'
 );
+const profileProvisioningMigration = await readFile(
+  path.join(migrationDirectory, activeMigrations[2]),
+  'utf8'
+);
 const config = await readFile(path.join(supabaseDirectory, 'config.toml'), 'utf8');
 const seed = await readFile(path.join(supabaseDirectory, 'seed.sql'), 'utf8');
 const archivedSeed = await readFile(path.join(archiveDirectory, 'seed.sql'), 'utf8');
@@ -64,6 +69,10 @@ const podiumValidationTest = await readFile(
 );
 const officialScoringTest = await readFile(
   path.join(supabaseDirectory, 'tests', '004_official_results_scoring_test.sql'),
+  'utf8'
+);
+const profileProvisioningTest = await readFile(
+  path.join(supabaseDirectory, 'tests', '005_auth_profile_provisioning_test.sql'),
   'utf8'
 );
 const predictionClient = await readFile(
@@ -212,6 +221,19 @@ assert.match(podiumValidationTest, /valid edit updates the same prediction_entri
 assert.match(officialScoringTest, /select plan\(69\)/i);
 assert.match(officialScoringTest, /repeating identical scoring succeeds idempotently/i);
 assert.match(officialScoringTest, /equal Fan scores share race rank one/i);
+assert.match(profileProvisioningTest, /select plan\(7\)/i);
+assert.match(profileProvisioningTest, /new Auth user receives exactly one baseline user role/i);
+
+const normalizedProvisioning = profileProvisioningMigration
+  .replaceAll('"', '')
+  .toLowerCase()
+  .replace(/\s+/g, ' ');
+assert.match(normalizedProvisioning, /create trigger on_auth_user_created after insert on auth\.users/);
+assert.match(normalizedProvisioning, /for each row execute function public\.handle_new_auth_user\(\)/);
+assert.match(normalizedProvisioning, /insert into public\.profiles/);
+assert.match(normalizedProvisioning, /from auth\.users as auth_user on conflict \(id\) do nothing/);
+assert.match(normalizedProvisioning, /insert into public\.user_roles \(user_id, role\) select auth_user\.id, 'user'::public\.app_role/);
+assert.match(normalizedProvisioning, /revoke all on function public\.handle_new_auth_user\(\) from public, anon, authenticated/);
 
 const normalizedScoring = scoringMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
 for (const scoringTable of [
@@ -243,5 +265,5 @@ assert.match(predictionLanding, /closes_at/);
 assert.doesNotMatch(predictionLanding, /prediction_opens_at|prediction_locks_at/);
 
 console.log(
-  'Validated the live production baseline, forward scoring migration, archived migrations 000-007, local seed, RLS/RPC contracts, and 161 pgTAP assertions.'
+  'Validated the live production baseline, forward scoring and Auth provisioning migrations, archived migrations 000-007, local seed, RLS/RPC contracts, and 168 pgTAP assertions.'
 );

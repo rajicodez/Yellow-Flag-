@@ -8,6 +8,10 @@ The first reviewed forward migration is:
 
 `migrations/20260816090000_official_results_scoring.sql`
 
+The Auth provisioning repair is:
+
+`migrations/20260817043000_restore_auth_profile_provisioning.sql`
+
 It was generated from project `qvjkqsubsabsspdaazzr` with `supabase db pull`
 on 2026-08-15. The initial pull was explicitly told **not** to update remote
 migration history. Production schema and application data were not changed by
@@ -92,6 +96,8 @@ synthetic users and rolls every test fixture back:
   same-entry edits, and zero-write rejection behavior.
 - `003_podium_uniqueness_validation_test.sql` checks all duplicate podium cases,
   unchanged prior data, same-entry edits, grants, RLS, and deadline behavior.
+- `005_auth_profile_provisioning_test.sql` checks that the managed Auth trigger
+  creates a public profile and baseline user role without granting admin access.
 
 ## Migration-history reconciliation
 
@@ -135,3 +141,11 @@ The admin frontend authenticates with Supabase, verifies `admin` or
 `super_admin` through `user_roles`, and calls only the protected RPCs for answer
 entry, scoring, and publication. Test `004_official_results_scoring_test.sql`
 covers this contract with 69 transaction-wrapped assertions.
+
+## Auth profile provisioning repair
+
+The schema-only live baseline contains `handle_new_auth_user()` but cannot
+reliably recreate a trigger owned by Supabase's managed `auth` schema. Migration
+`20260817043000` restores exactly one `auth.users` insert trigger and backfills
+missing profiles and baseline `user` roles for existing Auth accounts. All
+backfills are conflict-safe and preserve Admin, Super Admin, and Host roles.
