@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { CalendarDays, CircleHelp, Eye, GripVertical, Pencil, Save } from 'lucide-react';
 import AdminRaceSelect from '../AdminRaceSelect';
-import { DemoLabel, Field, inputClass, Modal, Panel, ScreenHeading, StatusBadge } from '../AdminUI';
+import { Field, inputClass, Modal, Panel, ScreenHeading, StatusBadge } from '../AdminUI';
 import { getRaceStableId } from '../useAdminRaceWorkspace';
 
 const raceDateFormatter = new Intl.DateTimeFormat('en-GB', {
@@ -17,7 +17,7 @@ function getPredictionStatus(race) {
   return race.status;
 }
 
-function QuestionModal({ question, open, onClose, onDemoSave }) {
+function QuestionModal({ question, open, onClose, onSave }) {
   const editing = Boolean(question);
 
   const handleSubmit = (event) => {
@@ -32,11 +32,11 @@ function QuestionModal({ question, open, onClose, onDemoSave }) {
       active: true,
     } : null;
 
-    onDemoSave(
+    onSave(
       updatedQuestion,
       editing
         ? 'Question text updated locally. Save the full set to update Supabase.'
-        : 'Question create preview completed. The current question set remains unchanged.'
+        : 'The current question set remains unchanged.'
     );
   };
 
@@ -77,7 +77,6 @@ function QuestionRow({ question, onEdit }) {
           <code className="max-w-full break-all rounded-md bg-black/35 px-2 py-1 text-[10px] text-zinc-500">{question.key}</code>
           <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-zinc-300">{question.type}</span>
           <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-zinc-300">{question.points} Point</span>
-          {question.sprint && <DemoLabel>Sprint</DemoLabel>}
         </div>
         <p className="mt-2 break-words text-sm font-semibold leading-6 text-white">{question.text}</p>
       </div>
@@ -131,7 +130,7 @@ export default function QuestionsScreen({
     setNotice('Question status changed locally. Save the seven-question set to update Supabase.');
   };
 
-  const handleDemoSave = (updatedQuestion, message) => {
+  const handleQuestionSave = (updatedQuestion, message) => {
     if (updatedQuestion) updateQuestion(updatedQuestion.id, updatedQuestion);
     setModalOpen(false);
     setNotice(message);
@@ -255,7 +254,7 @@ export default function QuestionsScreen({
           </Panel>
 
           <div className="grid gap-4 sm:grid-cols-3">
-            <Panel className="p-5"><p className="text-xs font-bold text-zinc-500">Total Questions</p><p className="mt-2 font-display text-3xl font-black text-white">{totalQuestions}</p><div className="mt-3"><DemoLabel /></div></Panel>
+            <Panel className="p-5"><p className="text-xs font-bold text-zinc-500">Total Questions</p><p className="mt-2 font-display text-3xl font-black text-white">{totalQuestions}</p><p className="mt-2 text-xs text-zinc-500">Fixed competition format</p></Panel>
             <Panel className="p-5"><p className="text-xs font-bold text-zinc-500">Maximum Points</p><p className="mt-2 font-display text-3xl font-black text-white">{maximumPoints}</p><p className="mt-2 text-xs text-zinc-500">One point per correct answer</p></Panel>
             <Panel className="p-5"><p className="text-xs font-bold text-zinc-500">Active Questions</p><p className="mt-2 font-display text-3xl font-black text-white">{activeQuestionCount}</p><p className="mt-2 text-xs text-zinc-500">Selected race only</p></Panel>
           </div>
@@ -273,7 +272,7 @@ export default function QuestionsScreen({
         </>
       )}
 
-      <QuestionModal question={selectedQuestion} open={modalOpen} onClose={() => setModalOpen(false)} onDemoSave={handleDemoSave} />
+      <QuestionModal question={selectedQuestion} open={modalOpen} onClose={() => setModalOpen(false)} onSave={handleQuestionSave} />
 
       <Modal open={createDefaultsOpen} onClose={() => setCreateDefaultsOpen(false)} title="Create default questions?" description="Prepare the seven-question Grand Prix set before saving it.">
         <p className="text-sm leading-6 text-zinc-300">This prepares the standard questions for {selectedRace.name}. Review them and use Save to Supabase to make them live.</p>

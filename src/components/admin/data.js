@@ -6,7 +6,6 @@ export const adminNavigation = [
   { id: 'leaderboard', label: 'Leaderboard' },
   { id: 'users', label: 'Users & Roles' },
   { id: 'raceHistory', label: 'Race History' },
-  { id: 'settings', label: 'Settings' },
 ];
 
 export const demoRaces = [

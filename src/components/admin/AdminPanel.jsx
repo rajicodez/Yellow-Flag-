@@ -9,7 +9,6 @@ import LeaderboardScreen from './screens/LeaderboardScreen';
 import QuestionsScreen from './screens/QuestionsScreen';
 import RacesScreen from './screens/RacesScreen';
 import ResultsScreen from './screens/ResultsScreen';
-import SettingsScreen from './screens/SettingsScreen';
 import UsersScreen from './screens/UsersScreen';
 import RaceHistoryScreen from './screens/RaceHistoryScreen';
 import useAdminRaceWorkspace from './useAdminRaceWorkspace';
@@ -22,7 +21,6 @@ const screens = {
   leaderboard: LeaderboardScreen,
   users: UsersScreen,
   raceHistory: RaceHistoryScreen,
-  settings: SettingsScreen,
 };
 
 const screenForPath = (pathname) => (

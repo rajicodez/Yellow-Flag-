@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
-  Bell,
   Calculator,
   ChevronRight,
   CircleHelp,
@@ -10,7 +9,6 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  Settings,
   ShieldCheck,
   Trophy,
   Users,
@@ -28,7 +26,6 @@ const icons = {
   leaderboard: Trophy,
   users: Users,
   raceHistory: History,
-  settings: Settings,
 };
 
 function SidebarContent({ activeScreen, onNavigate, onLogout }) {
@@ -164,15 +161,6 @@ export default function AdminLayout({ activeScreen, adminUser, onNavigate, onLog
             </div>
 
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-              <button
-                type="button"
-                aria-label="View demo notifications"
-                className="relative rounded-full border border-white/10 bg-white/5 p-2.5 text-zinc-300 transition hover:border-yellow-400/35 hover:text-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/50"
-              >
-                <Bell className="h-4 w-4" aria-hidden="true" />
-                <span className="absolute right-1 top-1 h-2 w-2 rounded-full border border-[#080809] bg-red-500" />
-              </button>
-
               <div className="flex items-center gap-2.5 rounded-full border border-white/10 bg-white/5 p-1.5 pr-2.5 sm:pr-4">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full border border-yellow-400/35 bg-yellow-400/10 font-display text-xs font-black text-yellow-300">
                   {adminInitial}
