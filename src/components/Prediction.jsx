@@ -440,7 +440,7 @@ export default function Prediction() {
           : 'Predictions Unavailable';
 
   return (
-    <section id="prediction" className="relative py-16 md:py-24">
+    <section id="prediction" className="relative scroll-mt-24 py-16 md:py-24">
       {/* Background accents similar to other sections */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(250,204,21,0.05),transparent_70%)]" aria-hidden="true" />
 
