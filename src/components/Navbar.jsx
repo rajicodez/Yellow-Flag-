@@ -238,7 +238,7 @@ export default function Navbar({ activeSection }) {
   };
 
   const linkClass = (isActive) =>
-    `rounded-full px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] transition ${
+    `whitespace-nowrap rounded-full px-3 py-2 text-[11px] font-bold uppercase tracking-[0.14em] transition ${
       isActive
         ? 'bg-yellow-400/15 text-yellow-300 shadow-[0_0_20px_rgba(250,204,21,0.15)]'
         : 'text-zinc-300 hover:text-yellow-300'
@@ -260,7 +260,7 @@ export default function Navbar({ activeSection }) {
             : 'bg-transparent'
         }`}
       >
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
+      <div className="mx-auto flex max-w-[1800px] items-center justify-between gap-3 px-5 py-4 md:px-8">
         <button
           type="button"
           onClick={() => handleNav('home')}
@@ -292,7 +292,7 @@ export default function Navbar({ activeSection }) {
           </span>
         </button>
 
-        <nav className="hidden items-center gap-1 xl:flex">
+        <nav className="hidden min-w-0 items-center gap-0.5 min-[1750px]:flex">
           {navItems.map((item) =>
             item.path ? (
               <Link
@@ -319,7 +319,7 @@ export default function Navbar({ activeSection }) {
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
-            className="rounded-xl border border-white/10 p-3 text-white transition hover:border-yellow-400/30 hover:text-yellow-300 xl:hidden"
+            className="rounded-xl border border-white/10 p-3 text-white transition hover:border-yellow-400/30 hover:text-yellow-300 min-[1750px]:hidden"
             onClick={() => {
               setIsAccountOpen(false);
               setOpen((current) => !current);
@@ -455,7 +455,7 @@ export default function Navbar({ activeSection }) {
             initial={{ opacity: 0, y: -12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -12 }}
-            className="border-t border-white/10 bg-black/95 px-5 py-6 backdrop-blur-xl xl:hidden"
+            className="border-t border-white/10 bg-black/95 px-5 py-6 backdrop-blur-xl min-[1750px]:hidden"
           >
             <div className="flex flex-col gap-2">
               {navItems.map((item) =>

@@ -22,6 +22,7 @@ assert.deepEqual(activeMigrations, [
   '20260817043000_restore_auth_profile_provisioning.sql',
   '20260817090000_admin_race_question_management.sql',
   '20260817120000_admin_user_access_management.sql',
+  '20260817150000_public_host_championship.sql',
 ]);
 
 const archivedMigrations = (await readdir(archiveMigrationDirectory))
@@ -58,6 +59,10 @@ const userAccessMigration = await readFile(
   path.join(migrationDirectory, activeMigrations[4]),
   'utf8'
 );
+const hostChampionshipMigration = await readFile(
+  path.join(migrationDirectory, activeMigrations[5]),
+  'utf8'
+);
 const config = await readFile(path.join(supabaseDirectory, 'config.toml'), 'utf8');
 const seed = await readFile(path.join(supabaseDirectory, 'seed.sql'), 'utf8');
 const archivedSeed = await readFile(path.join(archiveDirectory, 'seed.sql'), 'utf8');
@@ -91,6 +96,10 @@ const raceManagementTest = await readFile(
 );
 const userAccessTest = await readFile(
   path.join(supabaseDirectory, 'tests', '007_admin_user_access_management_test.sql'),
+  'utf8'
+);
+const hostChampionshipTest = await readFile(
+  path.join(supabaseDirectory, 'tests', '008_public_host_championship_test.sql'),
   'utf8'
 );
 const predictionClient = await readFile(
@@ -260,6 +269,9 @@ assert.match(raceManagementTest, /race administration cannot bypass the scoring 
 assert.match(userAccessTest, /select plan\(33\)/i);
 assert.match(userAccessTest, /a Host must also receive Admin access/i);
 assert.match(userAccessTest, /an idempotent assignment creates no duplicate audit record/i);
+assert.match(hostChampionshipTest, /select plan\(15\)/i);
+assert.match(hostChampionshipTest, /Lakindu receives only the published Host score/i);
+assert.match(hostChampionshipTest, /fan entries are excluded from Host totals/i);
 
 const normalizedProvisioning = profileProvisioningMigration
   .replaceAll('"', '')
@@ -315,6 +327,14 @@ assert.match(normalizedUserAccess, /insert into public\.user_access_history/);
 assert.match(normalizedUserAccess, /revoke all on function public\.admin_list_users\(\) from public, anon/);
 assert.match(normalizedUserAccess, /revoke all on function public\.admin_update_user_access\(uuid, boolean, text\) from public, anon/);
 
+const normalizedHostChampionship = hostChampionshipMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
+assert.match(normalizedHostChampionship, /create or replace function public\.get_public_host_championship\(p_season_year integer\)/);
+assert.match(normalizedHostChampionship, /stable security definer set search_path = ''/);
+assert.match(normalizedHostChampionship, /entry\.competition = 'host'::public\.prediction_competition/);
+assert.match(normalizedHostChampionship, /race\.status = 'published'::public\.race_status/);
+assert.match(normalizedHostChampionship, /revoke all on function public\.get_public_host_championship\(integer\) from public/);
+assert.match(normalizedHostChampionship, /grant execute on function public\.get_public_host_championship\(integer\) to anon, authenticated, service_role/);
+
 assert.match(predictionClient, /race\.opens_at/);
 assert.match(predictionClient, /race\.closes_at/);
 assert.match(predictionClient, /useSearchParams\(\)/);
@@ -332,6 +352,9 @@ assert.match(predictionLanding, /closes_at/);
 assert.match(predictionLanding, /\.neq\('status', 'draft'\)/);
 assert.match(predictionLanding, /competition=host/);
 assert.match(predictionLanding, /Continue with Lakindu or Kasun's approved Google account/);
+assert.match(predictionLanding, /rpc\('get_public_host_championship'/);
+assert.match(predictionLanding, /hostChampionship\.scores\.Lakindu/);
+assert.match(predictionLanding, /hostChampionship\.scores\.Kasun/);
 assert.doesNotMatch(predictionLanding, /signInWithPassword|host-password|current-password/);
 assert.doesNotMatch(predictionLanding, /prediction_opens_at|prediction_locks_at/);
 assert.match(myPredictions, /from\('prediction_entries'\)/);
@@ -349,5 +372,5 @@ assert.match(appRoutes, /path="\/predictions\/:raceSlug"/);
 assert.match(appRoutes, /path="\/predictions\/mine"/);
 
 console.log(
-  'Validated the live production baseline, scoring, Auth provisioning, guarded race/user administration migrations, archived migrations 000-007, local seed, RLS/RPC contracts, and 230 pgTAP assertions.'
+  'Validated the live production baseline, scoring, Auth provisioning, guarded race/user administration, public Host championship migrations, archived migrations 000-007, local seed, RLS/RPC contracts, and 245 pgTAP assertions.'
 );

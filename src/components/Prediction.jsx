@@ -276,6 +276,12 @@ export default function Prediction() {
   const [isUserLoginOpen, setIsUserLoginOpen] = useState(false);
   const [isSessionChecking, setIsSessionChecking] = useState(false);
   const [isHostLoginOpen, setIsHostLoginOpen] = useState(false);
+  const [hostChampionship, setHostChampionship] = useState({
+    loading: true,
+    seasonYear: new Date().getFullYear(),
+    scores: { Lakindu: 0, Kasun: 0 },
+    racesScored: 0,
+  });
   const userLoginTriggerRef = useRef(null);
   const hostLoginTriggerRef = useRef(null);
 
@@ -294,7 +300,7 @@ export default function Prediction() {
       try {
         const { data, error } = await supabase
           .from('races')
-          .select('slug, race_name, circuit_name, country_code, race_starts_at, opens_at, closes_at, status')
+          .select('slug, race_name, circuit_name, country_code, race_starts_at, opens_at, closes_at, status, seasons(year)')
           .neq('status', 'draft')
           .order('race_starts_at', { ascending: true });
 
@@ -343,6 +349,33 @@ export default function Prediction() {
     const intervalId = window.setInterval(updateRaceTiming, 1000);
     return () => window.clearInterval(intervalId);
   }, [raceConfig, isRaceLoading]);
+
+  useEffect(() => {
+    if (!raceConfig || !supabase) return undefined;
+    let isMounted = true;
+    const seasonYear = Number(raceConfig.seasons?.year)
+      || new Date(raceConfig.race_starts_at).getFullYear();
+
+    setHostChampionship((current) => ({ ...current, loading: true, seasonYear }));
+    supabase.rpc('get_public_host_championship', { p_season_year: seasonYear })
+      .then(({ data, error }) => {
+        if (!isMounted) return;
+        if (error) {
+          setHostChampionship({ loading: false, seasonYear, scores: { Lakindu: null, Kasun: null }, racesScored: 0 });
+          return;
+        }
+
+        const scores = { Lakindu: 0, Kasun: 0 };
+        let racesScored = 0;
+        for (const row of data ?? []) {
+          if (row.host_name in scores) scores[row.host_name] = Number(row.total_score ?? 0);
+          racesScored += Number(row.races_scored ?? 0);
+        }
+        setHostChampionship({ loading: false, seasonYear, scores, racesScored });
+      });
+
+    return () => { isMounted = false; };
+  }, [raceConfig]);
 
   const closeUserLogin = () => {
     setIsUserLoginOpen(false);
@@ -576,7 +609,7 @@ export default function Prediction() {
                 <div className="flex flex-col items-end">
                   <span className="font-display text-lg font-bold uppercase tracking-widest text-zinc-400 sm:text-xl">Lakindu</span>
                   <div className="flex items-baseline gap-2">
-                    <span className="font-display text-5xl font-black text-yellow-400 sm:text-6xl">68</span>
+                    <span className="font-display text-5xl font-black text-yellow-400 sm:text-6xl">{hostChampionship.loading ? '—' : hostChampionship.scores.Lakindu ?? '—'}</span>
                     <span className="font-display font-bold text-zinc-500">PTS</span>
                   </div>
                 </div>
@@ -593,11 +626,16 @@ export default function Prediction() {
                 <div className="flex flex-col items-start">
                   <span className="font-display text-lg font-bold uppercase tracking-widest text-zinc-400 sm:text-xl">Kasun</span>
                   <div className="flex items-baseline gap-2">
-                    <span className="font-display text-5xl font-black text-red-600 sm:text-6xl">72</span>
+                    <span className="font-display text-5xl font-black text-red-600 sm:text-6xl">{hostChampionship.loading ? '—' : hostChampionship.scores.Kasun ?? '—'}</span>
                     <span className="font-display font-bold text-zinc-500">PTS</span>
                   </div>
                 </div>
               </div>
+              <p className="mt-5 text-center text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-600">
+                {hostChampionship.racesScored
+                  ? `Published ${hostChampionship.seasonYear} Host Championship points`
+                  : `No published Host scores yet for ${hostChampionship.seasonYear}`}
+              </p>
             </div>
 
           </Reveal>

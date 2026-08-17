@@ -126,7 +126,9 @@ function HomePage() {
     // so a section taller than the detection band never reports as intersecting
     // and the pill sticks on the previous item. Reading scroll position instead
     // works the same for a short hero and a very tall standings table.
-    const ids = navItems.filter((item) => !item.path).map((item) => item.id);
+    const ids = navItems
+      .filter((item) => !item.path || item.path.startsWith('/#'))
+      .map((item) => item.path?.startsWith('/#') ? item.path.slice(2) : item.id);
     let frame = 0;
 
     const update = () => {
@@ -238,7 +240,7 @@ function MyPredictionsPage() {
 
   return (
     <>
-      <Navbar activeSection="predictions" />
+      <Navbar activeSection="prediction" />
       <main>
         <MyPredictions />
       </main>
