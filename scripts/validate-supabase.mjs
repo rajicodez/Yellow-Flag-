@@ -309,7 +309,10 @@ assert.match(normalizedUserAccess, /revoke all on function public\.admin_update_
 
 assert.match(predictionClient, /race\.opens_at/);
 assert.match(predictionClient, /race\.closes_at/);
-assert.match(predictionClient, /hostProfile \? 'host' : 'user'/);
+assert.match(predictionClient, /useSearchParams\(\)/);
+assert.match(predictionClient, /requestedCompetition = searchParams\.get\('competition'\) === 'host' \? 'host' : 'user'/);
+assert.match(predictionClient, /throw new Error\('HOST_ACCESS_REQUIRED'\)/);
+assert.match(predictionClient, /p_competition: competition/);
 assert.match(predictionClient, /\.select\('\*'\)/);
 assert.match(predictionClient, /useParams\(\)/);
 assert.match(predictionClient, /race_question_options/);
@@ -319,6 +322,9 @@ assert.doesNotMatch(predictionClient, /prediction_opens_at|prediction_locks_at/)
 assert.match(predictionLanding, /raceConfig|race\.opens_at/);
 assert.match(predictionLanding, /closes_at/);
 assert.match(predictionLanding, /\.neq\('status', 'draft'\)/);
+assert.match(predictionLanding, /competition=host/);
+assert.match(predictionLanding, /Continue with Lakindu or Kasun's approved Google account/);
+assert.doesNotMatch(predictionLanding, /signInWithPassword|host-password|current-password/);
 assert.doesNotMatch(predictionLanding, /prediction_opens_at|prediction_locks_at/);
 assert.match(adminRaceWorkspace, /rpc\('admin_upsert_race'/);
 assert.match(adminRaceWorkspace, /rpc\('admin_save_race_questions'/);

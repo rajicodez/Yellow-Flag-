@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, BarChart2 } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
@@ -180,6 +180,9 @@ function PredictionAuthShell({ children }) {
 export default function DutchGrandPrixPrediction() {
   const navigate = useNavigate();
   const { raceSlug = '' } = useParams();
+  const [searchParams] = useSearchParams();
+  const requestedCompetition = searchParams.get('competition') === 'host' ? 'host' : 'user';
+  const isHostMode = requestedCompetition === 'host';
   const [answers, setAnswers] = useState({});
   const [raceQuestions, setRaceQuestions] = useState([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -348,9 +351,14 @@ export default function DutchGrandPrixPrediction() {
           throw new Error('The race question configuration is incomplete.');
         }
 
-        const profile = await getAuthorizedHostProfile(authenticatedUserId);
+        const profile = isHostMode
+          ? await getAuthorizedHostProfile(authenticatedUserId)
+          : null;
         if (!isMounted) return;
-        const competition = profile ? 'host' : 'user';
+        if (isHostMode && !profile) {
+          throw new Error('HOST_ACCESS_REQUIRED');
+        }
+        const competition = requestedCompetition;
 
         const { data: predictionEntry, error: entryError } = await supabase
           .from('prediction_entries')
@@ -424,13 +432,15 @@ export default function DutchGrandPrixPrediction() {
         } else {
           setStage('questions');
         }
-      } catch {
+      } catch (loadError) {
         if (isMounted) {
           setRaceConfig(null);
           setRaceWindowState('unavailable');
           setIsClosed(true);
           setPredictionLoadError(
-            'Unable to load the race configuration or your saved prediction. Please try again.'
+            String(loadError?.message ?? '').includes('HOST_ACCESS_REQUIRED')
+              ? 'This Google account is not authorized for Host predictions. Continue with Lakindu or Kasun\'s approved account.'
+              : 'Unable to load the race configuration or your saved prediction. Please try again.'
           );
         }
       } finally {
@@ -443,7 +453,7 @@ export default function DutchGrandPrixPrediction() {
     return () => {
       isMounted = false;
     };
-  }, [authenticatedUserId, isAuthLoading, raceSlug]);
+  }, [authenticatedUserId, isAuthLoading, isHostMode, raceSlug, requestedCompetition]);
 
   const handleAnswer = (questionId, answer) => {
     if (PODIUM_QUESTION_IDS.includes(questionId)) {
@@ -548,7 +558,7 @@ export default function DutchGrandPrixPrediction() {
         sanitizedAnswers[question.id],
       ])
     );
-    const competition = hostProfile ? 'host' : 'user';
+    const competition = requestedCompetition;
 
     setIsSubmitting(true);
 
@@ -603,7 +613,7 @@ export default function DutchGrandPrixPrediction() {
     setIsGoogleSignInLoading(true);
 
     try {
-      await signInWithGoogle(`/predictions/${raceSlug}`);
+      await signInWithGoogle(`/predictions/${raceSlug}${isHostMode ? '?competition=host' : ''}`);
     } catch (error) {
       setAuthError(
         error instanceof Error
@@ -659,13 +669,15 @@ export default function DutchGrandPrixPrediction() {
       <PredictionAuthShell>
         <div className="w-full max-w-md rounded-2xl border border-yellow-400/20 bg-[#121212]/95 p-6 text-center shadow-[0_0_50px_rgba(250,204,21,0.12)] sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[0.25em] text-yellow-400">
-            Authentication Required
+            {isHostMode ? 'Authorized Host Access' : 'Authentication Required'}
           </p>
           <h1 className="mt-3 font-display text-3xl font-black uppercase leading-tight text-white sm:text-4xl">
-            Sign in to make your prediction
+            Sign in to make your {isHostMode ? 'Host ' : ''}prediction
           </h1>
           <p className="mt-4 text-sm leading-6 text-zinc-400">
-            Continue with your Google account to submit predictions and track your season points.
+            {isHostMode
+              ? 'Continue with Lakindu or Kasun\'s approved Google account. This entry is kept separate from fan predictions.'
+              : 'Continue with your Google account to submit predictions and track your season points.'}
           </p>
 
           {authError && (
@@ -730,19 +742,32 @@ export default function DutchGrandPrixPrediction() {
             Predictions Unavailable
           </p>
           <h1 className="mt-3 font-display text-3xl font-black uppercase leading-tight text-white sm:text-4xl">
-            Race data could not be loaded
+            {isHostMode ? 'Host access unavailable' : 'Race data could not be loaded'}
           </h1>
           <p role="alert" className="mt-4 text-sm leading-6 text-zinc-400">
             {predictionLoadError || 'This prediction event is not available right now.'}
           </p>
-          <button
-            type="button"
-            onClick={() => navigate('/#prediction')}
-            className="mt-7 flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 px-5 py-3 font-display font-bold uppercase tracking-widest text-white transition hover:bg-white/5"
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            Back to Home
-          </button>
+          <div className="mt-7 space-y-3">
+            {isHostMode && (
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={isGoogleSignInLoading}
+                className="flex w-full items-center justify-center gap-3 rounded-xl bg-white px-5 py-3.5 font-display font-black uppercase tracking-wider text-black transition hover:bg-zinc-100 disabled:cursor-wait disabled:opacity-70"
+              >
+                <FcGoogle className="h-5 w-5" aria-hidden="true" />
+                {isGoogleSignInLoading ? 'Connecting...' : 'Use Approved Google Account'}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate('/#prediction')}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 px-5 py-3 font-display font-bold uppercase tracking-widest text-white transition hover:bg-white/5"
+            >
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              Back to Home
+            </button>
+          </div>
         </div>
       </PredictionAuthShell>
     );
@@ -765,10 +790,10 @@ export default function DutchGrandPrixPrediction() {
     || authUser.user_metadata?.picture
     || null;
   const raceStatusLabel = raceWindowState === 'open'
-    ? 'Race Predictions Are Open'
+    ? `${isHostMode ? 'Host ' : ''}Race Predictions Are Open`
     : raceWindowState === 'closed'
-      ? 'Race Predictions Are Closed'
-      : 'Race Predictions Are Not Open';
+      ? `${isHostMode ? 'Host ' : ''}Race Predictions Are Closed`
+      : `${isHostMode ? 'Host ' : ''}Race Predictions Are Not Open`;
   const closedMessage = raceWindowState === 'upcoming'
     ? 'The prediction window has not opened yet.'
     : 'The deadline for submitting predictions has passed.';
@@ -809,7 +834,7 @@ export default function DutchGrandPrixPrediction() {
             )}
             <div className="min-w-0">
               <p className="max-w-48 truncate text-sm font-semibold text-white">{userDisplayName}</p>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400">Signed In</p>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-400">{isHostMode ? `${hostProfile?.host_name ?? 'Host'} Prediction` : 'Fan Prediction'}</p>
             </div>
             <button
               type="button"

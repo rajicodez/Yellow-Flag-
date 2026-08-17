@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { BarChart2, HelpCircle, Star, Trophy, ChevronsRight, Eye, EyeOff } from 'lucide-react';
+import { BarChart2, HelpCircle, Star, Trophy, ChevronsRight } from 'lucide-react';
 import { FcGoogle } from 'react-icons/fc';
 import { useNavigate } from 'react-router-dom';
 import Reveal from './ui/Reveal';
@@ -46,18 +46,16 @@ function getRaceTiming(race) {
   return { state: 'open', countdown };
 }
 
-function HostLoginModal({ isOpen, onCancel, onAuthenticated }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+function HostLoginModal({ isOpen, onCancel, onAuthenticated, redirectPath }) {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const emailInputRef = useRef(null);
+  const googleButtonRef = useRef(null);
 
   useEffect(() => {
     if (!isOpen) return undefined;
 
-    emailInputRef.current?.focus();
+    setErrorMessage('');
+    googleButtonRef.current?.focus();
     const handleKeyDown = (event) => {
       if (event.key === 'Escape' && !isLoading) onCancel();
     };
@@ -66,8 +64,7 @@ function HostLoginModal({ isOpen, onCancel, onAuthenticated }) {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, isLoading, onCancel]);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleGoogleSignIn = async () => {
     setErrorMessage('');
 
     if (!isSupabaseConfigured || !supabase) {
@@ -76,31 +73,22 @@ function HostLoginModal({ isOpen, onCancel, onAuthenticated }) {
     }
 
     setIsLoading(true);
-    let signedIn = false;
-
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password
-      });
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
 
-      if (error || !data.user) throw error || new Error('Authentication failed');
-      signedIn = true;
-
-      const hostProfile = await getAuthorizedHostProfile(data.user.id);
-      if (!hostProfile) {
-        await supabase.auth.signOut();
-        signedIn = false;
-        setErrorMessage('This account is not authorized for host predictions.');
-        return;
+      if (data.session?.user) {
+        const hostProfile = await getAuthorizedHostProfile(data.session.user.id);
+        if (hostProfile) {
+          setIsLoading(false);
+          onAuthenticated();
+          return;
+        }
       }
 
-      setPassword('');
-      onAuthenticated();
-    } catch {
-      if (signedIn) await supabase.auth.signOut();
-      setErrorMessage('Unable to sign in. Check your credentials and host access.');
-    } finally {
+      await signInWithGoogle(redirectPath);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to start Google sign-in.');
       setIsLoading(false);
     }
   };
@@ -131,81 +119,39 @@ function HostLoginModal({ isOpen, onCancel, onAuthenticated }) {
               <h3 id="host-login-title" className="font-display text-3xl font-black uppercase text-white">
                 Host <span className="text-yellow-400">Login</span>
               </h3>
-              <p className="mt-3 text-sm text-zinc-400">
-                Only authorized Yellow Flag hosts can access this area.
+              <p className="mt-3 text-sm leading-6 text-zinc-400">
+                Continue with Lakindu or Kasun's approved Google account. Host predictions are kept separate from fan entries.
               </p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label htmlFor="host-email" className="mb-2 block text-xs font-bold uppercase tracking-widest text-zinc-300">
-                  Email
-                </label>
-                <input
-                  ref={emailInputRef}
-                  id="host-email"
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
-                  disabled={isLoading}
-                  className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-yellow-400 disabled:opacity-60"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="host-password" className="mb-2 block text-xs font-bold uppercase tracking-widest text-zinc-300">
-                  Password
-                </label>
-                <div className="relative">
-                  <input
-                    id="host-password"
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    value={password}
-                    onChange={(event) => setPassword(event.target.value)}
-                    required
-                    disabled={isLoading}
-                    className="w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 pr-20 text-white outline-none transition-colors placeholder:text-zinc-600 focus:border-yellow-400 disabled:opacity-60"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(current => !current)}
-                    disabled={isLoading}
-                    aria-label={showPassword ? 'Hide Password' : 'Show Password'}
-                    className="absolute inset-y-0 right-0 flex items-center gap-1.5 px-4 text-xs font-bold uppercase tracking-wider text-zinc-400 transition-colors hover:text-yellow-400 disabled:opacity-60"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    {showPassword ? 'Hide' : 'Show'}
-                  </button>
-                </div>
-              </div>
-
+            <div className="space-y-4">
               {errorMessage && (
                 <p role="alert" className="rounded-lg border border-red-500/30 bg-red-950/40 px-4 py-3 text-sm font-semibold text-red-400">
                   {errorMessage}
                 </p>
               )}
 
-              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
+              <button
+                ref={googleButtonRef}
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={isLoading}
+                className="flex w-full items-center justify-center gap-3 rounded-xl bg-white px-5 py-3.5 font-display font-black uppercase tracking-wider text-black transition hover:bg-zinc-100 disabled:cursor-wait disabled:opacity-70"
+              >
+                <FcGoogle className="h-5 w-5" aria-hidden="true" />
+                {isLoading ? 'Connecting...' : 'Continue with Google'}
+              </button>
+              <div className="pt-1">
                 <button
                   type="button"
                   onClick={onCancel}
                   disabled={isLoading}
-                  className="flex-1 rounded-xl border border-white/20 px-5 py-3 font-display font-bold uppercase tracking-widest text-white transition-colors hover:bg-white/5 disabled:opacity-60"
+                  className="w-full rounded-xl border border-white/20 px-5 py-3 font-display font-bold uppercase tracking-widest text-white transition-colors hover:bg-white/5 disabled:opacity-60"
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="flex-1 rounded-xl bg-gradient-to-r from-yellow-400 to-yellow-500 px-5 py-3 font-display font-black uppercase tracking-widest text-black transition-all hover:shadow-[0_0_20px_rgba(250,204,21,0.35)] disabled:cursor-wait disabled:opacity-70"
-                >
-                  {isLoading ? 'Logging In...' : 'Login'}
-                </button>
               </div>
-            </form>
+            </div>
           </motion.div>
         </motion.div>
       )}
@@ -410,7 +356,7 @@ export default function Prediction() {
 
   const handleHostAuthenticated = () => {
     setIsHostLoginOpen(false);
-    navigate(`/predictions/${raceConfig.slug}`);
+    navigate(`/predictions/${raceConfig.slug}?competition=host`);
   };
 
   const handlePredictionClick = async () => {
@@ -662,6 +608,7 @@ export default function Prediction() {
         isOpen={isHostLoginOpen}
         onCancel={closeHostLogin}
         onAuthenticated={handleHostAuthenticated}
+        redirectPath={raceConfig?.slug ? `/predictions/${raceConfig.slug}?competition=host` : '/'}
       />
       <UserLoginModal
         isOpen={isUserLoginOpen}
