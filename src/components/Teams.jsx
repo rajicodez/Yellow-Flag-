@@ -12,20 +12,6 @@ const driverImages = import.meta.glob('../assets/drivers/*.{png,jpg,jpeg,webp}',
   import: 'default',
 });
 
-const teamColors = {
-  1: '#FF8000',
-  2: '#27F4D2',
-  3: '#DC0000',
-  4: '#1E41FF',
-  5: '#005AFF',
-  6: '#6692FF',
-  7: '#006F62',
-  8: '#B6BABD',
-  9: '#0093CC',
-  10: '#52E252',
-  11: '#C4A052',
-};
-
 const driverImageSlugs = {
   'Lando Norris': 'lando-norris',
   'Oscar Piastri': 'oscar-piastri',
@@ -50,10 +36,6 @@ const driverImageSlugs = {
   'Valtteri Bottas': 'valtteri-bottas',
   'Sergio Perez': 'sergio-perez',
 };
-
-function getTeamColor(teamId) {
-  return teamColors[teamId] ?? '#FACC15';
-}
 
 function getDriverImage(driverName) {
   const slug = driverImageSlugs[driverName];
@@ -169,7 +151,7 @@ function StatBlock({ label, value }) {
 }
 
 function TeamModal({ team, onClose }) {
-  const teamColor = getTeamColor(team.id);
+  const teamColor = team.color ?? '#FACC15';
 
   return (
     <motion.div

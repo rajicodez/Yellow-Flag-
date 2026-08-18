@@ -8,11 +8,14 @@
     "build": "vite build",
     "preview": "vite preview",
     "server": "node server/index.js",
-    "ingest": "node server/ingest.js"
+    "ingest": "node server/ingest.js",
+    "test:supabase": "supabase test db",
+    "test:supabase:static": "node scripts/validate-supabase.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.11.0",
     "@qdrant/js-client-rest": "^1.18.0",
+    "@supabase/supabase-js": "^2.112.2",
     "@tailwindcss/vite": "^4.3.2",
     "@vercel/analytics": "^2.0.1",
     "dotenv": "^17.4.2",

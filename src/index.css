@@ -37,9 +37,34 @@ h4,
   font-family: "Noto Sans Sinhala", "Titillium Web", sans-serif;
 }
 
+/* Keep the public site's motorsport typography while giving the control centre
+   a cleaner application UI typeface. The explicit controls override browser
+   form defaults, and .font-display prevents admin headings from falling back
+   to Titillium Web. */
+.admin-font,
+.admin-font h1,
+.admin-font h2,
+.admin-font h3,
+.admin-font h4,
+.admin-font .font-display,
+.admin-font button,
+.admin-font input,
+.admin-font select,
+.admin-font textarea {
+  font-family: "Poppins", "Noto Sans Sinhala", sans-serif;
+}
+
 ::selection {
   background: rgba(250, 204, 21, 0.35);
   color: #fff;
+}
+
+.admin-grid-background {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(135deg, transparent 0 48%, rgba(250, 204, 21, 0.025) 48% 52%, transparent 52% 100%);
+  background-size: 44px 44px, 44px 44px, 180px 180px;
 }
 
 /* F1 Racer: the canvas keeps a fixed 960x600 aspect, so a full-width panel on a

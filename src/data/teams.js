@@ -17,6 +17,8 @@ export const f1Teams2026 = [
   // 2025 Constructors P1
   {
     id: 1,
+    shortName: 'McLaren',
+    color: '#FF8000',
     name: 'McLaren Formula 1 Team',
     drivers: ['Lando Norris', 'Oscar Piastri'], // 2025: P1, P3
     engine: 'Mercedes Power Unit',
@@ -33,6 +35,8 @@ export const f1Teams2026 = [
   // 2025 Constructors P2
   {
     id: 2,
+    shortName: 'Mercedes',
+    color: '#27F4D2',
     name: 'Mercedes-AMG Petronas F1 Team',
     drivers: ['George Russell', 'Kimi Antonelli'], // 2025: P4, P7
     engine: 'Mercedes Power Unit',
@@ -49,6 +53,8 @@ export const f1Teams2026 = [
   // 2025 Constructors P3
   {
     id: 4,
+    shortName: 'Red Bull Racing',
+    color: '#1E41FF',
     name: 'Oracle Red Bull Racing',
     drivers: ['Max Verstappen', 'Isack Hadjar'], // 2025: P2, P12
     engine: 'Red Bull Ford Power Unit',
@@ -65,6 +71,8 @@ export const f1Teams2026 = [
   // 2025 Constructors P4
   {
     id: 3,
+    shortName: 'Ferrari',
+    color: '#DC0000',
     name: 'Scuderia Ferrari HP',
     drivers: ['Charles Leclerc', 'Lewis Hamilton'], // 2025: P5, P6
     engine: 'Ferrari Power Unit',
@@ -81,6 +89,8 @@ export const f1Teams2026 = [
   // 2025 Constructors P5
   {
     id: 5,
+    shortName: 'Williams',
+    color: '#005AFF',
     name: 'Atlassian Williams Racing',
     drivers: ['Alex Albon', 'Carlos Sainz'], // 2025: P8, P9
     engine: 'Mercedes Power Unit',
@@ -97,6 +107,8 @@ export const f1Teams2026 = [
   // 2025 Constructors P6 (Racing Bulls / RB)
   {
     id: 6,
+    shortName: 'Racing Bulls',
+    color: '#6692FF',
     name: 'Visa Cash App Racing Bulls',
     drivers: ['Liam Lawson', 'Arvid Lindblad'], // 2025: Lawson P14; Lindblad — rookie
     engine: 'Red Bull Ford Power Unit',
@@ -115,6 +127,8 @@ export const f1Teams2026 = [
   // 2025 Constructors P7
   {
     id: 7,
+    shortName: 'Aston Martin',
+    color: '#006F62',
     name: 'Aston Martin Aramco F1 Team',
     drivers: ['Fernando Alonso', 'Lance Stroll'], // 2025: P10, P16
     engine: 'Honda Power Unit',
@@ -131,6 +145,8 @@ export const f1Teams2026 = [
   // 2025 Constructors P8
   {
     id: 8,
+    shortName: 'Haas',
+    color: '#B6BABD',
     name: 'TGR Haas F1 Team',
     drivers: ['Ollie Bearman', 'Esteban Ocon'], // 2025: P13, P15
     engine: 'Ferrari Power Unit',
@@ -147,6 +163,8 @@ export const f1Teams2026 = [
   // 2025 Constructors P9 (Sauber → Audi)
   {
     id: 10,
+    shortName: 'Audi',
+    color: '#52E252',
     name: 'Audi Revolut F1 Team',
     drivers: ['Nico Hulkenberg', 'Gabriel Bortoleto'], // 2025: P11, P19
     engine: 'Audi Power Unit',
@@ -163,6 +181,8 @@ export const f1Teams2026 = [
   // 2025 Constructors P10
   {
     id: 9,
+    shortName: 'Alpine',
+    color: '#0093CC',
     name: 'BWT Alpine F1 Team',
     drivers: ['Pierre Gasly', 'Franco Colapinto'], // 2025: P18, P20
     engine: 'Mercedes Power Unit',
@@ -179,6 +199,8 @@ export const f1Teams2026 = [
   // New 2026 entry — no 2025 constructor result
   {
     id: 11,
+    shortName: 'Cadillac',
+    color: '#C4A052',
     name: 'Cadillac Formula 1 Team',
     drivers: ['Sergio Perez', 'Valtteri Bottas'], // Neither contested 2025; Perez ranked higher in 2024
     engine: 'Ferrari Power Unit',

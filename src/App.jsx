@@ -11,10 +11,15 @@ import Game from './components/Game';
 import Hero from './components/Hero';
 import Journey from './components/Journey';
 import Navbar from './components/Navbar';
+import Prediction from './components/Prediction';
 import Schedule from './components/Schedule';
 import Standing from './components/Standing';
 import Teams from './components/Teams';
 import Tracks from './components/Tracks';
+import AdminPanel from './components/admin/AdminPanel';
+import DutchGrandPrixPrediction from './components/predictions/DutchGrandPrixPrediction';
+import MyPredictions from './components/predictions/MyPredictions';
+import PredictionLeaderboard from './components/predictions/PredictionLeaderboard';
 import BackgroundEffects from './components/ui/BackgroundEffects';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { navItems } from './data/content';
@@ -23,10 +28,12 @@ let audioInstance = null;
 let fallbackListenersAttached = false;
 let globalInteractionHandler = null;
 
-function useOpeningSound() {
+function useOpeningSound(enabled = true) {
   const isMounted = useRef(true);
 
   useEffect(() => {
+    if (!enabled) return undefined;
+
     isMounted.current = true;
 
     const cleanupListeners = () => {
@@ -107,7 +114,7 @@ function useOpeningSound() {
         }
       }, 50);
     };
-  }, []);
+  }, [enabled]);
 }
 
 function HomePage() {
@@ -119,7 +126,9 @@ function HomePage() {
     // so a section taller than the detection band never reports as intersecting
     // and the pill sticks on the previous item. Reading scroll position instead
     // works the same for a short hero and a very tall standings table.
-    const ids = navItems.filter((item) => !item.path).map((item) => item.id);
+    const ids = navItems
+      .filter((item) => !item.path || item.path.startsWith('/#'))
+      .map((item) => item.path?.startsWith('/#') ? item.path.slice(2) : item.id);
     let frame = 0;
 
     const update = () => {
@@ -177,6 +186,7 @@ function HomePage() {
       <main>
         <Hero />
         <Episodes />
+        <Prediction />
         <About />
         <Journey />
         <Schedule />
@@ -207,8 +217,42 @@ function DriversPage() {
   );
 }
 
+function LeaderboardPage() {
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+  }, []);
+
+  return (
+    <>
+      <Navbar activeSection="leaderboard" />
+      <main>
+        <PredictionLeaderboard />
+      </main>
+      <Footer />
+    </>
+  );
+}
+
+function MyPredictionsPage() {
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+  }, []);
+
+  return (
+    <>
+      <Navbar activeSection="prediction" />
+      <main>
+        <MyPredictions />
+      </main>
+      <Footer />
+    </>
+  );
+}
+
 function AppShell() {
-  useOpeningSound();
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
+  useOpeningSound(!isAdminRoute);
 
   return (
     <motion.div
@@ -217,13 +261,18 @@ function AppShell() {
       transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
       className="relative min-h-screen overflow-x-hidden text-white"
     >
-      <BackgroundEffects />
+      {!isAdminRoute && <BackgroundEffects />}
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/drivers" element={<DriversPage />} />
+        <Route path="/predictions/mine" element={<MyPredictionsPage />} />
+        <Route path="/predictions/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/predictions/:raceSlug" element={<DutchGrandPrixPrediction />} />
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/admin/race-history" element={<AdminPanel />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <F1AssistantWidget />
+      {!isAdminRoute && <F1AssistantWidget />}
       <Analytics />
     </motion.div>
   );
