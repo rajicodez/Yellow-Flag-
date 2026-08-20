@@ -163,8 +163,8 @@ export default function RaceFormModal({ race, races = [], open, onClose, onSave 
 
     const savedRace = {
       ...race,
-      id: race?.id ?? selectedCalendarRace.id,
-      calendarId: race?.calendarId ?? selectedCalendarRace.id,
+      id: race?.id ?? selectedCalendarRace?.id,
+      calendarId: race?.calendarId ?? selectedCalendarRace?.id ?? null,
       name: details.name.trim(),
       slug: race?.slug ?? createSlug(details.name),
       circuit: details.circuit.trim(),
