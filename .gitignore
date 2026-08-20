@@ -4,6 +4,7 @@ dist
 *.local
 supabase/.temp/
 supabase/.branches/
+.production-backups/
 
 # Local secrets (Gemini/Qdrant keys)
 .env
