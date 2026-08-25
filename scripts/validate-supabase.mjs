@@ -26,6 +26,7 @@ assert.deepEqual(activeMigrations, [
   '20260817180000_isolated_demo_races.sql',
   '20260817181000_reload_postgrest_schema.sql',
   '20260817183000_admin_race_overrides.sql',
+  '20260825100000_public_homepage_leaderboard.sql',
 ]);
 
 const archivedMigrations = (await readdir(archiveMigrationDirectory))
@@ -76,6 +77,10 @@ const postgrestReloadMigration = await readFile(
 );
 const raceOverrideMigration = await readFile(
   path.join(migrationDirectory, activeMigrations[8]),
+  'utf8'
+);
+const homepageLeaderboardMigration = await readFile(
+  path.join(migrationDirectory, activeMigrations[9]),
   'utf8'
 );
 const config = await readFile(path.join(supabaseDirectory, 'config.toml'), 'utf8');
@@ -131,6 +136,10 @@ const predictionReview = await readFile(
 );
 const predictionLanding = await readFile(
   path.join(root, 'src', 'components', 'Prediction.jsx'),
+  'utf8'
+);
+const homepageLeaderboard = await readFile(
+  path.join(root, 'src', 'components', 'predictions', 'HomepageLeaderboard.jsx'),
   'utf8'
 );
 const myPredictions = await readFile(
@@ -371,6 +380,16 @@ assert.match(normalizedHostChampionship, /race\.status = 'published'::public\.ra
 assert.match(normalizedHostChampionship, /revoke all on function public\.get_public_host_championship\(integer\) from public/);
 assert.match(normalizedHostChampionship, /grant execute on function public\.get_public_host_championship\(integer\) to anon, authenticated, service_role/);
 
+const normalizedHomepageLeaderboard = homepageLeaderboardMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
+assert.match(normalizedHomepageLeaderboard, /create or replace function public\.get_homepage_fan_leaderboard\(\)/);
+assert.match(normalizedHomepageLeaderboard, /stable security definer set search_path = ''/);
+assert.match(normalizedHomepageLeaderboard, /race\.status = 'published'::public\.race_status/);
+assert.match(normalizedHomepageLeaderboard, /race\.is_demo = false/);
+assert.match(normalizedHomepageLeaderboard, /leaderboard\.competition = 'user'::public\.prediction_competition/);
+assert.match(normalizedHomepageLeaderboard, /limit 10/);
+assert.match(normalizedHomepageLeaderboard, /revoke all on function public\.get_homepage_fan_leaderboard\(\) from public/);
+assert.match(normalizedHomepageLeaderboard, /grant execute on function public\.get_homepage_fan_leaderboard\(\) to anon, authenticated, service_role/);
+
 assert.match(predictionClient, /race\.opens_at/);
 assert.match(predictionClient, /race\.closes_at/);
 assert.match(predictionClient, /useSearchParams\(\)/);
@@ -415,6 +434,9 @@ assert.match(adminRaceHistory, /officialAnswersByRaceId/);
 assert.doesNotMatch(adminRaceHistory, /demoResultsByRaceId|demoLeaderboardByRaceId|DemoLabel/);
 assert.match(appRoutes, /path="\/predictions\/:raceSlug"/);
 assert.match(appRoutes, /path="\/predictions\/mine"/);
+assert.match(appRoutes, /<HomepageLeaderboard \/>/);
+assert.match(homepageLeaderboard, /rpc\('get_homepage_fan_leaderboard'/);
+assert.match(homepageLeaderboard, /to="\/predictions\/leaderboard"/);
 const normalizedDemoRace = demoRaceMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
 assert.match(normalizedDemoRace, /add column if not exists is_demo boolean not null default false/);
 assert.match(normalizedDemoRace, /create or replace function public\.admin_create_demo_race\(/);
@@ -436,5 +458,5 @@ assert.match(scheduleData, /Italian GP'.*raceTime: '06 Sep, 06:30 PM'/);
 assert.match(scheduleData, /Spanish GP'.*track: 'Madring'.*raceTime: '13 Sep, 06:30 PM'/);
 
 console.log(
-  'Validated the live production baseline, scoring, Auth provisioning, guarded race/user administration, public Host championship migrations, archived migrations 000-007, local seed, RLS/RPC contracts, and 245 pgTAP assertions.'
+  'Validated the live production baseline, scoring, Auth provisioning, guarded race/user administration, public Host and homepage leaderboard migrations, archived migrations 000-007, local seed, RLS/RPC contracts, and 245 pgTAP assertions.'
 );
