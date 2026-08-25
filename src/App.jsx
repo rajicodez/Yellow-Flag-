@@ -19,6 +19,7 @@ import Tracks from './components/Tracks';
 import AdminPanel from './components/admin/AdminPanel';
 import DutchGrandPrixPrediction from './components/predictions/DutchGrandPrixPrediction';
 import MyPredictions from './components/predictions/MyPredictions';
+import HomepageLeaderboard from './components/predictions/HomepageLeaderboard';
 import PredictionLeaderboard from './components/predictions/PredictionLeaderboard';
 import BackgroundEffects from './components/ui/BackgroundEffects';
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
@@ -187,6 +188,7 @@ function HomePage() {
         <Hero />
         <Episodes />
         <Prediction />
+        <HomepageLeaderboard />
         <About />
         <Journey />
         <Schedule />
