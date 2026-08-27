@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import AdminLayout from './AdminLayout';
 import AdminLogin from './AdminLogin';
 import DashboardScreen from './screens/DashboardScreen';
+import AnalyticsScreen from './screens/AnalyticsScreen';
 import LeaderboardScreen from './screens/LeaderboardScreen';
 import QuestionsScreen from './screens/QuestionsScreen';
 import RacesScreen from './screens/RacesScreen';
@@ -15,6 +16,7 @@ import useAdminRaceWorkspace from './useAdminRaceWorkspace';
 
 const screens = {
   dashboard: DashboardScreen,
+  analytics: AnalyticsScreen,
   races: RacesScreen,
   questions: QuestionsScreen,
   results: ResultsScreen,

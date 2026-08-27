@@ -1,5 +1,6 @@
 export const adminNavigation = [
   { id: 'dashboard', label: 'Dashboard' },
+  { id: 'analytics', label: 'Analytics' },
   { id: 'races', label: 'Races' },
   { id: 'questions', label: 'Questions' },
   { id: 'results', label: 'Results & Scoring' },

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  BarChart3,
   ArrowLeft,
   Calculator,
   ChevronRight,
@@ -20,6 +21,7 @@ import { RoleBadge } from './AdminUI';
 
 const icons = {
   dashboard: LayoutDashboard,
+  analytics: BarChart3,
   races: Flag,
   questions: CircleHelp,
   results: Calculator,
