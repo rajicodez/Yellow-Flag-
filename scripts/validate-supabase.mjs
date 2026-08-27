@@ -27,6 +27,7 @@ assert.deepEqual(activeMigrations, [
   '20260817181000_reload_postgrest_schema.sql',
   '20260817183000_admin_race_overrides.sql',
   '20260825100000_public_homepage_leaderboard.sql',
+  '20260827100000_admin_prediction_analytics.sql',
 ]);
 
 const archivedMigrations = (await readdir(archiveMigrationDirectory))
@@ -83,6 +84,10 @@ const homepageLeaderboardMigration = await readFile(
   path.join(migrationDirectory, activeMigrations[9]),
   'utf8'
 );
+const predictionAnalyticsMigration = await readFile(
+  path.join(migrationDirectory, activeMigrations[10]),
+  'utf8'
+);
 const config = await readFile(path.join(supabaseDirectory, 'config.toml'), 'utf8');
 const seed = await readFile(path.join(supabaseDirectory, 'seed.sql'), 'utf8');
 const archivedSeed = await readFile(path.join(archiveDirectory, 'seed.sql'), 'utf8');
@@ -120,6 +125,10 @@ const userAccessTest = await readFile(
 );
 const hostChampionshipTest = await readFile(
   path.join(supabaseDirectory, 'tests', '008_public_host_championship_test.sql'),
+  'utf8'
+);
+const predictionAnalyticsTest = await readFile(
+  path.join(supabaseDirectory, 'tests', '009_admin_prediction_analytics_test.sql'),
   'utf8'
 );
 const predictionClient = await readFile(
@@ -166,6 +175,10 @@ const demoRaceModal = await readFile(
 const scheduleData = await readFile(path.join(root, 'src', 'data', 'schedule.js'), 'utf8');
 const dashboardScreen = await readFile(
   path.join(root, 'src', 'components', 'admin', 'screens', 'DashboardScreen.jsx'),
+  'utf8'
+);
+const analyticsScreen = await readFile(
+  path.join(root, 'src', 'components', 'admin', 'screens', 'AnalyticsScreen.jsx'),
   'utf8'
 );
 
@@ -317,6 +330,9 @@ assert.match(userAccessTest, /an idempotent assignment creates no duplicate audi
 assert.match(hostChampionshipTest, /select plan\(15\)/i);
 assert.match(hostChampionshipTest, /Lakindu receives only the published Host score/i);
 assert.match(hostChampionshipTest, /fan entries are excluded from Host totals/i);
+assert.match(predictionAnalyticsTest, /select plan\(18\)/i);
+assert.match(predictionAnalyticsTest, /a Fan cannot read aggregate admin analytics/i);
+assert.match(predictionAnalyticsTest, /open race does not expose question choices/i);
 
 const normalizedProvisioning = profileProvisioningMigration
   .replaceAll('"', '')
@@ -390,6 +406,19 @@ assert.match(normalizedHomepageLeaderboard, /limit 10/);
 assert.match(normalizedHomepageLeaderboard, /revoke all on function public\.get_homepage_fan_leaderboard\(\) from public/);
 assert.match(normalizedHomepageLeaderboard, /grant execute on function public\.get_homepage_fan_leaderboard\(\) to anon, authenticated, service_role/);
 
+const normalizedPredictionAnalytics = predictionAnalyticsMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
+assert.match(normalizedPredictionAnalytics, /create table public\.prediction_analytics_events \(/);
+assert.match(normalizedPredictionAnalytics, /alter table public\.prediction_analytics_events enable row level security/);
+assert.match(normalizedPredictionAnalytics, /using \(public\.is_prediction_admin\(\)\)/);
+assert.match(normalizedPredictionAnalytics, /create trigger record_prediction_analytics_event after insert or update on public\.prediction_entries/);
+assert.match(normalizedPredictionAnalytics, /create or replace function public\.get_admin_prediction_analytics\(/);
+assert.match(normalizedPredictionAnalytics, /if not public\.is_prediction_admin\(\) then raise exception 'admin_role_required'/);
+assert.match(normalizedPredictionAnalytics, /distributions_locked/);
+assert.match(normalizedPredictionAnalytics, /prediction_analytics_events_race_time_idx/);
+assert.match(normalizedPredictionAnalytics, /alter publication supabase_realtime add table public\.prediction_analytics_events/);
+assert.match(normalizedPredictionAnalytics, /revoke all on function public\.get_admin_prediction_analytics\(uuid, public\.prediction_competition\) from public, anon/);
+assert.match(normalizedPredictionAnalytics, /grant execute on function public\.get_admin_prediction_analytics\(uuid, public\.prediction_competition\) to authenticated, service_role/);
+
 assert.match(predictionClient, /race\.opens_at/);
 assert.match(predictionClient, /race\.closes_at/);
 assert.match(predictionClient, /useSearchParams\(\)/);
@@ -454,9 +483,14 @@ assert.match(normalizedRaceOverride, /set opens_at = least\(opens_at, closed_at 
 assert.match(normalizedRaceOverride, /core_race_identity_locked_after_submissions/);
 assert.match(dashboardScreen, /Close Predictions Now/);
 assert.match(dashboardScreen, /Open Predictions Now/);
+assert.match(analyticsScreen, /rpc\('get_admin_prediction_analytics'/);
+assert.match(analyticsScreen, /table: 'prediction_analytics_events'/);
+assert.match(analyticsScreen, /distributions_locked/);
+assert.match(analyticsScreen, /Popular Podium Combinations/);
+assert.match(analyticsScreen, /Score Distribution/);
 assert.match(scheduleData, /Italian GP'.*raceTime: '06 Sep, 06:30 PM'/);
 assert.match(scheduleData, /Spanish GP'.*track: 'Madring'.*raceTime: '13 Sep, 06:30 PM'/);
 
 console.log(
-  'Validated the live production baseline, scoring, Auth provisioning, guarded race/user administration, public Host and homepage leaderboard migrations, archived migrations 000-007, local seed, RLS/RPC contracts, and 245 pgTAP assertions.'
+  'Validated the live production baseline, scoring, Auth provisioning, guarded race/user administration, public leaderboards, admin analytics, archived migrations 000-007, local seed, RLS/RPC contracts, and 263 pgTAP assertions.'
 );
