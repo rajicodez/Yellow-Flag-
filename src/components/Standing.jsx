@@ -376,7 +376,7 @@ export default function Standing() {
 
       <div className="relative mx-auto max-w-5xl px-5 md:px-8">
         <Reveal>
-          <SectionHeading eyebrow="Championship" title="Standing" description={standingsIntro} />
+          <SectionHeading eyebrow="Championship" title="Standings" description={standingsIntro} />
           <p className="-mt-8 mb-10 text-center text-xs font-semibold uppercase tracking-[0.22em] text-yellow-300/80">
             {lastUpdated}
           </p>
