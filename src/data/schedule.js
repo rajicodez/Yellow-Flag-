@@ -61,16 +61,16 @@ const raceSchedule2026 = [
   { round: 12, grandPrix: 'Belgian GP', track: 'Circuit de Spa-Francorchamps', raceTime: '19 Jul, 06:30 PM', sprintDetails: null, trackSlug: 'belgium' },
   { round: 13, grandPrix: 'Hungarian GP', track: 'Hungaroring', raceTime: '26 Jul, 06:30 PM', sprintDetails: null, trackSlug: 'hungary' },
   { round: 14, grandPrix: 'Dutch GP', track: 'Circuit Zandvoort', raceTime: '23 Aug, 06:30 PM', sprintDetails: { sprintQualifying: '21 Aug', sprint: '22 Aug' }, trackSlug: 'netherlands' },
-  { round: 15, grandPrix: 'Italian GP', track: 'Autodromo Nazionale Monza', raceTime: '06 Sep, 06:30 PM', sprintDetails: null, trackSlug: 'monza' },
-  { round: 16, grandPrix: 'Spanish GP', track: 'Madring', raceTime: '13 Sep, 06:30 PM', sprintDetails: null, trackSlug: 'madrid' },
-  { round: 17, grandPrix: 'Azerbaijan GP', track: 'Baku City Circuit', raceTime: '26 Sep, 04:30 PM', sprintDetails: null, trackSlug: 'baku' },
-  { round: 18, grandPrix: 'Singapore GP', track: 'Marina Bay Street Circuit', raceTime: '11 Oct, 05:30 PM', sprintDetails: { sprintQualifying: '09 Oct', sprint: '10 Oct' }, trackSlug: 'singapore' },
-  { round: 19, grandPrix: 'United States GP', track: 'Circuit of The Americas', raceTime: '26 Oct, 01:30 AM', sprintDetails: null, trackSlug: 'austin' },
-  { round: 20, grandPrix: 'Mexico City GP', track: 'Autodromo Hermanos Rodriguez', raceTime: '02 Nov, 01:30 AM', sprintDetails: null, trackSlug: 'mexico' },
-  { round: 21, grandPrix: 'Sao Paulo GP', track: 'Autodromo Jose Carlos Pace', raceTime: '08 Nov, 10:30 PM', sprintDetails: null, trackSlug: 'brazil' },
-  { round: 22, grandPrix: 'Las Vegas GP', track: 'Las Vegas Strip Circuit', raceTime: '22 Nov, 11:30 AM', sprintDetails: null, trackSlug: 'las-vegas' },
-  { round: 23, grandPrix: 'Qatar GP', track: 'Lusail International Circuit', raceTime: '29 Nov, 09:30 PM', sprintDetails: { sprintQualifying: '28 Nov, 06:30-07:14 PM', sprint: '29 Nov, 02:30-03:30 PM' }, trackSlug: 'qatar' },
-  { round: 24, grandPrix: 'Abu Dhabi GP', track: 'Yas Marina Circuit', raceTime: '06 Dec, 06:30 PM', sprintDetails: null, trackSlug: 'abu-dhabi' }
+  { round: 13, grandPrix: 'Italian GP', track: 'Autodromo Nazionale Monza', raceTime: '06 Sep, 06:30 PM', sprintDetails: null, trackSlug: 'monza' },
+  { round: 14, grandPrix: 'Spanish GP', track: 'Madring', raceTime: '13 Sep, 06:30 PM', sprintDetails: null, trackSlug: 'madrid' },
+  { round: 15, grandPrix: 'Azerbaijan GP', track: 'Baku City Circuit', raceTime: '26 Sep, 04:30 PM', sprintDetails: null, trackSlug: 'baku' },
+  { round: 16, grandPrix: 'Singapore GP', track: 'Marina Bay Street Circuit', raceTime: '11 Oct, 05:30 PM', sprintDetails: { sprintQualifying: '09 Oct', sprint: '10 Oct' }, trackSlug: 'singapore' },
+  { round: 17, grandPrix: 'United States GP', track: 'Circuit of The Americas', raceTime: '26 Oct, 01:30 AM', sprintDetails: null, trackSlug: 'austin' },
+  { round: 18, grandPrix: 'Mexico City GP', track: 'Autodromo Hermanos Rodriguez', raceTime: '02 Nov, 01:30 AM', sprintDetails: null, trackSlug: 'mexico' },
+  { round: 19, grandPrix: 'Sao Paulo GP', track: 'Autodromo Jose Carlos Pace', raceTime: '08 Nov, 10:30 PM', sprintDetails: null, trackSlug: 'brazil' },
+  { round: 20, grandPrix: 'Las Vegas GP', track: 'Las Vegas Strip Circuit', raceTime: '22 Nov, 11:30 AM', sprintDetails: null, trackSlug: 'las-vegas' },
+  { round: 21, grandPrix: 'Qatar GP', track: 'Lusail International Circuit', raceTime: '29 Nov, 09:30 PM', sprintDetails: { sprintQualifying: '28 Nov, 06:30-07:14 PM', sprint: '29 Nov, 02:30-03:30 PM' }, trackSlug: 'qatar' },
+  { round: 22, grandPrix: 'Abu Dhabi GP', track: 'Yas Marina Circuit', raceTime: '06 Dec, 06:30 PM', sprintDetails: null, trackSlug: 'abu-dhabi' }
 ];
 
 export const f1Schedule2026 = raceSchedule2026.map((race) => ({

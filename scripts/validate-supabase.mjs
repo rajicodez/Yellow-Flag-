@@ -488,8 +488,9 @@ assert.match(analyticsScreen, /table: 'prediction_analytics_events'/);
 assert.match(analyticsScreen, /distributions_locked/);
 assert.match(analyticsScreen, /Popular Podium Combinations/);
 assert.match(analyticsScreen, /Score Distribution/);
-assert.match(scheduleData, /Italian GP'.*raceTime: '06 Sep, 06:30 PM'/);
-assert.match(scheduleData, /Spanish GP'.*track: 'Madring'.*raceTime: '13 Sep, 06:30 PM'/);
+assert.match(scheduleData, /round: 13, grandPrix: 'Italian GP'.*raceTime: '06 Sep, 06:30 PM'/);
+assert.match(predictionLanding, /'2026-italian-grand-prix': MONZA_PHOTO/);
+assert.match(scheduleData, /round: 14, grandPrix: 'Spanish GP'.*track: 'Madring'.*raceTime: '13 Sep, 06:30 PM'/);
 
 console.log(
   'Validated the live production baseline, scoring, Auth provisioning, guarded race/user administration, public leaderboards, admin analytics, archived migrations 000-007, local seed, RLS/RPC contracts, and 263 pgTAP assertions.'
