@@ -8,7 +8,7 @@ import { BRAND, navItems } from '../data/content';
 import { signInWithGoogle, supabase } from '../lib/supabase';
 
 const raceCentreIds = new Set(['schedule', 'standing', 'drivers', 'teams', 'tracks']);
-const raceCentreItems = ['schedule', 'standing', 'drivers', 'teams', 'tracks']
+const raceCentreItems = ['schedule', 'tracks', 'drivers', 'teams', 'standing']
   .map((id) => navItems.find((item) => item.id === id));
 const navbarItems = navItems.reduce((items, item) => {
   if (!raceCentreIds.has(item.id)) return [...items, item];
@@ -380,10 +380,10 @@ export default function Navbar({ activeSection }) {
                           <p className="mt-1 text-xs text-zinc-500">Explore the championship</p>
                         </div>
                         <div className="relative space-y-1">
-                          {item.children.map((child, index) => {
+                          {item.children.map((child) => {
                             const active = location.pathname === child.path || (location.pathname === '/' && activeSection === child.id);
-                            const content = <><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-[9px] font-black ${active ? 'border-yellow-400/35 bg-yellow-400/15 text-yellow-300' : 'border-white/10 bg-white/[0.04] text-zinc-600'}`}>{String(index + 1).padStart(2, '0')}</span><span className="flex-1">{child.label}</span><span className={`h-1.5 w-1.5 rounded-full transition ${active ? 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.8)]' : 'bg-transparent group-hover:bg-yellow-400/60'}`} /></>;
-                            const className = `group flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left text-sm font-bold transition duration-200 ${active ? 'bg-white/[0.08] text-yellow-300' : 'text-zinc-300 hover:bg-white/[0.07] hover:text-white'}`;
+                            const content = <><span className="flex-1">{child.label}</span><span className={`h-1.5 w-1.5 rounded-full transition ${active ? 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.8)]' : 'bg-transparent group-hover:bg-yellow-400/60'}`} /></>;
+                            const className = `group flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold transition duration-200 ${active ? 'bg-white/[0.08] text-yellow-300' : 'text-zinc-300 hover:bg-white/[0.07] hover:text-white'}`;
                             return child.path ? <Link key={child.id} to={child.path} role="menuitem" onClick={() => setIsRaceCentreOpen(false)} className={className}>{content}</Link> : <button key={child.id} type="button" role="menuitem" onClick={() => handleNav(child.id)} className={className}>{content}</button>;
                           })}
                         </div>
