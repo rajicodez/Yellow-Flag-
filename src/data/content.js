@@ -22,7 +22,7 @@ export const navItems = [
   { id: 'teams', label: 'Teams' },
   { id: 'drivers', label: 'Drivers', path: '/drivers' },
   { id: 'standing', label: 'Standings' },
-  { id: 'game', label: 'Game' },
+  { id: 'game', label: 'Games' },
   { id: 'contact', label: 'Contact' },
 ];
 
