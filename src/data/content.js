@@ -21,6 +21,7 @@ export const navItems = [
   { id: 'teams', label: 'Teams' },
   { id: 'drivers', label: 'Drivers', path: '/drivers' },
   { id: 'standing', label: 'Standings' },
+  { id: 'leaderboard', label: 'Leaderboard', path: '/predictions/leaderboard' },
   { id: 'game', label: 'Game' },
   { id: 'contact', label: 'Contact' },
 ];

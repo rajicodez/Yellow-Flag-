@@ -2,10 +2,19 @@ import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { HiMenuAlt3, HiX } from 'react-icons/hi';
 import { FcGoogle } from 'react-icons/fc';
-import { LogOut, UserRound } from 'lucide-react';
+import { ChevronDown, LogOut, UserRound } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { BRAND, navItems } from '../data/content';
 import { signInWithGoogle, supabase } from '../lib/supabase';
+
+const raceCentreIds = new Set(['schedule', 'standing', 'drivers', 'teams', 'tracks']);
+const raceCentreItems = ['schedule', 'standing', 'drivers', 'teams', 'tracks']
+  .map((id) => navItems.find((item) => item.id === id));
+const navbarItems = navItems.reduce((items, item) => {
+  if (!raceCentreIds.has(item.id)) return [...items, item];
+  if (items.some((current) => current.id === 'race-centre')) return items;
+  return [...items, { id: 'race-centre', label: 'Race Centre', children: raceCentreItems }];
+}, []);
 
 export default function Navbar({ activeSection }) {
   const [open, setOpen] = useState(false);
@@ -14,6 +23,8 @@ export default function Navbar({ activeSection }) {
   const [isAuthLoading, setIsAuthLoading] = useState(Boolean(supabase));
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isRaceCentreOpen, setIsRaceCentreOpen] = useState(false);
+  const [isMobileRaceCentreOpen, setIsMobileRaceCentreOpen] = useState(false);
   const [isGoogleSignInLoading, setIsGoogleSignInLoading] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [loginError, setLoginError] = useState('');
@@ -21,6 +32,8 @@ export default function Navbar({ activeSection }) {
   const [avatarFailed, setAvatarFailed] = useState(false);
   const accountMenuRef = useRef(null);
   const accountButtonRef = useRef(null);
+  const raceCentreMenuRef = useRef(null);
+  const raceCentreButtonRef = useRef(null);
   const loginDialogRef = useRef(null);
   const googleButtonRef = useRef(null);
   const wasLoginOpenRef = useRef(false);
@@ -106,6 +119,27 @@ export default function Navbar({ activeSection }) {
   }, [isAccountOpen]);
 
   useEffect(() => {
+    if (!isRaceCentreOpen) return undefined;
+
+    const handlePointerDown = (event) => {
+      if (!raceCentreMenuRef.current?.contains(event.target)) setIsRaceCentreOpen(false);
+    };
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setIsRaceCentreOpen(false);
+        raceCentreButtonRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isRaceCentreOpen]);
+
+  useEffect(() => {
     if (!isLoginOpen) return undefined;
 
     const previousOverflow = document.body.style.overflow;
@@ -174,6 +208,7 @@ export default function Navbar({ activeSection }) {
 
   const openLoginModal = () => {
     setOpen(false);
+    setIsRaceCentreOpen(false);
     setIsAccountOpen(false);
     setLoginError('');
     setIsLoginOpen(true);
@@ -197,6 +232,7 @@ export default function Navbar({ activeSection }) {
 
   const handleAccountClick = () => {
     setOpen(false);
+    setIsRaceCentreOpen(false);
     setLogoutError('');
     setIsAccountOpen((current) => !current);
   };
@@ -223,6 +259,7 @@ export default function Navbar({ activeSection }) {
 
   const handleNav = (id) => {
     setOpen(false);
+    setIsRaceCentreOpen(false);
 
     if (location.pathname !== '/') {
       navigate(id === 'home' ? '/' : { pathname: '/', hash: id });
@@ -293,8 +330,59 @@ export default function Navbar({ activeSection }) {
         </button>
 
         <nav className="order-3 hidden w-full items-center justify-center gap-0.5 lg:flex xl:order-2 xl:min-w-0 xl:flex-1 xl:w-auto">
-          {navItems.map((item) =>
-            item.path ? (
+          {navbarItems.map((item) =>
+            item.children ? (
+              <div key={item.id} ref={raceCentreMenuRef} className="relative">
+                <button
+                  ref={raceCentreButtonRef}
+                  type="button"
+                  onClick={() => {
+                    setIsAccountOpen(false);
+                    setIsRaceCentreOpen((current) => !current);
+                  }}
+                  aria-haspopup="menu"
+                  aria-expanded={isRaceCentreOpen}
+                  className={`${linkClass(item.children.some((child) => activeSection === child.id || location.pathname === child.path))} flex items-center gap-1`}
+                >
+                  {item.label}
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isRaceCentreOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                </button>
+                <AnimatePresence>
+                  {isRaceCentreOpen && (
+                    <motion.div
+                      role="menu"
+                      aria-label="Race Centre"
+                      initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                      className="absolute left-1/2 top-[calc(100%+0.7rem)] z-[70] w-56 -translate-x-1/2 overflow-hidden rounded-2xl border border-yellow-400/20 bg-[#111]/98 p-2 shadow-[0_22px_65px_rgba(0,0,0,0.65)] backdrop-blur-xl"
+                    >
+                      {item.children.map((child) => child.path ? (
+                        <Link
+                          key={child.id}
+                          to={child.path}
+                          role="menuitem"
+                          onClick={() => setIsRaceCentreOpen(false)}
+                          className={`block rounded-xl px-4 py-3 text-sm font-bold transition ${location.pathname === child.path || activeSection === child.id ? 'bg-yellow-400/15 text-yellow-300' : 'text-zinc-300 hover:bg-white/5 hover:text-white'}`}
+                        >
+                          {child.label}
+                        </Link>
+                      ) : (
+                        <button
+                          key={child.id}
+                          type="button"
+                          role="menuitem"
+                          onClick={() => handleNav(child.id)}
+                          className={`block w-full rounded-xl px-4 py-3 text-left text-sm font-bold transition ${location.pathname === '/' && activeSection === child.id ? 'bg-yellow-400/15 text-yellow-300' : 'text-zinc-300 hover:bg-white/5 hover:text-white'}`}
+                        >
+                          {child.label}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : item.path ? (
               <Link
                 key={item.id}
                 to={item.path}
@@ -322,6 +410,7 @@ export default function Navbar({ activeSection }) {
             className="rounded-xl border border-white/10 p-3 text-white transition hover:border-yellow-400/30 hover:text-yellow-300 lg:hidden"
             onClick={() => {
               setIsAccountOpen(false);
+              setIsRaceCentreOpen(false);
               setOpen((current) => !current);
             }}
             aria-label={open ? 'Close menu' : 'Open menu'}
@@ -458,8 +547,58 @@ export default function Navbar({ activeSection }) {
             className="border-t border-white/10 bg-black/95 px-5 py-6 backdrop-blur-xl lg:hidden"
           >
             <div className="flex flex-col gap-2">
-              {navItems.map((item) =>
-                item.path ? (
+              {navbarItems.map((item) =>
+                item.children ? (
+                  <div key={item.id} className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
+                    <button
+                      type="button"
+                      onClick={() => setIsMobileRaceCentreOpen((current) => !current)}
+                      aria-expanded={isMobileRaceCentreOpen}
+                      className={`flex w-full items-center justify-between ${mobileLinkClass(item.children.some((child) => activeSection === child.id || location.pathname === child.path))}`}
+                    >
+                      {item.label}
+                      <ChevronDown className={`h-4 w-4 transition-transform ${isMobileRaceCentreOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                    </button>
+                    <AnimatePresence initial={false}>
+                      {isMobileRaceCentreOpen && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="space-y-1 border-t border-white/10 p-2">
+                            {item.children.map((child) => child.path ? (
+                              <Link
+                                key={child.id}
+                                to={child.path}
+                                onClick={() => {
+                                  setOpen(false);
+                                  setIsMobileRaceCentreOpen(false);
+                                }}
+                                className={`block rounded-xl px-5 py-3 text-sm font-bold ${location.pathname === child.path || activeSection === child.id ? 'bg-yellow-400/10 text-yellow-300' : 'text-zinc-400'}`}
+                              >
+                                {child.label}
+                              </Link>
+                            ) : (
+                              <button
+                                key={child.id}
+                                type="button"
+                                onClick={() => {
+                                  handleNav(child.id);
+                                  setIsMobileRaceCentreOpen(false);
+                                }}
+                                className={`block w-full rounded-xl px-5 py-3 text-left text-sm font-bold ${location.pathname === '/' && activeSection === child.id ? 'bg-yellow-400/10 text-yellow-300' : 'text-zinc-400'}`}
+                              >
+                                {child.label}
+                              </button>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                ) : item.path ? (
                   <Link
                     key={item.id}
                     to={item.path}
