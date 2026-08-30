@@ -226,7 +226,7 @@ function LeaderboardPage() {
 
   return (
     <>
-      <Navbar activeSection="leaderboard" />
+      <Navbar activeSection="leaderboard-preview" />
       <main>
         <PredictionLeaderboard />
       </main>

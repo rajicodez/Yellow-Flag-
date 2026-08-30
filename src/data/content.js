@@ -15,13 +15,14 @@ export const navItems = [
   { id: 'home', label: 'Home' },
   { id: 'episodes', label: 'Episodes' },
   { id: 'prediction', label: 'Predictions' },
+  { id: 'leaderboard-preview', label: 'Leaderboard' },
   { id: 'about', label: 'About' },
   { id: 'schedule', label: 'Schedule' },
   { id: 'tracks', label: 'Tracks' },
   { id: 'teams', label: 'Teams' },
   { id: 'drivers', label: 'Drivers', path: '/drivers' },
   { id: 'standing', label: 'Standings' },
-  { id: 'game', label: 'Game' },
+  { id: 'game', label: 'Games' },
   { id: 'contact', label: 'Contact' },
 ];
 

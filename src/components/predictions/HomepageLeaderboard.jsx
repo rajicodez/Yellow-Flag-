@@ -1,18 +1,37 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, LoaderCircle, Medal, Trophy } from 'lucide-react';
+import { ArrowRight, Crown, LoaderCircle, Medal, Trophy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import Reveal from '../ui/Reveal';
 
-const podiumStyles = [
-  'border-yellow-300/40 bg-yellow-400/[0.11] shadow-[0_0_45px_rgba(250,204,21,0.08)]',
-  'border-zinc-300/25 bg-white/[0.055]',
-  'border-amber-700/30 bg-amber-700/[0.07]',
+const podiumLayout = [
+  {
+    card: 'md:order-2 md:min-h-[360px] md:-translate-y-5 border-yellow-300/50 bg-[linear-gradient(180deg,rgba(250,204,21,0.16),rgba(24,20,7,0.76))] shadow-[0_0_70px_rgba(250,204,21,0.13)]',
+    badge: 'border-yellow-200/40 bg-yellow-400 text-black shadow-[0_0_28px_rgba(250,204,21,0.32)]',
+    score: 'text-yellow-300',
+    avatarSize: 'xl',
+  },
+  {
+    card: 'md:order-1 md:mt-8 md:min-h-[320px] border-slate-300/25 bg-[linear-gradient(180deg,rgba(203,213,225,0.1),rgba(16,18,24,0.76))]',
+    badge: 'border-slate-200/25 bg-slate-200 text-slate-950',
+    score: 'text-slate-200',
+    avatarSize: 'lg',
+  },
+  {
+    card: 'md:order-3 md:mt-8 md:min-h-[320px] border-orange-500/25 bg-[linear-gradient(180deg,rgba(194,65,12,0.1),rgba(24,14,10,0.76))]',
+    badge: 'border-orange-300/25 bg-orange-500 text-white',
+    score: 'text-orange-400',
+    avatarSize: 'lg',
+  },
 ];
 
 function Avatar({ name, src, size = 'md' }) {
   const [failed, setFailed] = useState(false);
-  const sizeClass = size === 'lg' ? 'h-16 w-16 text-xl' : 'h-10 w-10 text-sm';
+  const sizeClass = size === 'xl'
+    ? 'h-28 w-28 text-3xl sm:h-32 sm:w-32'
+    : size === 'lg'
+      ? 'h-24 w-24 text-2xl sm:h-28 sm:w-28'
+      : 'h-12 w-12 text-base';
 
   if (src && !failed) {
     return <img src={src} alt="" referrerPolicy="no-referrer" onError={() => setFailed(true)} className={`${sizeClass} rounded-full border border-white/15 object-cover`} />;
@@ -80,24 +99,33 @@ export default function HomepageLeaderboard() {
 
         {state.status === 'ready' && state.rows.length > 0 && (
           <>
-            <div className="mt-8 grid gap-4 md:grid-cols-3">
-              {podium.map((row, index) => (
-                <article key={`${row.rank}-${row.display_name}`} className={`rounded-2xl border p-5 text-center ${podiumStyles[index]}`}>
-                  <div className="mx-auto flex w-fit items-center gap-2 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 font-display text-sm font-black text-yellow-300"><Medal className="h-4 w-4" /> #{row.rank}</div>
-                  <div className="mx-auto mt-5 w-fit"><Avatar name={row.display_name} src={row.avatar_url} size="lg" /></div>
-                  <h3 className="mt-4 truncate font-display text-xl font-black uppercase text-white">{row.display_name || 'Yellow Flag Fan'}</h3>
-                  <p className="mt-2 font-display text-3xl font-black text-yellow-300">{row.score}<span className="ml-1 text-sm text-zinc-500">/ 7 PTS</span></p>
+            <div className="mt-14 grid items-end gap-4 md:grid-cols-3">
+              {podium.map((row, index) => {
+                const layout = podiumLayout[index];
+                return (
+                <article key={`${row.rank}-${row.display_name}`} className={`group relative flex min-h-[310px] flex-col items-center overflow-hidden rounded-[1.75rem] border px-5 pb-7 pt-9 text-center transition duration-300 hover:-translate-y-1 ${layout.card}`}>
+                  <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-white/55 to-transparent" />
+                  <div className="pointer-events-none absolute -top-20 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full bg-white/[0.055] blur-3xl" />
+                  <div className={`relative z-10 flex h-12 min-w-12 items-center justify-center gap-1.5 rounded-2xl border px-3 font-display text-lg font-black ${layout.badge}`}>
+                    {index === 0 ? <Crown className="h-5 w-5" /> : <Medal className="h-5 w-5" />} #{row.rank}
+                  </div>
+                  <div className="relative z-10 mx-auto mt-6 w-fit rounded-full bg-gradient-to-br from-white/40 via-white/10 to-transparent p-[3px] shadow-[0_14px_35px_rgba(0,0,0,0.4)]">
+                    <Avatar name={row.display_name} src={row.avatar_url} size={layout.avatarSize} />
+                  </div>
+                  <h3 className="relative z-10 mt-5 max-w-full truncate font-display text-xl font-black uppercase text-white sm:text-2xl">{row.display_name || 'Yellow Flag Fan'}</h3>
+                  <p className={`relative z-10 mt-2 font-display text-4xl font-black ${layout.score}`}>{row.score}<span className="ml-1.5 text-sm text-zinc-500">/ 7 PTS</span></p>
                 </article>
-              ))}
+                );
+              })}
             </div>
 
             {remaining.length > 0 && (
               <div className="mt-5 overflow-hidden rounded-2xl border border-white/10 bg-[#101010]/90">
                 {remaining.map((row) => (
-                  <div key={`${row.rank}-${row.display_name}`} className="grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/10 px-4 py-4 last:border-b-0 sm:px-6">
+                  <div key={`${row.rank}-${row.display_name}`} className="grid grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/10 px-4 py-4 transition hover:bg-white/[0.025] last:border-b-0 sm:px-6 sm:py-5">
                     <span className="font-display text-xl font-black text-zinc-500">#{row.rank}</span>
-                    <div className="flex min-w-0 items-center gap-3"><Avatar name={row.display_name} src={row.avatar_url} /><span className="truncate text-sm font-bold text-white sm:text-base">{row.display_name || 'Yellow Flag Fan'}</span></div>
-                    <span className="font-display text-xl font-black text-yellow-300">{row.score}<span className="ml-1 text-xs text-zinc-500">PTS</span></span>
+                    <div className="flex min-w-0 items-center gap-4"><Avatar name={row.display_name} src={row.avatar_url} /><div className="min-w-0"><span className="block truncate text-sm font-bold text-white sm:text-base">{row.display_name || 'Yellow Flag Fan'}</span><div className="mt-2 h-1.5 w-24 overflow-hidden rounded-full bg-white/10 sm:w-36"><div className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-yellow-300" style={{ width: `${Math.min(100, (Number(row.score) / 7) * 100)}%` }} /></div></div></div>
+                    <span className="font-display text-2xl font-black text-yellow-300">{row.score}<span className="ml-1 text-xs text-zinc-500">PTS</span></span>
                   </div>
                 ))}
               </div>

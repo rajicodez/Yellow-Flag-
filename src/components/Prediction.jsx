@@ -20,9 +20,18 @@ const ZANDVOORT_PHOTO = {
   sourceUrl: 'https://commons.wikimedia.org/wiki/File:Circuit_Park_Zandvoort_aerial_photo.jpg',
 };
 
+const MONZA_PHOTO = {
+  src: '/images/circuits/italian-grand-prix.jpg',
+  alt: 'Satellite view of Autodromo Nazionale Monza and the surrounding park',
+  credit: 'Planet Labs, Inc. / Wikimedia Commons',
+  sourceUrl: 'https://commons.wikimedia.org/wiki/File:Autodromo_Nazionale_Monza,_April_22,_2018_SkySat_(cropped).jpg',
+};
+
 const CIRCUIT_PHOTOS = {
   'dutch-grand-prix': ZANDVOORT_PHOTO,
   '2026-dutch-grand-prix': ZANDVOORT_PHOTO,
+  'italian-grand-prix': MONZA_PHOTO,
+  '2026-italian-grand-prix': MONZA_PHOTO,
 };
 
 function getCircuitPhoto(race) {

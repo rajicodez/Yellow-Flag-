@@ -149,8 +149,8 @@ export default function Hero() {
               <FaPlay className="h-4 w-4" />
               Watch Podcast
             </GlowButton>
-            <GlowButton href="#episodes" variant="secondary">
-              Explore Episodes
+            <GlowButton href="#prediction" variant="secondary">
+              Make Your Prediction
             </GlowButton>
           </motion.div>
         </div>
