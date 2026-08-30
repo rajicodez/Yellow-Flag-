@@ -34,6 +34,7 @@ export default function Navbar({ activeSection }) {
   const accountButtonRef = useRef(null);
   const raceCentreMenuRef = useRef(null);
   const raceCentreButtonRef = useRef(null);
+  const raceCentreCloseTimerRef = useRef(null);
   const loginDialogRef = useRef(null);
   const googleButtonRef = useRef(null);
   const wasLoginOpenRef = useRef(false);
@@ -138,6 +139,8 @@ export default function Navbar({ activeSection }) {
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isRaceCentreOpen]);
+
+  useEffect(() => () => window.clearTimeout(raceCentreCloseTimerRef.current), []);
 
   useEffect(() => {
     if (!isLoginOpen) return undefined;
@@ -332,7 +335,18 @@ export default function Navbar({ activeSection }) {
         <nav className="order-3 hidden w-full items-center justify-center gap-0.5 lg:flex xl:order-2 xl:min-w-0 xl:flex-1 xl:w-auto">
           {navbarItems.map((item) =>
             item.children ? (
-              <div key={item.id} ref={raceCentreMenuRef} className="relative">
+              <div
+                key={item.id}
+                ref={raceCentreMenuRef}
+                className="relative"
+                onMouseEnter={() => {
+                  window.clearTimeout(raceCentreCloseTimerRef.current);
+                  setIsRaceCentreOpen(true);
+                }}
+                onMouseLeave={() => {
+                  raceCentreCloseTimerRef.current = window.setTimeout(() => setIsRaceCentreOpen(false), 140);
+                }}
+              >
                 <button
                   ref={raceCentreButtonRef}
                   type="button"
@@ -350,34 +364,30 @@ export default function Navbar({ activeSection }) {
                 <AnimatePresence>
                   {isRaceCentreOpen && (
                     <motion.div
-                      role="menu"
-                      aria-label="Race Centre"
                       initial={{ opacity: 0, y: -8, scale: 0.98 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -8, scale: 0.98 }}
-                      className="absolute left-1/2 top-[calc(100%+0.7rem)] z-[70] w-56 -translate-x-1/2 overflow-hidden rounded-2xl border border-yellow-400/20 bg-[#111]/98 p-2 shadow-[0_22px_65px_rgba(0,0,0,0.65)] backdrop-blur-xl"
+                      className="absolute left-1/2 top-full z-[70] w-64 -translate-x-1/2 pt-3"
                     >
-                      {item.children.map((child) => child.path ? (
-                        <Link
-                          key={child.id}
-                          to={child.path}
-                          role="menuitem"
-                          onClick={() => setIsRaceCentreOpen(false)}
-                          className={`block rounded-xl px-4 py-3 text-sm font-bold transition ${location.pathname === child.path || activeSection === child.id ? 'bg-yellow-400/15 text-yellow-300' : 'text-zinc-300 hover:bg-white/5 hover:text-white'}`}
-                        >
-                          {child.label}
-                        </Link>
-                      ) : (
-                        <button
-                          key={child.id}
-                          type="button"
-                          role="menuitem"
-                          onClick={() => handleNav(child.id)}
-                          className={`block w-full rounded-xl px-4 py-3 text-left text-sm font-bold transition ${location.pathname === '/' && activeSection === child.id ? 'bg-yellow-400/15 text-yellow-300' : 'text-zinc-300 hover:bg-white/5 hover:text-white'}`}
-                        >
-                          {child.label}
-                        </button>
-                      ))}
+                      <div
+                        role="menu"
+                        aria-label="Race Centre"
+                        className="relative overflow-hidden rounded-[1.35rem] border border-white/15 bg-[linear-gradient(145deg,rgba(35,35,32,0.88),rgba(7,7,8,0.94))] p-2.5 shadow-[0_28px_80px_rgba(0,0,0,0.7),0_0_35px_rgba(250,204,21,0.09),inset_0_1px_0_rgba(255,255,255,0.11)] backdrop-blur-2xl"
+                      >
+                        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,0.13),transparent_45%)]" aria-hidden="true" />
+                        <div className="relative mb-1 border-b border-white/10 px-3 pb-2.5 pt-1.5">
+                          <p className="text-[9px] font-black uppercase tracking-[0.25em] text-yellow-400">F1 Directory</p>
+                          <p className="mt-1 text-xs text-zinc-500">Explore the championship</p>
+                        </div>
+                        <div className="relative space-y-1">
+                          {item.children.map((child, index) => {
+                            const active = location.pathname === child.path || (location.pathname === '/' && activeSection === child.id);
+                            const content = <><span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border text-[9px] font-black ${active ? 'border-yellow-400/35 bg-yellow-400/15 text-yellow-300' : 'border-white/10 bg-white/[0.04] text-zinc-600'}`}>{String(index + 1).padStart(2, '0')}</span><span className="flex-1">{child.label}</span><span className={`h-1.5 w-1.5 rounded-full transition ${active ? 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.8)]' : 'bg-transparent group-hover:bg-yellow-400/60'}`} /></>;
+                            const className = `group flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-left text-sm font-bold transition duration-200 ${active ? 'bg-white/[0.08] text-yellow-300' : 'text-zinc-300 hover:bg-white/[0.07] hover:text-white'}`;
+                            return child.path ? <Link key={child.id} to={child.path} role="menuitem" onClick={() => setIsRaceCentreOpen(false)} className={className}>{content}</Link> : <button key={child.id} type="button" role="menuitem" onClick={() => handleNav(child.id)} className={className}>{content}</button>;
+                          })}
+                        </div>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
