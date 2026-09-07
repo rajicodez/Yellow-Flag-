@@ -490,6 +490,7 @@ assert.match(analyticsScreen, /Popular Podium Combinations/);
 assert.match(analyticsScreen, /Score Distribution/);
 assert.match(scheduleData, /round: 13, grandPrix: 'Italian GP'.*raceTime: '06 Sep, 06:30 PM'/);
 assert.match(predictionLanding, /'2026-italian-grand-prix': MONZA_PHOTO/);
+assert.match(predictionLanding, /'2026-spanish-grand-prix': MADRING_PHOTO/);
 assert.match(scheduleData, /round: 14, grandPrix: 'Spanish GP'.*track: 'Madring'.*raceTime: '13 Sep, 06:30 PM'/);
 
 console.log(
