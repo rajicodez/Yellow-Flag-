@@ -37,6 +37,10 @@ h4,
   font-family: "Noto Sans Sinhala", "Titillium Web", sans-serif;
 }
 
+.font-poppins {
+  font-family: "Poppins", "Noto Sans Sinhala", sans-serif;
+}
+
 /* Keep the public site's motorsport typography while giving the control centre
    a cleaner application UI typeface. The explicit controls override browser
    form defaults, and .font-display prevents admin headings from falling back
