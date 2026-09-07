@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Home, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import KindforthCredit from '../ui/KindforthCredit';
 
 export default function PredictionSuccess({ raceName, submissionTime, onBackToQuestions }) {
   const navigate = useNavigate();
@@ -39,6 +40,8 @@ export default function PredictionSuccess({ raceName, submissionTime, onBackToQu
           You can edit your prediction until Free Practice 1 begins.
         </p>
       </div>
+
+      <KindforthCredit compact className="mb-8" />
 
       <div className="flex flex-col sm:flex-row w-full max-w-md gap-4">
         <button

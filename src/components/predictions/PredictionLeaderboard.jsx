@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LoaderCircle, Medal, RefreshCw, Trophy, UserRound } from 'lucide-react';
 import { signInWithGoogle, supabase } from '../../lib/supabase';
+import KindforthCredit from '../ui/KindforthCredit';
 
 const competitionOptions = [
   { value: 'user', label: 'Fans' },
@@ -306,6 +307,10 @@ export default function PredictionLeaderboard() {
             <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-zinc-500">The leaderboard will appear here after an administrator scores and publishes a completed race.</p>
           </div>
         )}
+      </div>
+
+      <div className="mt-8 flex justify-center">
+        <KindforthCredit label="Leaderboard technology by" />
       </div>
     </section>
   );

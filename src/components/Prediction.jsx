@@ -4,6 +4,7 @@ import { BarChart2, HelpCircle, Star, Trophy, ChevronsRight } from 'lucide-react
 import { FcGoogle } from 'react-icons/fc';
 import { useNavigate } from 'react-router-dom';
 import Reveal from './ui/Reveal';
+import KindforthCredit from './ui/KindforthCredit';
 import {
   getAuthorizedHostProfile,
   isSupabaseConfigured,
@@ -552,6 +553,11 @@ export default function Prediction() {
                     ? 'The prediction window is closed'
                     : 'Predictions are not open yet'}
             </p>
+
+            <KindforthCredit
+              compact
+              className="mt-5 w-full max-w-md justify-center"
+            />
           </Reveal>
 
           {/* Right Column: Cards */}
