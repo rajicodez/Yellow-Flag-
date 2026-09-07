@@ -28,6 +28,7 @@ assert.deepEqual(activeMigrations, [
   '20260817183000_admin_race_overrides.sql',
   '20260825100000_public_homepage_leaderboard.sql',
   '20260827100000_admin_prediction_analytics.sql',
+  '20260907130000_public_homepage_season_leaderboard.sql',
 ]);
 
 const archivedMigrations = (await readdir(archiveMigrationDirectory))
@@ -86,6 +87,10 @@ const homepageLeaderboardMigration = await readFile(
 );
 const predictionAnalyticsMigration = await readFile(
   path.join(migrationDirectory, activeMigrations[10]),
+  'utf8'
+);
+const homepageSeasonLeaderboardMigration = await readFile(
+  path.join(migrationDirectory, activeMigrations[11]),
   'utf8'
 );
 const config = await readFile(path.join(supabaseDirectory, 'config.toml'), 'utf8');
@@ -406,6 +411,15 @@ assert.match(normalizedHomepageLeaderboard, /limit 10/);
 assert.match(normalizedHomepageLeaderboard, /revoke all on function public\.get_homepage_fan_leaderboard\(\) from public/);
 assert.match(normalizedHomepageLeaderboard, /grant execute on function public\.get_homepage_fan_leaderboard\(\) to anon, authenticated, service_role/);
 
+const normalizedHomepageSeasonLeaderboard = homepageSeasonLeaderboardMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
+assert.match(normalizedHomepageSeasonLeaderboard, /create or replace function public\.get_homepage_season_fan_leaderboard\(\)/);
+assert.match(normalizedHomepageSeasonLeaderboard, /stable security definer set search_path = ''/);
+assert.match(normalizedHomepageSeasonLeaderboard, /race\.status = 'published'::public\.race_status/);
+assert.match(normalizedHomepageSeasonLeaderboard, /race\.is_demo = false/);
+assert.match(normalizedHomepageSeasonLeaderboard, /entry\.competition = 'user'::public\.prediction_competition/);
+assert.match(normalizedHomepageSeasonLeaderboard, /limit 10/);
+assert.match(normalizedHomepageSeasonLeaderboard, /grant execute on function public\.get_homepage_season_fan_leaderboard\(\) to anon, authenticated, service_role/);
+
 const normalizedPredictionAnalytics = predictionAnalyticsMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
 assert.match(normalizedPredictionAnalytics, /create table public\.prediction_analytics_events \(/);
 assert.match(normalizedPredictionAnalytics, /alter table public\.prediction_analytics_events enable row level security/);
@@ -464,7 +478,9 @@ assert.doesNotMatch(adminRaceHistory, /demoResultsByRaceId|demoLeaderboardByRace
 assert.match(appRoutes, /path="\/predictions\/:raceSlug"/);
 assert.match(appRoutes, /path="\/predictions\/mine"/);
 assert.match(appRoutes, /<HomepageLeaderboard \/>/);
-assert.match(homepageLeaderboard, /rpc\('get_homepage_fan_leaderboard'/);
+assert.match(homepageLeaderboard, /'get_homepage_fan_leaderboard'/);
+assert.match(homepageLeaderboard, /get_homepage_season_fan_leaderboard/);
+assert.match(homepageLeaderboard, /useState\('season'\)/);
 assert.match(homepageLeaderboard, /to="\/predictions\/leaderboard"/);
 const normalizedDemoRace = demoRaceMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
 assert.match(normalizedDemoRace, /add column if not exists is_demo boolean not null default false/);
