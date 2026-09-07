@@ -27,11 +27,22 @@ const MONZA_PHOTO = {
   sourceUrl: 'https://commons.wikimedia.org/wiki/File:Autodromo_Nazionale_Monza,_April_22,_2018_SkySat_(cropped).jpg',
 };
 
+const MADRING_PHOTO = {
+  src: '/images/circuits/spanish-grand-prix.jpg',
+  alt: 'Aerial view of Valdebebas in Madrid, where the Madring circuit is located',
+  credit: 'Michiel1972 / Balbo / Wikimedia Commons',
+  sourceUrl: 'https://commons.wikimedia.org/wiki/File:Valdebebas_Madrid.jpg',
+};
+
 const CIRCUIT_PHOTOS = {
   'dutch-grand-prix': ZANDVOORT_PHOTO,
   '2026-dutch-grand-prix': ZANDVOORT_PHOTO,
   'italian-grand-prix': MONZA_PHOTO,
   '2026-italian-grand-prix': MONZA_PHOTO,
+  'spanish-grand-prix': MADRING_PHOTO,
+  '2026-spanish-grand-prix': MADRING_PHOTO,
+  madring: MADRING_PHOTO,
+  '2026-madring': MADRING_PHOTO,
 };
 
 function getCircuitPhoto(race) {
