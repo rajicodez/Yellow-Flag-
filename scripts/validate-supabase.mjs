@@ -482,6 +482,8 @@ assert.match(homepageLeaderboard, /'get_homepage_fan_leaderboard'/);
 assert.match(homepageLeaderboard, /get_homepage_season_fan_leaderboard/);
 assert.match(homepageLeaderboard, /useState\('season'\)/);
 assert.match(homepageLeaderboard, /to="\/predictions\/leaderboard"/);
+assert.match(predictionLanding, /KindforthCredit/);
+assert.match(predictionClient, /<PredictionSuccess/);
 const normalizedDemoRace = demoRaceMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
 assert.match(normalizedDemoRace, /add column if not exists is_demo boolean not null default false/);
 assert.match(normalizedDemoRace, /create or replace function public\.admin_create_demo_race\(/);
