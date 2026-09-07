@@ -41,6 +41,7 @@ function Avatar({ name, src, size = 'md' }) {
 }
 
 export default function HomepageLeaderboard() {
+  const [mode, setMode] = useState('season');
   const [state, setState] = useState({ status: 'loading', rows: [], error: '' });
 
   useEffect(() => {
@@ -51,7 +52,12 @@ export default function HomepageLeaderboard() {
       return undefined;
     }
 
-    supabase.rpc('get_homepage_fan_leaderboard').then(({ data, error }) => {
+    setState({ status: 'loading', rows: [], error: '' });
+    const rpcName = mode === 'season'
+      ? 'get_homepage_season_fan_leaderboard'
+      : 'get_homepage_fan_leaderboard';
+
+    supabase.rpc(rpcName).then(({ data, error }) => {
       if (!mounted) return;
       if (error) {
         setState({ status: 'error', rows: [], error: 'Leaderboard is temporarily unavailable.' });
@@ -63,12 +69,16 @@ export default function HomepageLeaderboard() {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [mode]);
 
   const podium = state.rows.slice(0, 3);
   const remaining = state.rows.slice(3, 10);
   const raceName = state.rows[0]?.race_name;
+  const seasonYear = state.rows[0]?.season_year;
   const totalCompetitors = Number(state.rows[0]?.total_competitors ?? 0);
+  const maximumScore = mode === 'season'
+    ? Math.max(1, ...state.rows.map((row) => Number(row.score) || 0))
+    : 7;
 
   return (
     <section id="leaderboard-preview" className="relative scroll-mt-24 overflow-hidden py-20 md:py-28">
@@ -79,9 +89,15 @@ export default function HomepageLeaderboard() {
             <div>
               <p className="text-xs font-black uppercase tracking-[0.3em] text-yellow-400">Prediction Championship</p>
               <h2 className="mt-3 font-display text-4xl font-black uppercase text-white sm:text-6xl">Fan Leaderboard</h2>
-              <p className="mt-3 text-sm text-zinc-400">{raceName ? `${raceName} · Published results` : 'Published race standings'}</p>
+              <p className="mt-3 text-sm text-zinc-400">{mode === 'season' ? (seasonYear ? `${seasonYear} Season · Overall standings` : 'Overall season standings') : (raceName ? `${raceName} · Published results` : 'Latest published race')}</p>
             </div>
-            {totalCompetitors > 0 && <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">{totalCompetitors} competitors</p>}
+            <div className="flex flex-col items-start gap-3 sm:items-end">
+              <div className="flex rounded-xl border border-white/10 bg-black/35 p-1" aria-label="Leaderboard view">
+                <button type="button" aria-pressed={mode === 'season'} onClick={() => setMode('season')} className={`rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] transition sm:text-xs ${mode === 'season' ? 'bg-yellow-400 text-black shadow-[0_0_22px_rgba(250,204,21,0.16)]' : 'text-zinc-400 hover:text-white'}`}>Season</button>
+                <button type="button" aria-pressed={mode === 'race'} onClick={() => setMode('race')} className={`rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-[0.16em] transition sm:text-xs ${mode === 'race' ? 'bg-yellow-400 text-black shadow-[0_0_22px_rgba(250,204,21,0.16)]' : 'text-zinc-400 hover:text-white'}`}>Latest Race</button>
+              </div>
+              {totalCompetitors > 0 && <p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-500">{totalCompetitors} competitors</p>}
+            </div>
           </div>
         </Reveal>
 
@@ -113,7 +129,7 @@ export default function HomepageLeaderboard() {
                     <Avatar name={row.display_name} src={row.avatar_url} size={layout.avatarSize} />
                   </div>
                   <h3 className="relative z-10 mt-5 max-w-full truncate font-display text-xl font-black uppercase text-white sm:text-2xl">{row.display_name || 'Yellow Flag Fan'}</h3>
-                  <p className={`relative z-10 mt-2 font-display text-4xl font-black ${layout.score}`}>{row.score}<span className="ml-1.5 text-sm text-zinc-500">/ 7 PTS</span></p>
+                  <p className={`relative z-10 mt-2 font-display text-4xl font-black ${layout.score}`}>{row.score}<span className="ml-1.5 text-sm text-zinc-500">{mode === 'season' ? 'PTS' : '/ 7 PTS'}</span></p>
                 </article>
                 );
               })}
@@ -124,7 +140,7 @@ export default function HomepageLeaderboard() {
                 {remaining.map((row) => (
                   <div key={`${row.rank}-${row.display_name}`} className="grid grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/10 px-4 py-4 transition hover:bg-white/[0.025] last:border-b-0 sm:px-6 sm:py-5">
                     <span className="font-display text-xl font-black text-zinc-500">#{row.rank}</span>
-                    <div className="flex min-w-0 items-center gap-4"><Avatar name={row.display_name} src={row.avatar_url} /><div className="min-w-0"><span className="block truncate text-sm font-bold text-white sm:text-base">{row.display_name || 'Yellow Flag Fan'}</span><div className="mt-2 h-1.5 w-24 overflow-hidden rounded-full bg-white/10 sm:w-36"><div className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-yellow-300" style={{ width: `${Math.min(100, (Number(row.score) / 7) * 100)}%` }} /></div></div></div>
+                    <div className="flex min-w-0 items-center gap-4"><Avatar name={row.display_name} src={row.avatar_url} /><div className="min-w-0"><span className="block truncate text-sm font-bold text-white sm:text-base">{row.display_name || 'Yellow Flag Fan'}</span><div className="mt-2 h-1.5 w-24 overflow-hidden rounded-full bg-white/10 sm:w-36"><div className="h-full rounded-full bg-gradient-to-r from-yellow-500 to-yellow-300" style={{ width: `${Math.min(100, (Number(row.score) / maximumScore) * 100)}%` }} /></div></div></div>
                     <span className="font-display text-2xl font-black text-yellow-300">{row.score}<span className="ml-1 text-xs text-zinc-500">PTS</span></span>
                   </div>
                 ))}
