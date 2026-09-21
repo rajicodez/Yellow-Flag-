@@ -35,6 +35,15 @@ const MADRING_PHOTO = {
   sourceUrl: 'https://commons.wikimedia.org/wiki/File:Valdebebas_Madrid.jpg',
 };
 
+const BAKU_PHOTO = {
+  src: '/images/circuits/azerbaijan-grand-prix.jpg',
+  alt: 'Formula 1 cars racing past the fortress walls at Baku City Circuit',
+  credit: 'President.az / Wikimedia Commons',
+  sourceUrl: 'https://commons.wikimedia.org/wiki/File:Ilham_Aliyev_watched_the_opening_ceremony_of_the_2018_Formula-1_Azerbaijan_Grand_Prix_and_final_race_35.jpg',
+  license: 'CC BY 4.0',
+  objectPosition: 'center 70%',
+};
+
 const CIRCUIT_PHOTOS = {
   'dutch-grand-prix': ZANDVOORT_PHOTO,
   '2026-dutch-grand-prix': ZANDVOORT_PHOTO,
@@ -44,10 +53,17 @@ const CIRCUIT_PHOTOS = {
   '2026-spanish-grand-prix': MADRING_PHOTO,
   madring: MADRING_PHOTO,
   '2026-madring': MADRING_PHOTO,
+  'azerbaijan-grand-prix': BAKU_PHOTO,
+  '2026-azerbaijan-grand-prix': BAKU_PHOTO,
+  baku: BAKU_PHOTO,
+  '2026-baku': BAKU_PHOTO,
 };
 
 function getCircuitPhoto(race) {
-  if (!race?.slug) return null;
+  if (!race) return null;
+  if (/azerbaijan/i.test(race.race_name ?? '') || /baku/i.test(race.circuit_name ?? '')) {
+    return BAKU_PHOTO;
+  }
   return CIRCUIT_PHOTOS[race.slug] ?? null;
 }
 
@@ -570,6 +586,7 @@ export default function Prediction() {
                   src={circuitPhoto.src}
                   alt={circuitPhoto.alt}
                   className="absolute inset-0 h-full w-full object-cover"
+                  style={circuitPhoto.objectPosition ? { objectPosition: circuitPhoto.objectPosition } : undefined}
                 />
               ) : (
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_30%,rgba(250,204,21,0.2),transparent_45%),linear-gradient(135deg,#242015,#090909_65%)]" />
@@ -593,7 +610,7 @@ export default function Prediction() {
                       rel="noopener noreferrer"
                       className="mt-3 w-fit text-[9px] font-semibold text-white/45 transition hover:text-white/75"
                     >
-                      Photo: {circuitPhoto.credit} · CC BY-SA 3.0
+                      Photo: {circuitPhoto.credit} · {circuitPhoto.license ?? 'CC BY-SA 3.0'}
                     </a>
                   )}
                 </div>
