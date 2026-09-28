@@ -44,6 +44,15 @@ const BAKU_PHOTO = {
   objectPosition: 'center 70%',
 };
 
+const SEPANG_PHOTO = {
+  src: '/images/circuits/bahrain-grand-prix-in-malaysia.jpg',
+  alt: 'Aerial view of Sepang International Circuit in Malaysia',
+  credit: 'CK Tan / Wikimedia Commons',
+  sourceUrl: 'https://commons.wikimedia.org/wiki/File:Bird-eye_view_of_Sepang_F1_Circuit_-_panoramio.jpg',
+  license: 'CC BY 3.0',
+  objectPosition: 'center 58%',
+};
+
 const CIRCUIT_PHOTOS = {
   'dutch-grand-prix': ZANDVOORT_PHOTO,
   '2026-dutch-grand-prix': ZANDVOORT_PHOTO,
@@ -57,12 +66,23 @@ const CIRCUIT_PHOTOS = {
   '2026-azerbaijan-grand-prix': BAKU_PHOTO,
   baku: BAKU_PHOTO,
   '2026-baku': BAKU_PHOTO,
+  'bahrain-grand-prix-in-malaysia': SEPANG_PHOTO,
+  '2026-bahrain-grand-prix-in-malaysia': SEPANG_PHOTO,
+  'bahrain-grand-prix': SEPANG_PHOTO,
+  '2026-bahrain-grand-prix': SEPANG_PHOTO,
+  bahrain: SEPANG_PHOTO,
+  '2026-bahrain': SEPANG_PHOTO,
+  sepang: SEPANG_PHOTO,
+  '2026-sepang': SEPANG_PHOTO,
 };
 
 function getCircuitPhoto(race) {
   if (!race) return null;
   if (/azerbaijan/i.test(race.race_name ?? '') || /baku/i.test(race.circuit_name ?? '')) {
     return BAKU_PHOTO;
+  }
+  if (/bahrain|malaysia/i.test(race.race_name ?? '') || /sepang/i.test(race.circuit_name ?? '')) {
+    return SEPANG_PHOTO;
   }
   return CIRCUIT_PHOTOS[race.slug] ?? null;
 }
