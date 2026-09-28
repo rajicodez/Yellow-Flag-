@@ -33,6 +33,7 @@ const countryCodesByName = {
   Hungary: 'HU',
   Italy: 'IT',
   Japan: 'JP',
+  Malaysia: 'MY',
   Mexico: 'MX',
   Monaco: 'MC',
   Netherlands: 'NL',
