@@ -149,6 +149,15 @@ The admin frontend authenticates with Supabase, verifies `admin` or
 entry, scoring, and publication. Test `004_official_results_scoring_test.sql`
 covers this contract with 69 transaction-wrapped assertions.
 
+## Published result corrections
+
+Migration `20260928180000` adds a deliberately separate correction path for
+published results. Only a `super_admin` may use it. The protected RPC validates
+the complete replacement answer set, records the reason and before/after
+answers, recalculates Fan and Host scores, and republishes the leaderboard in a
+single database transaction. Any failure rolls the whole correction back, so a
+partially corrected leaderboard cannot become visible.
+
 ## Auth profile provisioning repair
 
 The schema-only live baseline contains `handle_new_auth_user()` but cannot
