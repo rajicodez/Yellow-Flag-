@@ -29,6 +29,7 @@ assert.deepEqual(activeMigrations, [
   '20260825100000_public_homepage_leaderboard.sql',
   '20260827100000_admin_prediction_analytics.sql',
   '20260907130000_public_homepage_season_leaderboard.sql',
+  '20260928180000_published_result_corrections.sql',
 ]);
 
 const archivedMigrations = (await readdir(archiveMigrationDirectory))
@@ -91,6 +92,10 @@ const predictionAnalyticsMigration = await readFile(
 );
 const homepageSeasonLeaderboardMigration = await readFile(
   path.join(migrationDirectory, activeMigrations[11]),
+  'utf8'
+);
+const publishedResultCorrectionsMigration = await readFile(
+  path.join(migrationDirectory, activeMigrations[12]),
   'utf8'
 );
 const config = await readFile(path.join(supabaseDirectory, 'config.toml'), 'utf8');
@@ -432,6 +437,20 @@ assert.match(normalizedPredictionAnalytics, /prediction_analytics_events_race_ti
 assert.match(normalizedPredictionAnalytics, /alter publication supabase_realtime add table public\.prediction_analytics_events/);
 assert.match(normalizedPredictionAnalytics, /revoke all on function public\.get_admin_prediction_analytics\(uuid, public\.prediction_competition\) from public, anon/);
 assert.match(normalizedPredictionAnalytics, /grant execute on function public\.get_admin_prediction_analytics\(uuid, public\.prediction_competition\) to authenticated, service_role/);
+
+const normalizedPublishedCorrections = publishedResultCorrectionsMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
+assert.match(normalizedPublishedCorrections, /create table if not exists public\.published_result_corrections \(/);
+assert.match(normalizedPublishedCorrections, /alter table public\.published_result_corrections enable row level security/);
+assert.match(normalizedPublishedCorrections, /using \(public\.has_role\('super_admin'::public\.app_role\)\)/);
+assert.match(normalizedPublishedCorrections, /create or replace function public\.correct_published_race_results\(/);
+assert.match(normalizedPublishedCorrections, /security definer set search_path = ''/);
+assert.match(normalizedPublishedCorrections, /if not public\.has_role\('super_admin'::public\.app_role\) then/);
+assert.match(normalizedPublishedCorrections, /selected_race\.status <> 'published'::public\.race_status/);
+assert.match(normalizedPublishedCorrections, /select public\.set_official_answers\(p_race_id, p_answers\)/);
+assert.match(normalizedPublishedCorrections, /select public\.score_race\(p_race_id, 'published result correction: ' \|\| normalized_reason\)/);
+assert.match(normalizedPublishedCorrections, /select public\.publish_race_results\(p_race_id\)/);
+assert.match(normalizedPublishedCorrections, /insert into public\.published_result_corrections/);
+assert.match(normalizedPublishedCorrections, /revoke all on function public\.correct_published_race_results\(uuid, jsonb, text\) from public, anon/);
 
 assert.match(predictionClient, /race\.opens_at/);
 assert.match(predictionClient, /race\.closes_at/);

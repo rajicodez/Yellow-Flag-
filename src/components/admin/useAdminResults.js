@@ -202,10 +202,24 @@ export default function useAdminResults() {
     return data;
   }, [refresh, selectedRaceId]);
 
+  const correctPublishedRace = useCallback(async (answers, reason) => {
+    const questions = state.questionsByRaceId[selectedRaceId] ?? [];
+    const payload = Object.fromEntries(questions.map((question) => [question.key, answers[question.id]]));
+    const { data, error: correctionError } = await supabase.rpc('correct_published_race_results', {
+      p_race_id: selectedRaceId,
+      p_answers: payload,
+      p_reason: reason,
+    });
+    if (correctionError) throw correctionError;
+    await refresh();
+    return data;
+  }, [refresh, selectedRaceId, state.questionsByRaceId]);
+
   return {
     ...state,
     error,
     loading,
+    correctPublishedRace,
     publishRace,
     refresh,
     scoreRace,

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, ClipboardCheck, LoaderCircle, Send } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ClipboardCheck, LoaderCircle, PencilLine, Send } from 'lucide-react';
 import AdminRaceSelect from '../AdminRaceSelect';
 import { Modal, Panel, ScreenHeading, StatusBadge } from '../AdminUI';
 import SearchableAnswerSelect from '../SearchableAnswerSelect';
@@ -11,6 +11,7 @@ const podiumQuestionKeys = ['race_winner', 'p2_finisher', 'p3_finisher'];
 function friendlyError(error) {
   const messages = {
     ADMIN_ROLE_REQUIRED: 'Your account no longer has permission to manage results.',
+    SUPER_ADMIN_ROLE_REQUIRED: 'Only a Super Admin can correct published results.',
     PREDICTIONS_NOT_CLOSED: 'Official answers cannot be entered until the FP1 prediction deadline has passed.',
     PUBLISHED_RESULTS_IMMUTABLE: 'Published results are locked and cannot be changed.',
     INVALID_OFFICIAL_ANSWER_OPTION: 'One or more answers are not valid options for this race.',
@@ -19,6 +20,10 @@ function friendlyError(error) {
     INCOMPLETE_ENTRY_FOUND: 'A submitted prediction is incomplete. Scoring stopped without saving partial results.',
     RACE_NOT_READY_FOR_SCORING: 'This race is not ready to be scored.',
     RACE_SCORES_INCOMPLETE: 'The race cannot be published because one or more entries have no score.',
+    CORRECTION_REASON_REQUIRED: 'Enter a clear correction reason of at least 10 characters.',
+    CORRECTION_REASON_TOO_LONG: 'Keep the correction reason under 500 characters.',
+    NO_OFFICIAL_ANSWER_CHANGE: 'Change at least one official answer before applying the correction.',
+    PUBLISHED_RACE_REQUIRED: 'Only a published race can use this correction workflow.',
   };
   return messages[error?.message] || error?.message || 'The operation could not be completed.';
 }
@@ -49,7 +54,7 @@ function enrichOptions(options, question, roster) {
   });
 }
 
-function AnswerRow({ answers, duplicatePodiumQuestionIds, invalidQuestionIds, onAnswerChange, options, published, question }) {
+function AnswerRow({ answers, duplicatePodiumQuestionIds, invalidQuestionIds, locked, question, onAnswerChange, options }) {
   const value = answers[question.id] ?? '';
   const invalid = invalidQuestionIds.has(question.id) || duplicatePodiumQuestionIds.has(question.id);
 
@@ -67,7 +72,7 @@ function AnswerRow({ answers, duplicatePodiumQuestionIds, invalidQuestionIds, on
 
       <div className="min-w-0">
         <SearchableAnswerSelect
-          disabled={published}
+          disabled={locked}
           invalid={invalid}
           label={`Correct answer for question ${question.number}`}
           onChange={(answerValue) => onAnswerChange(question.id, answerValue)}
@@ -81,19 +86,21 @@ function AnswerRow({ answers, duplicatePodiumQuestionIds, invalidQuestionIds, on
 
       <span className={`inline-flex w-fit items-center gap-1.5 rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.13em] ${invalid ? 'border-red-400/30 bg-red-400/10 text-red-300' : value ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-300' : 'border-amber-400/35 bg-amber-400/10 text-amber-300'}`}>
         {value && !invalid ? <CheckCircle2 className="h-3 w-3" aria-hidden="true" /> : <AlertTriangle className="h-3 w-3" aria-hidden="true" />}
-        {published ? 'Published' : invalid ? 'Needs Attention' : value ? 'Answer Ready' : 'Awaiting Answer'}
+        {locked ? 'Published' : invalid ? 'Needs Attention' : value ? 'Answer Ready' : 'Awaiting Answer'}
       </span>
     </div>
   );
 }
 
-export default function ResultsScreen({ onNavigate }) {
+export default function ResultsScreen({ adminRole, onNavigate }) {
   const workspace = useAdminResults();
   const [answersByRaceId, setAnswersByRaceId] = useState({});
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [confirmationAction, setConfirmationAction] = useState(null);
   const [operation, setOperation] = useState({ state: 'idle', message: '' });
+  const [correctionMode, setCorrectionMode] = useState(false);
+  const [correctionReason, setCorrectionReason] = useState('');
 
   const selectedRace = workspace.selectedRace;
   const selectedRaceId = workspace.selectedRaceId;
@@ -103,6 +110,8 @@ export default function ResultsScreen({ onNavigate }) {
   const roster = selectedRace ? getAdminRosterForSeason(selectedRace.season) : { drivers: [], constructors: [] };
   const published = selectedRace?.databaseStatus === 'published';
   const scored = selectedRace?.databaseStatus === 'scored';
+  const canCorrectPublished = adminRole === 'super_admin';
+  const answersChanged = questions.some((question) => answers[question.id] !== officialAnswers[question.id]);
 
   useEffect(() => {
     if (!selectedRaceId) return;
@@ -111,6 +120,8 @@ export default function ResultsScreen({ onNavigate }) {
     setReviewOpen(false);
     setConfirmationAction(null);
     setOperation({ state: 'idle', message: '' });
+    setCorrectionMode(false);
+    setCorrectionReason('');
     // A data refresh after scoring must not clear the success/error result.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRaceId]);
@@ -177,6 +188,30 @@ export default function ResultsScreen({ onNavigate }) {
     }
   };
 
+  const cancelCorrection = () => {
+    setAnswersByRaceId((current) => ({ ...current, [selectedRaceId]: { ...officialAnswers } }));
+    setCorrectionMode(false);
+    setCorrectionReason('');
+    setValidationAttempted(false);
+    setConfirmationAction(null);
+  };
+
+  const correctPublishedResults = async () => {
+    setConfirmationAction(null);
+    setOperation({ state: 'loading', message: 'Correcting answers, recalculating scores, and republishing...' });
+    try {
+      const result = await workspace.correctPublishedRace(answers, correctionReason);
+      setCorrectionMode(false);
+      setCorrectionReason('');
+      setOperation({
+        state: 'success',
+        message: `Correction published. ${result.changed_answer_count} answer changed and ${result.scored_entry_count} submissions were recalculated as score version ${result.corrected_score_version}.`,
+      });
+    } catch (error) {
+      setOperation({ state: 'error', message: friendlyError(error) });
+    }
+  };
+
   if (workspace.loading && !workspace.races.length) {
     return <div role="status" className="flex items-center gap-3 text-sm font-bold text-zinc-300"><LoaderCircle className="h-5 w-5 animate-spin text-yellow-400" /> Loading results workspace...</div>;
   }
@@ -228,7 +263,7 @@ export default function ResultsScreen({ onNavigate }) {
       <Panel className="overflow-visible">
         <div className="flex items-center justify-between gap-4 rounded-t-2xl border-b border-white/10 px-5 py-4 sm:px-6">
           <div><p className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-400">Official Answers · {selectedRace.name}</p><h3 className="mt-1 font-display text-xl font-black uppercase text-white">7-Point Result Sheet</h3></div>
-          {published && <span className="text-xs font-black uppercase tracking-[0.16em] text-emerald-300">Published & Locked</span>}
+          {published && <span className={`text-xs font-black uppercase tracking-[0.16em] ${correctionMode ? 'text-amber-300' : 'text-emerald-300'}`}>{correctionMode ? 'Correction Mode' : 'Published & Locked'}</span>}
         </div>
         <div className="space-y-3 bg-[#0d0d0f] p-3 sm:p-4">
           {questions.map((question) => (
@@ -239,7 +274,7 @@ export default function ResultsScreen({ onNavigate }) {
               invalidQuestionIds={invalidQuestionIds}
               onAnswerChange={handleAnswerChange}
               options={enrichOptions(workspace.optionsByQuestionId[question.id] ?? [], question, roster)}
-              published={published}
+              locked={published && !correctionMode}
               question={question}
             />
           ))}
@@ -248,10 +283,15 @@ export default function ResultsScreen({ onNavigate }) {
           <button type="button" onClick={() => validateAnswers() && setReviewOpen((current) => !current)} className="flex items-center justify-center gap-2 rounded-xl border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-zinc-200"><ClipboardCheck className="h-4 w-4" /> Review Results</button>
           {!published && <button type="button" onClick={() => validateAnswers() && setConfirmationAction('score')} disabled={operation.state === 'loading' || questions.length !== 7} className="rounded-xl bg-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-black disabled:cursor-not-allowed disabled:opacity-50">Save & Calculate Scores</button>}
           {scored && <button type="button" onClick={() => setConfirmationAction('publish')} disabled={operation.state === 'loading'} className="flex items-center justify-center gap-2 rounded-xl bg-emerald-400 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-black"><Send className="h-4 w-4" /> Publish Results</button>}
+          {published && canCorrectPublished && !correctionMode && <button type="button" onClick={() => setCorrectionMode(true)} disabled={operation.state === 'loading'} className="flex items-center justify-center gap-2 rounded-xl border border-amber-300/40 bg-amber-300/10 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-amber-200"><PencilLine className="h-4 w-4" /> Correct Published Results</button>}
+          {correctionMode && <button type="button" onClick={cancelCorrection} disabled={operation.state === 'loading'} className="rounded-xl border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-zinc-300">Cancel Correction</button>}
+          {correctionMode && <button type="button" onClick={() => validateAnswers() && setConfirmationAction('correct')} disabled={operation.state === 'loading' || !answersChanged} className="rounded-xl bg-amber-300 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-black disabled:cursor-not-allowed disabled:opacity-40">Review Correction</button>}
         </div>
       </Panel>
 
-      {reviewOpen && <Panel className="p-5 sm:p-6"><p className="text-xs font-black uppercase tracking-[0.18em] text-yellow-400">Review Complete</p><p className="mt-2 text-sm text-zinc-300">All seven answers are valid. Saving will invalidate an older unpublished score if any answer changed.</p></Panel>}
+      {reviewOpen && <Panel className="p-5 sm:p-6"><p className="text-xs font-black uppercase tracking-[0.18em] text-yellow-400">Review Complete</p><p className="mt-2 text-sm text-zinc-300">{correctionMode ? 'All seven corrected answers are valid. Confirming will recalculate and republish every score atomically.' : 'All seven answers are valid. Saving will invalidate an older unpublished score if any answer changed.'}</p></Panel>}
+
+      {correctionMode && <Panel className="border-amber-300/25 bg-amber-300/[0.04] p-5 sm:p-6"><p className="text-xs font-black uppercase tracking-[0.18em] text-amber-300">Protected Published Correction</p><p className="mt-2 text-sm leading-6 text-zinc-300">Change only the incorrect answer. The system will recalculate every Fan and Host submission, publish the corrected leaderboard, and retain an audit record.</p><label className="mt-4 block text-xs font-bold text-zinc-300" htmlFor="correction-reason">Reason for correction</label><textarea id="correction-reason" value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} maxLength={500} rows={3} placeholder="Example: Q6 was published as Red Bull instead of Mercedes." className="mt-2 w-full rounded-xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-amber-300/50" /><p className="mt-2 text-right text-[10px] text-zinc-500">{correctionReason.trim().length} / 500</p></Panel>}
 
       <Modal open={confirmationAction === 'score'} onClose={() => setConfirmationAction(null)} title="Save Answers & Calculate?" description="This runs the protected scoring transaction.">
         <p className="text-sm leading-6 text-zinc-300">All {workspace.entryCountByRaceId[selectedRaceId] ?? 0} submissions will be compared with these seven official answers. Results stay hidden until you publish them separately.</p>
@@ -266,6 +306,15 @@ export default function ResultsScreen({ onNavigate }) {
         <div className="mt-6 space-y-3">
           <button type="button" onClick={publishResults} className="w-full rounded-xl bg-emerald-400 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-black">Confirm Publication</button>
           <button type="button" onClick={() => setConfirmationAction(null)} className="w-full rounded-xl border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-zinc-300">Cancel</button>
+        </div>
+      </Modal>
+
+      <Modal open={confirmationAction === 'correct'} onClose={() => setConfirmationAction(null)} title="Correct & Republish Results?" description="Super Admin protected action">
+        <div className="rounded-xl border border-amber-300/25 bg-amber-300/10 p-4 text-sm leading-6 text-amber-100"><strong>This immediately replaces the published leaderboard.</strong> Every Fan and Host score will be recalculated using the corrected answers.</div>
+        <p className="mt-4 text-sm leading-6 text-zinc-300">Reason: {correctionReason.trim() || 'No reason entered'}</p>
+        <div className="mt-6 space-y-3">
+          <button type="button" onClick={correctPublishedResults} disabled={correctionReason.trim().length < 10 || !answersChanged} className="w-full rounded-xl bg-amber-300 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-black disabled:cursor-not-allowed disabled:opacity-40">Confirm Correction & Republish</button>
+          <button type="button" onClick={() => setConfirmationAction(null)} className="w-full rounded-xl border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-zinc-300">Go Back</button>
         </div>
       </Modal>
     </div>
