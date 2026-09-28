@@ -7,6 +7,13 @@
 Licensed under [Creative Commons Attribution-ShareAlike 3.0 Unported](https://creativecommons.org/licenses/by-sa/3.0/).
 The website displays a cropped presentation through CSS; the source image file is otherwise unchanged.
 
+`bahrain-grand-prix-in-malaysia.jpg` is an aerial photograph of Sepang
+International Circuit by CK Tan, downloaded at 1280 px from
+[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Bird-eye_view_of_Sepang_F1_Circuit_-_panoramio.jpg).
+
+Licensed under [Creative Commons Attribution 3.0 Unported](https://creativecommons.org/licenses/by/3.0/).
+The website displays a cropped presentation through CSS; the source image file is otherwise unchanged.
+
 `azerbaijan-grand-prix.jpg` shows Formula 1 cars racing past Baku's fortress
 walls during the 2018 Azerbaijan Grand Prix. The photograph is by the Press
 Service of the President of the Republic of Azerbaijan, attributed to
