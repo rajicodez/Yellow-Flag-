@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import { defaultGrandPrixQuestions } from './data';
+import { defaultGrandPrixQuestions, sprintGrandPrixQuestions } from './data';
 import { getAdminRosterForSeason } from './rosters';
 
 const statusLabels = {
@@ -79,8 +79,11 @@ export function getRaceStableId(race) {
   return race ? String(race.id) : '';
 }
 
-export function createDefaultQuestionSet() {
-  return cloneQuestions(defaultGrandPrixQuestions).map((question, index) => ({
+export function createDefaultQuestionSet(isSprintWeekend = false) {
+  const sourceQuestions = isSprintWeekend
+    ? [...defaultGrandPrixQuestions, ...sprintGrandPrixQuestions]
+    : defaultGrandPrixQuestions;
+  return cloneQuestions(sourceQuestions).map((question, index) => ({
     ...question,
     questionNumber: index + 1,
     active: true,
@@ -109,7 +112,7 @@ function mapRace(row, questionCount) {
     closesAt: displayDateTime(row.closes_at),
     status: statusLabels[row.status] ?? row.status,
     databaseStatus: row.status,
-    sprintWeekend: false,
+    sprintWeekend: Boolean(row.is_sprint_weekend),
     isDemo: Boolean(row.is_demo),
     questions: questionCount,
   };
@@ -124,6 +127,7 @@ function mapQuestion(row) {
     type: row.answer_type === 'constructor' ? 'Constructor' : 'Driver',
     points: row.points,
     active: row.is_active,
+    sprint: ['sprint_pole_position', 'sprint_race_winner'].includes(row.question_key),
   };
 }
 
@@ -150,7 +154,7 @@ export default function useAdminRaceWorkspace() {
       const [{ data: raceRows, error: raceError }, { data: questionRows, error: questionError }] = await Promise.all([
         supabase
           .from('races')
-          .select('id, round_number, slug, race_name, circuit_name, country_code, opens_at, closes_at, race_starts_at, status, is_demo, seasons(year, name)')
+          .select('id, round_number, slug, race_name, circuit_name, country_code, opens_at, closes_at, race_starts_at, status, is_demo, is_sprint_weekend, seasons(year, name)')
           .order('race_starts_at', { ascending: false }),
         supabase
           .from('race_questions')
@@ -220,6 +224,12 @@ export default function useAdminRaceWorkspace() {
     });
 
     if (error) throw error;
+    const savedRaceId = data?.race_id ?? race.id;
+    const { error: sprintError } = await supabase.rpc('admin_set_sprint_weekend', {
+      p_race_id: savedRaceId,
+      p_is_sprint_weekend: Boolean(race.sprintWeekend),
+    });
+    if (sprintError) throw sprintError;
     await loadWorkspace();
     return data;
   }, [loadWorkspace]);
@@ -239,10 +249,11 @@ export default function useAdminRaceWorkspace() {
   }, [loadWorkspace]);
 
   const createQuestionsForRace = useCallback((raceId) => {
-    const nextQuestions = createDefaultQuestionSet();
+    const race = races.find((candidate) => getRaceStableId(candidate) === raceId);
+    const nextQuestions = createDefaultQuestionSet(Boolean(race?.sprintWeekend));
     setQuestionsByRaceId((current) => ({ ...current, [raceId]: nextQuestions }));
     setDirtyRaceIds((current) => new Set(current).add(raceId));
-  }, []);
+  }, [races]);
 
   const createDemoRace = useCallback(async ({ name, opensAt, closesAt }) => {
     const roster = getAdminRosterForSeason(2026);
@@ -316,7 +327,7 @@ export default function useAdminRaceWorkspace() {
       };
     });
 
-    const { error } = await supabase.rpc('admin_save_race_questions', {
+    const { error } = await supabase.rpc('admin_save_race_questions_v2', {
       p_race_id: race.id,
       p_questions: payload,
     });
@@ -361,7 +372,7 @@ export default function useAdminRaceWorkspace() {
       activeQuestions,
       disableSprintWeekend: () => {},
       enableSprintWeekend: () => {},
-      isSprintWeekend: false,
+      isSprintWeekend: Boolean(selectedRace?.sprintWeekend),
       maximumPoints,
       questions,
       sprintQuestionsEdited: false,

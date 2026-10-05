@@ -100,7 +100,7 @@ export default function LeaderboardScreen() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[680px] text-left">
               <thead className="bg-white/[0.03] text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
-                <tr><th className="px-5 py-3">Rank</th><th className="px-5 py-3">Competitor</th><th className="px-5 py-3">{mode === 'race' ? 'Score' : 'Total'}</th>{mode === 'season' && <><th className="px-5 py-3">Races</th><th className="px-5 py-3">7/7</th><th className="px-5 py-3">6/7</th><th className="px-5 py-3">5/7</th></>}</tr>
+                <tr><th className="px-5 py-3">Rank</th><th className="px-5 py-3">Competitor</th><th className="px-5 py-3">{mode === 'race' ? 'Score' : 'Total'}</th>{mode === 'season' && <><th className="px-5 py-3">Races</th><th className="px-5 py-3">7 pts</th><th className="px-5 py-3">6 pts</th><th className="px-5 py-3">5 pts</th></>}</tr>
               </thead>
               <tbody className="divide-y divide-white/10">
                 {rows.map((row) => (

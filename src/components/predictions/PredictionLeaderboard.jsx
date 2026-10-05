@@ -97,7 +97,7 @@ export default function PredictionLeaderboard() {
   const loadPublishedRaces = useCallback(async () => {
     const { data, error: raceError } = await supabase
       .from('races')
-      .select('id, race_name, slug, round_number, seasons(year)')
+      .select('id, race_name, slug, round_number, is_sprint_weekend, seasons(year)')
       .eq('status', 'published')
       .order('round_number', { ascending: false });
 
@@ -276,7 +276,7 @@ export default function PredictionLeaderboard() {
           <Trophy className="h-6 w-6 text-yellow-400" />
           <div>
             <h2 className="font-display text-xl font-black uppercase text-white">{mode === 'race' ? selectedRace?.race_name || 'Race Standings' : `${seasonYear} Season`} · {competition === 'user' ? 'Fans' : 'Hosts'}</h2>
-            <p className="mt-1 text-xs text-zinc-500">Maximum seven points per race</p>
+            <p className="mt-1 text-xs text-zinc-500">{mode === 'race' ? `Maximum ${selectedRace?.is_sprint_weekend ? 9 : 7} points` : 'Season points across published races'}</p>
           </div>
         </div>
 
@@ -286,14 +286,14 @@ export default function PredictionLeaderboard() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[680px] text-left">
               <thead className="bg-white/[0.03] text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">
-                <tr><th className="px-5 py-3">Rank</th><th className="px-5 py-3">Competitor</th><th className="px-5 py-3">{mode === 'race' ? 'Score' : 'Total'}</th>{mode === 'season' && <><th className="px-5 py-3">Races</th><th className="px-5 py-3">7/7</th><th className="px-5 py-3">6/7</th><th className="px-5 py-3">5/7</th></>}</tr>
+                <tr><th className="px-5 py-3">Rank</th><th className="px-5 py-3">Competitor</th><th className="px-5 py-3">{mode === 'race' ? 'Score' : 'Total'}</th>{mode === 'season' && <><th className="px-5 py-3">Races</th><th className="px-5 py-3">7 pts</th><th className="px-5 py-3">6 pts</th><th className="px-5 py-3">5 pts</th></>}</tr>
               </thead>
               <tbody className="divide-y divide-white/10">
                 {rows.map((row) => (
                   <tr key={row.entry_id ?? row.user_id} className={`text-sm text-zinc-300 ${row.user_id === authUser.id ? 'bg-yellow-400/[0.06]' : ''}`}>
                     <td className="px-5 py-4"><Rank value={row.rank} /></td>
                     <td className="px-5 py-4"><Competitor row={row} /></td>
-                    <td className="px-5 py-4 font-display text-2xl font-black text-white">{mode === 'race' ? `${row.score}/7` : row.total_score}</td>
+                    <td className="px-5 py-4 font-display text-2xl font-black text-white">{mode === 'race' ? `${row.score}/${selectedRace?.is_sprint_weekend ? 9 : 7}` : row.total_score}</td>
                     {mode === 'season' && <><td className="px-5 py-4">{row.races_entered}</td><td className="px-5 py-4">{row.score_7_count}</td><td className="px-5 py-4">{row.score_6_count}</td><td className="px-5 py-4">{row.score_5_count}</td></>}
                   </tr>
                 ))}

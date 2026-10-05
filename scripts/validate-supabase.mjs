@@ -30,6 +30,7 @@ assert.deepEqual(activeMigrations, [
   '20260827100000_admin_prediction_analytics.sql',
   '20260907130000_public_homepage_season_leaderboard.sql',
   '20260928180000_published_result_corrections.sql',
+  '20261005120000_sprint_weekend_predictions.sql',
 ]);
 
 const archivedMigrations = (await readdir(archiveMigrationDirectory))
@@ -96,6 +97,10 @@ const homepageSeasonLeaderboardMigration = await readFile(
 );
 const publishedResultCorrectionsMigration = await readFile(
   path.join(migrationDirectory, activeMigrations[12]),
+  'utf8'
+);
+const sprintWeekendMigration = await readFile(
+  path.join(migrationDirectory, activeMigrations[13]),
   'utf8'
 );
 const config = await readFile(path.join(supabaseDirectory, 'config.toml'), 'utf8');
@@ -452,6 +457,17 @@ assert.match(normalizedPublishedCorrections, /select public\.publish_race_result
 assert.match(normalizedPublishedCorrections, /insert into public\.published_result_corrections/);
 assert.match(normalizedPublishedCorrections, /revoke all on function public\.correct_published_race_results\(uuid, jsonb, text\) from public, anon/);
 
+const normalizedSprintWeekend = sprintWeekendMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
+assert.match(normalizedSprintWeekend, /add column if not exists is_sprint_weekend boolean not null default false/);
+assert.match(normalizedSprintWeekend, /check \(question_number between 1 and 9\)/);
+assert.match(normalizedSprintWeekend, /check \(score between 0 and 9\)/);
+assert.match(normalizedSprintWeekend, /create or replace function public\.admin_set_sprint_weekend\(/);
+assert.match(normalizedSprintWeekend, /create or replace function public\.admin_save_race_questions_v2\(/);
+assert.match(normalizedSprintWeekend, /create or replace function public\.submit_prediction\(/);
+assert.match(normalizedSprintWeekend, /sprint_pole_position/);
+assert.match(normalizedSprintWeekend, /sprint_race_winner/);
+assert.match(normalizedSprintWeekend, /generate_series\(0, expected_count\)/);
+
 assert.match(predictionClient, /race\.opens_at/);
 assert.match(predictionClient, /race\.closes_at/);
 assert.match(predictionClient, /useSearchParams\(\)/);
@@ -486,7 +502,8 @@ assert.match(myPredictions, /from\('prediction_answers'\)/);
 assert.match(myPredictions, /from\('race_prediction_leaderboard'\)/);
 assert.match(myPredictions, /entry\.competition === 'host' \? '\?competition=host'/);
 assert.match(adminRaceWorkspace, /'admin_override_race' : 'admin_upsert_race'/);
-assert.match(adminRaceWorkspace, /rpc\('admin_save_race_questions'/);
+assert.match(adminRaceWorkspace, /rpc\('admin_save_race_questions_v2'/);
+assert.match(adminRaceWorkspace, /rpc\('admin_set_sprint_weekend'/);
 assert.match(adminRaceWorkspace, /rpc\('admin_close_race_now'/);
 assert.match(adminRaceWorkspace, /rpc\('admin_open_race_now'/);
 assert.match(adminRaceWorkspace, /from\('race_questions'\)/);

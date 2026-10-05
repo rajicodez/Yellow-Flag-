@@ -374,7 +374,7 @@ export default function Prediction() {
       try {
         const { data, error } = await supabase
           .from('races')
-          .select('slug, race_name, circuit_name, country_code, race_starts_at, opens_at, closes_at, status, seasons(year)')
+          .select('slug, race_name, circuit_name, country_code, race_starts_at, opens_at, closes_at, status, is_sprint_weekend, seasons(year)')
           .neq('status', 'draft')
           .order('race_starts_at', { ascending: true });
 
@@ -641,7 +641,7 @@ export default function Prediction() {
                     <HelpCircle className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2} />
                   </div>
                   <div className="min-w-0">
-                    <div className="font-display text-xl font-black leading-none text-white sm:text-2xl">7</div>
+                    <div className="font-display text-xl font-black leading-none text-white sm:text-2xl">{raceConfig?.is_sprint_weekend ? 9 : 7}</div>
                     <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.08em] text-yellow-400 sm:text-xs sm:tracking-widest">Questions</div>
                   </div>
                 </div>
@@ -651,7 +651,7 @@ export default function Prediction() {
                     <Star className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2} />
                   </div>
                   <div className="min-w-0">
-                    <div className="whitespace-nowrap font-display text-xl font-black leading-none text-white sm:text-2xl">Max 7</div>
+                    <div className="whitespace-nowrap font-display text-xl font-black leading-none text-white sm:text-2xl">Max {raceConfig?.is_sprint_weekend ? 9 : 7}</div>
                     <div className="mt-1 text-[9px] font-bold uppercase tracking-[0.08em] text-yellow-400 sm:text-xs sm:tracking-widest">Points</div>
                   </div>
                 </div>

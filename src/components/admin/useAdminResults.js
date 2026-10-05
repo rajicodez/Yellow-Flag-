@@ -25,7 +25,7 @@ function mapRace(race) {
     raceStart: race.race_starts_at,
     status: statusLabels[race.status] ?? race.status,
     databaseStatus: race.status,
-    sprintWeekend: false,
+    sprintWeekend: Boolean(race.is_sprint_weekend),
   };
 }
 
@@ -38,7 +38,7 @@ function mapQuestion(question) {
     type: question.answer_type === 'driver' ? 'Driver' : 'Constructor',
     points: question.points,
     active: question.is_active,
-    sprint: false,
+    sprint: ['sprint_pole_position', 'sprint_race_winner'].includes(question.question_key),
   };
 }
 
@@ -68,7 +68,7 @@ export default function useAdminResults() {
     try {
       const { data: raceRows, error: raceError } = await supabase
         .from('races')
-        .select('id, season_id, round_number, slug, race_name, circuit_name, country_code, opens_at, closes_at, race_starts_at, status, seasons(year)')
+        .select('id, season_id, round_number, slug, race_name, circuit_name, country_code, opens_at, closes_at, race_starts_at, status, is_sprint_weekend, seasons(year)')
         .neq('status', 'draft')
         .order('race_starts_at', { ascending: true });
       if (raceError) throw raceError;

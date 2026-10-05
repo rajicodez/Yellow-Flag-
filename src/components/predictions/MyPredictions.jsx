@@ -61,7 +61,7 @@ export default function MyPredictions() {
       const [{ data: entryRows, error: entriesError }, { data: leaderboardRows, error: leaderboardError }] = await Promise.all([
         supabase
           .from('prediction_entries')
-          .select('id, race_id, competition, status, submitted_at, updated_at, races(id, slug, race_name, circuit_name, country_code, closes_at, race_starts_at, status)')
+          .select('id, race_id, competition, status, submitted_at, updated_at, races(id, slug, race_name, circuit_name, country_code, closes_at, race_starts_at, status, is_sprint_weekend)')
           .eq('user_id', authUser.id)
           .order('submitted_at', { ascending: false }),
         supabase
@@ -140,7 +140,7 @@ export default function MyPredictions() {
           <UserRound className="mx-auto h-11 w-11 text-yellow-400" />
           <p className="mt-5 text-xs font-black uppercase tracking-[0.3em] text-yellow-400">Your Prediction Account</p>
           <h1 className="mt-3 font-display text-4xl font-black uppercase text-white sm:text-6xl">My Predictions</h1>
-          <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-zinc-400 sm:text-base">Sign in to review every submitted race, your seven answers, and scores after results are published.</p>
+          <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-zinc-400 sm:text-base">Sign in to review every submitted race, your answers, and scores after results are published.</p>
           {error && <p role="alert" className="mt-5 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm font-semibold text-red-200">{error}</p>}
           <button type="button" onClick={handleSignIn} disabled={signInLoading} className="mt-7 rounded-xl bg-yellow-400 px-7 py-3.5 font-display text-sm font-black uppercase tracking-[0.16em] text-black transition hover:bg-yellow-300 disabled:cursor-wait disabled:opacity-60">{signInLoading ? 'Connecting...' : 'Continue with Google'}</button>
         </div>
@@ -182,7 +182,7 @@ export default function MyPredictions() {
                   <div className="flex flex-wrap items-center gap-3">
                     <div className="min-w-24 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center">
                       <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Score</p>
-                      <p className="mt-1 font-display text-2xl font-black text-white">{standing ? `${standing.score}/7` : 'Pending'}</p>
+                      <p className="mt-1 font-display text-2xl font-black text-white">{standing ? `${standing.score}/${entry.races.is_sprint_weekend ? 9 : 7}` : 'Pending'}</p>
                     </div>
                     <div className="min-w-24 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-center">
                       <p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-500">Rank</p>
@@ -201,7 +201,7 @@ export default function MyPredictions() {
 
                 {isExpanded && (
                   <div className="border-t border-white/10 p-5 sm:p-6">
-                    {detailsLoading === entry.id ? <div role="status" className="flex items-center gap-3 py-5 text-sm font-bold text-zinc-400"><LoaderCircle className="h-4 w-4 animate-spin text-yellow-400" /> Loading your seven answers...</div> : (
+                    {detailsLoading === entry.id ? <div role="status" className="flex items-center gap-3 py-5 text-sm font-bold text-zinc-400"><LoaderCircle className="h-4 w-4 animate-spin text-yellow-400" /> Loading your answers...</div> : (
                       <ol className="grid gap-3 md:grid-cols-2">
                         {detailRows.map((detail) => <li key={detail.id} className="rounded-xl border border-white/10 bg-black/25 p-4"><p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-500">Question {detail.question_number}</p><p className="mt-1 text-sm font-semibold text-zinc-300">{detail.question_text}</p><p className="mt-3 font-display text-lg font-black uppercase text-yellow-300">{detail.answer}</p></li>)}
                       </ol>

@@ -20,6 +20,8 @@ const shortTitles = {
   driver_of_the_day: 'DRIVER OF THE DAY',
   top_constructor: 'BEST-PERFORMING CONSTRUCTOR',
   worst_constructor: 'WORST-PERFORMING TEAM',
+  sprint_pole_position: 'SPRINT POLE',
+  sprint_race_winner: 'SPRINT WINNER',
 };
 
 const questionCategories = {
@@ -30,6 +32,8 @@ const questionCategories = {
   driver_of_the_day: 'Race Awards',
   top_constructor: 'Team Performance',
   worst_constructor: 'Team Performance',
+  sprint_pole_position: 'Sprint Qualifying',
+  sprint_race_winner: 'Sprint Result',
 };
 
 const sanitizeAnswers = (savedAnswers, questions) => {
@@ -129,13 +133,13 @@ function getSubmissionErrorMessage(error) {
     return 'Choose three different drivers for the podium positions.';
   }
   if (message.includes('INVALID_ANSWER_OPTION')) {
-    return 'One answer is no longer available. Please review all seven selections.';
+    return 'One answer is no longer available. Please review all selections.';
   }
   if (message.includes('HOST_COMPETITION_FORBIDDEN')) {
     return 'This account is not authorized for the host competition.';
   }
-  if (message.includes('EXACTLY_SEVEN_ANSWERS_REQUIRED')) {
-    return 'All seven answers are required.';
+  if (message.includes('EXACTLY_SEVEN_ANSWERS_REQUIRED') || message.includes('All race questions must be answered')) {
+    return 'All race answers are required.';
   }
 
   return 'Unable to submit your prediction. Please try again.';
@@ -280,7 +284,7 @@ export default function DutchGrandPrixPrediction() {
           : raceSlug;
         const { data: race, error: raceError } = await supabase
           .from('races')
-          .select('id, slug, race_name, circuit_name, country_code, opens_at, closes_at, race_starts_at, status')
+          .select('id, slug, race_name, circuit_name, country_code, opens_at, closes_at, race_starts_at, status, is_sprint_weekend')
           .eq('slug', normalizedRaceSlug)
           .maybeSingle();
 
@@ -330,7 +334,8 @@ export default function DutchGrandPrixPrediction() {
           options: optionsByQuestionId.get(question.id) ?? [],
         }));
 
-        if (uiQuestions.length !== 7 || uiQuestions.some((question) => !question.options.length)) {
+        const expectedQuestionCount = race.is_sprint_weekend ? 9 : 7;
+        if (uiQuestions.length !== expectedQuestionCount || uiQuestions.some((question) => !question.options.length)) {
           throw new Error('The race question configuration is incomplete.');
         }
 

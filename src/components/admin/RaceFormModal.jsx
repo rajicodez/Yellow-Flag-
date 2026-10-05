@@ -29,6 +29,7 @@ export default function RaceFormModal({ race, races = [], open, onClose, onSave 
   const [predictionOpens, setPredictionOpens] = useState('');
   const [predictionCloses, setPredictionCloses] = useState('');
   const [status, setStatus] = useState('Draft');
+  const [isSprintWeekend, setIsSprintWeekend] = useState(false);
   const [details, setDetails] = useState({ name: '', circuit: '', country: '', countryCode: '', round: '', season: activeF1Season, raceStart: '' });
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
@@ -59,6 +60,7 @@ export default function RaceFormModal({ race, races = [], open, onClose, onSave 
     setPredictionOpens(race?.predictionOpens ?? '');
     setPredictionCloses(race?.predictionCloses ?? '');
     setStatus(race?.status ?? 'Draft');
+    setIsSprintWeekend(Boolean(race?.sprintWeekend));
     setDetails({
       name: race?.name ?? '', circuit: race?.circuit ?? '', country: race?.country ?? '',
       countryCode: race?.countryCode ?? '', round: race?.round ?? '', season: race?.season ?? activeF1Season,
@@ -80,6 +82,7 @@ export default function RaceFormModal({ race, races = [], open, onClose, onSave 
     setPredictionOpens('');
     setPredictionCloses('');
     setStatus('Draft');
+    setIsSprintWeekend(false);
     setDetails({ name: '', circuit: '', country: '', countryCode: '', round: '', season: activeF1Season, raceStart: '' });
     setSaving(false);
     setErrors({});
@@ -102,6 +105,7 @@ export default function RaceFormModal({ race, races = [], open, onClose, onSave 
     setPredictionOpens('');
     setPredictionCloses('');
     setStatus('Draft');
+    setIsSprintWeekend(Boolean(nextRace.sprintWeekend));
     setDetails({
       name: nextRace.name, circuit: nextRace.circuit, country: nextRace.country,
       countryCode: '', round: nextRace.round, season: nextRace.season,
@@ -176,7 +180,7 @@ export default function RaceFormModal({ race, races = [], open, onClose, onSave 
       predictionOpens: submittedPredictionOpens,
       predictionCloses: submittedPredictionCloses,
       status,
-      sprintWeekend: false,
+      sprintWeekend: isSprintWeekend,
       questions: race?.questions ?? 0,
     };
 
@@ -280,8 +284,11 @@ export default function RaceFormModal({ race, races = [], open, onClose, onSave 
           </select>
         </Field>
 
-        <div className="rounded-xl border border-white/10 bg-black/25 p-4 text-sm text-zinc-400">
-          Every race uses the meeting-approved seven-question, seven-point format.
+        <div className="rounded-xl border border-white/10 bg-black/25 p-4 sm:col-span-2">
+          <label className="flex cursor-pointer items-start justify-between gap-4">
+            <span><span className="block text-sm font-black text-white">Sprint Weekend</span><span className="mt-1 block text-xs leading-5 text-zinc-500">Adds Sprint Pole and Sprint Winner, creating a 9-question, 9-point race.</span></span>
+            <input type="checkbox" checked={isSprintWeekend} onChange={(event) => setIsSprintWeekend(event.target.checked)} className="mt-1 h-5 w-5 accent-yellow-400" />
+          </label>
         </div>
 
         {errors.server && <p role="alert" className="text-sm font-semibold text-red-300 sm:col-span-2">{errors.server}</p>}
