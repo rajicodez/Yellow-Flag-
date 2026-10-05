@@ -78,7 +78,7 @@ export default function HomepageLeaderboard() {
   const totalCompetitors = Number(state.rows[0]?.total_competitors ?? 0);
   const maximumScore = mode === 'season'
     ? Math.max(1, ...state.rows.map((row) => Number(row.score) || 0))
-    : 7;
+    : Math.max(1, ...state.rows.map((row) => Number(row.score) || 0));
 
   return (
     <section id="leaderboard-preview" className="relative scroll-mt-24 overflow-hidden py-20 md:py-28">
@@ -129,7 +129,7 @@ export default function HomepageLeaderboard() {
                     <Avatar name={row.display_name} src={row.avatar_url} size={layout.avatarSize} />
                   </div>
                   <h3 className="relative z-10 mt-5 max-w-full truncate font-display text-xl font-black uppercase text-white sm:text-2xl">{row.display_name || 'Yellow Flag Fan'}</h3>
-                  <p className={`relative z-10 mt-2 font-display text-4xl font-black ${layout.score}`}>{row.score}<span className="ml-1.5 text-sm text-zinc-500">{mode === 'season' ? 'PTS' : '/ 7 PTS'}</span></p>
+                  <p className={`relative z-10 mt-2 font-display text-4xl font-black ${layout.score}`}>{row.score}<span className="ml-1.5 text-sm text-zinc-500">PTS</span></p>
                 </article>
                 );
               })}

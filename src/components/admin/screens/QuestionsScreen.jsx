@@ -127,7 +127,7 @@ export default function QuestionsScreen({
 
   const toggleQuestion = (id, updates) => {
     updateQuestion(id, updates);
-    setNotice('Question status changed locally. Save the seven-question set to update Supabase.');
+    setNotice(`Question updated locally. Save the ${totalQuestions}-question set to update Supabase.`);
   };
 
   const handleQuestionSave = (updatedQuestion, message) => {
@@ -168,7 +168,7 @@ export default function QuestionsScreen({
     setSaving(true);
     try {
       await saveQuestionDraft(selectedRaceId);
-      setNotice('Seven questions and their answer options were saved to Supabase.');
+      setNotice(`${totalQuestions} questions and their answer options were saved to Supabase.`);
     } catch (error) {
       setNotice(error.message || 'Unable to save questions.');
     } finally {
@@ -179,7 +179,7 @@ export default function QuestionsScreen({
   const handleCreateDefaults = () => {
     createQuestionsForRace(selectedRaceId);
     setCreateDefaultsOpen(false);
-    setNotice(`Seven default questions created for ${selectedRace.name}. Review them, then save to Supabase.`);
+    setNotice(`${selectedRace.sprintWeekend ? 'Nine Sprint-weekend' : 'Seven'} default questions created for ${selectedRace.name}. Review them, then save to Supabase.`);
   };
 
   if (!races.length || !selectedRace) {
@@ -219,7 +219,8 @@ export default function QuestionsScreen({
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={selectedRace.status} />
-            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.15em] text-zinc-300">7 Questions · 7 Points</span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.15em] text-zinc-300">{totalQuestions || (selectedRace.sprintWeekend ? 9 : 7)} Questions · {maximumPoints || (selectedRace.sprintWeekend ? 9 : 7)} Points</span>
+            {selectedRace.sprintWeekend && <span className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.15em] text-yellow-300">Sprint Weekend</span>}
             {hasUnsavedChanges && <span className="rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.15em] text-amber-300">Unsaved Changes</span>}
           </div>
         </div>
@@ -243,14 +244,14 @@ export default function QuestionsScreen({
         <Panel className="border-dashed p-6 text-center sm:p-10">
           <CircleHelp className="mx-auto h-8 w-8 text-yellow-400" aria-hidden="true" />
           <p className="mt-4 text-base font-bold text-white">Questions have not been configured for this race.</p>
-          <p className="mt-2 text-sm text-zinc-500">Create the meeting-approved seven-question Grand Prix set for this race.</p>
+          <p className="mt-2 text-sm text-zinc-500">Create the {selectedRace.sprintWeekend ? 'nine-question Sprint weekend' : 'seven-question Grand Prix'} set for this race.</p>
           <button type="button" onClick={() => setCreateDefaultsOpen(true)} className="mt-5 rounded-xl bg-yellow-400 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-black focus:outline-none focus:ring-2 focus:ring-yellow-200">Create Default Questions</button>
         </Panel>
       ) : (
         <>
           <Panel className="border-yellow-400/20 bg-[linear-gradient(115deg,rgba(250,204,21,0.1),rgba(17,17,19,0.92)_58%)] p-5 sm:p-6">
-            <p className="font-display text-lg font-black uppercase text-white">Fixed Competition Format</p>
-            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-zinc-400">Every Grand Prix uses exactly seven questions and awards one point for each correct answer, including Sprint weekends.</p>
+            <p className="font-display text-lg font-black uppercase text-white">{selectedRace.sprintWeekend ? 'Sprint Weekend Format' : 'Grand Prix Format'}</p>
+            <p className="mt-1.5 max-w-2xl text-sm leading-6 text-zinc-400">{selectedRace.sprintWeekend ? 'The standard seven questions plus Sprint Pole and Sprint Winner. Each correct answer awards one point.' : 'Seven standard questions with one point for each correct answer.'}</p>
           </Panel>
 
           <div className="grid gap-4 sm:grid-cols-3">
@@ -274,7 +275,7 @@ export default function QuestionsScreen({
 
       <QuestionModal question={selectedQuestion} open={modalOpen} onClose={() => setModalOpen(false)} onSave={handleQuestionSave} />
 
-      <Modal open={createDefaultsOpen} onClose={() => setCreateDefaultsOpen(false)} title="Create default questions?" description="Prepare the seven-question Grand Prix set before saving it.">
+      <Modal open={createDefaultsOpen} onClose={() => setCreateDefaultsOpen(false)} title="Create default questions?" description={`Prepare the ${selectedRace.sprintWeekend ? 'nine-question Sprint weekend' : 'seven-question Grand Prix'} set before saving it.`}>
         <p className="text-sm leading-6 text-zinc-300">This prepares the standard questions for {selectedRace.name}. Review them and use Save to Supabase to make them live.</p>
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button type="button" onClick={() => setCreateDefaultsOpen(false)} className="rounded-xl border border-white/15 px-5 py-3 text-xs font-black uppercase tracking-[0.15em] text-zinc-300">Cancel</button>

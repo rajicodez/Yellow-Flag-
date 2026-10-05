@@ -100,7 +100,7 @@ function QuestionPanel({ question }) {
   );
 }
 
-function ScoreDistribution({ scoring }) {
+function ScoreDistribution({ maximumPoints, scoring }) {
   const distribution = scoring?.distribution ?? [];
   const maximum = Math.max(1, ...distribution.map((item) => Number(item.count)));
   return (
@@ -109,7 +109,7 @@ function ScoreDistribution({ scoring }) {
       {!scoring?.available ? <div className="mt-5"><EmptyNotice>Score analytics will appear after official answers are calculated.</EmptyNotice></div> : (
         <div className="mt-7">
           <div className="mb-6 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-black/25 p-4"><p className="text-xs text-zinc-500">Average score</p><p className="mt-1 font-display text-3xl font-black text-white">{scoring.average_score}<span className="text-sm text-zinc-600">/7</span></p></div>
+            <div className="rounded-xl border border-white/10 bg-black/25 p-4"><p className="text-xs text-zinc-500">Average score</p><p className="mt-1 font-display text-3xl font-black text-white">{scoring.average_score}<span className="text-sm text-zinc-600">/{maximumPoints}</span></p></div>
             <div className="rounded-xl border border-yellow-400/20 bg-yellow-400/[0.06] p-4"><p className="text-xs text-zinc-500">Perfect predictions</p><p className="mt-1 font-display text-3xl font-black text-yellow-300">{scoring.perfect_scores}</p></div>
           </div>
           <div className="flex h-40 items-end gap-2">
@@ -212,7 +212,7 @@ export default function AnalyticsScreen({ races, questionsByRaceId, selectedRace
           <Panel className="overflow-hidden"><div className="border-b border-white/10 bg-[linear-gradient(120deg,rgba(250,204,21,0.08),transparent_55%)] px-5 py-4 sm:px-6"><div className="flex items-center gap-3"><Crown className="h-5 w-5 text-yellow-400" /><div><h3 className="font-display text-xl font-black uppercase text-white">Popular Podium Combinations</h3><p className="text-xs text-zinc-500">The five most common P1, P2 and P3 combinations</p></div></div></div><div className="grid gap-3 p-5 sm:p-6 lg:grid-cols-2">{(analytics.podium_combinations ?? []).map((podium, index) => <div key={`${podium.p1}-${podium.p2}-${podium.p3}`} className="flex items-center gap-4 rounded-xl border border-white/10 bg-black/25 p-4"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl font-display text-lg font-black ${index === 0 ? 'bg-yellow-400 text-black' : 'bg-white/5 text-zinc-400'}`}>{index + 1}</span><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-white">{podium.p1}</p><p className="truncate text-xs text-zinc-500">{podium.p2} · {podium.p3}</p></div><span className="font-display text-2xl font-black text-yellow-300">{podium.count}</span></div>)}{!(analytics.podium_combinations ?? []).length && <div className="lg:col-span-2"><EmptyNotice>No complete podium combinations yet.</EmptyNotice></div>}</div></Panel>
         </>}
 
-        <ScoreDistribution scoring={analytics.scoring} />
+        <ScoreDistribution maximumPoints={selectedRace?.sprintWeekend ? 9 : 7} scoring={analytics.scoring} />
       </>}
     </div>
   );

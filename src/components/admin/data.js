@@ -224,7 +224,7 @@ export const sprintGrandPrixQuestions = [
   {
     id: 8,
     key: 'sprint_pole_position',
-    text: 'Who will take Pole Position at the Sprint Race?',
+    text: 'Who will take Sprint Pole?',
     type: 'Driver',
     points: 1,
     active: true,
