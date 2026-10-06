@@ -81,7 +81,7 @@ export function getRaceStableId(race) {
 
 export function createDefaultQuestionSet(isSprintWeekend = false) {
   const sourceQuestions = isSprintWeekend
-    ? [...defaultGrandPrixQuestions, ...sprintGrandPrixQuestions]
+    ? [...sprintGrandPrixQuestions, ...defaultGrandPrixQuestions]
     : defaultGrandPrixQuestions;
   return cloneQuestions(sourceQuestions).map((question, index) => ({
     ...question,

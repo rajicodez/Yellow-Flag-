@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CalendarDays, CircleHelp, Eye, GripVertical, Pencil, Save } from 'lucide-react';
+import { CalendarDays, CircleHelp, Eye, Pencil, Save } from 'lucide-react';
 import AdminRaceSelect from '../AdminRaceSelect';
 import { Field, inputClass, Modal, Panel, ScreenHeading, StatusBadge } from '../AdminUI';
 import { getRaceStableId } from '../useAdminRaceWorkspace';
@@ -67,9 +67,6 @@ function QuestionRow({ question, onEdit }) {
   return (
     <li className={`grid min-w-0 gap-4 rounded-xl border p-4 shadow-[0_8px_24px_rgba(0,0,0,0.18)] sm:p-5 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:items-center ${question.sprint ? 'border-yellow-400/25 bg-yellow-400/[0.025]' : 'border-white/10 bg-black/20'} ${question.active ? '' : 'border-dashed opacity-70'}`}>
       <div className="flex items-center gap-3">
-        <button type="button" aria-label={`Reorder question ${question.id}`} className="cursor-grab rounded-lg p-2 text-zinc-600 transition hover:bg-white/5 hover:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/50">
-          <GripVertical className="h-5 w-5" aria-hidden="true" />
-        </button>
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-yellow-400/25 bg-yellow-400/10 font-display text-sm font-black text-yellow-300">Q{question.questionNumber}</span>
       </div>
       <div className="min-w-0">
