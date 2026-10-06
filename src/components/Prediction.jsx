@@ -53,6 +53,15 @@ const SEPANG_PHOTO = {
   objectPosition: 'center 58%',
 };
 
+const SINGAPORE_PHOTO = {
+  src: '/images/circuits/singapore-grand-prix.jpg',
+  alt: 'Singapore Grand Prix night race around Marina Bay and the city skyline',
+  credit: 'chensiyuan / Wikimedia Commons',
+  sourceUrl: 'https://commons.wikimedia.org/wiki/File:1_singapore_f1_night_race_2012_city_skyline.jpg',
+  license: 'CC BY-SA 4.0',
+  objectPosition: 'center 58%',
+};
+
 const CIRCUIT_PHOTOS = {
   'dutch-grand-prix': ZANDVOORT_PHOTO,
   '2026-dutch-grand-prix': ZANDVOORT_PHOTO,
@@ -74,6 +83,10 @@ const CIRCUIT_PHOTOS = {
   '2026-bahrain': SEPANG_PHOTO,
   sepang: SEPANG_PHOTO,
   '2026-sepang': SEPANG_PHOTO,
+  'singapore-grand-prix': SINGAPORE_PHOTO,
+  '2026-singapore-grand-prix': SINGAPORE_PHOTO,
+  singapore: SINGAPORE_PHOTO,
+  '2026-singapore': SINGAPORE_PHOTO,
 };
 
 function getCircuitPhoto(race) {
@@ -83,6 +96,9 @@ function getCircuitPhoto(race) {
   }
   if (/bahrain|malaysia/i.test(race.race_name ?? '') || /sepang/i.test(race.circuit_name ?? '')) {
     return SEPANG_PHOTO;
+  }
+  if (/singapore/i.test(race.race_name ?? '') || /marina bay/i.test(race.circuit_name ?? '')) {
+    return SINGAPORE_PHOTO;
   }
   return CIRCUIT_PHOTOS[race.slug] ?? null;
 }

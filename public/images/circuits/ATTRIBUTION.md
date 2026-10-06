@@ -1,5 +1,13 @@
 # Circuit photo attribution
 
+`singapore-grand-prix.jpg` shows the Singapore Formula One night race around
+Marina Bay and the city skyline. The photograph is by
+[chensiyuan](https://commons.wikimedia.org/wiki/User:Chensiyuan), downloaded at
+1280 px from [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:1_singapore_f1_night_race_2012_city_skyline.jpg).
+
+Licensed under [Creative Commons Attribution-ShareAlike 4.0 International](https://creativecommons.org/licenses/by-sa/4.0/).
+The website displays a cropped presentation through CSS; the source image file is otherwise unchanged.
+
 `dutch-grand-prix.jpg` is an aerial photograph of Circuit Park Zandvoort by
 [Quistnix](https://commons.wikimedia.org/wiki/User:Quistnix), downloaded at
 1280 px from [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Circuit_Park_Zandvoort_aerial_photo.jpg).
