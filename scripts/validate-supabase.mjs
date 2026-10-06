@@ -31,6 +31,7 @@ assert.deepEqual(activeMigrations, [
   '20260907130000_public_homepage_season_leaderboard.sql',
   '20260928180000_published_result_corrections.sql',
   '20261005120000_sprint_weekend_predictions.sql',
+  '20261006113000_sprint_question_order.sql',
 ]);
 
 const archivedMigrations = (await readdir(archiveMigrationDirectory))
@@ -101,6 +102,10 @@ const publishedResultCorrectionsMigration = await readFile(
 );
 const sprintWeekendMigration = await readFile(
   path.join(migrationDirectory, activeMigrations[13]),
+  'utf8'
+);
+const sprintQuestionOrderMigration = await readFile(
+  path.join(migrationDirectory, activeMigrations[14]),
   'utf8'
 );
 const config = await readFile(path.join(supabaseDirectory, 'config.toml'), 'utf8');
@@ -467,6 +472,11 @@ assert.match(normalizedSprintWeekend, /create or replace function public\.submit
 assert.match(normalizedSprintWeekend, /sprint_pole_position/);
 assert.match(normalizedSprintWeekend, /sprint_race_winner/);
 assert.match(normalizedSprintWeekend, /generate_series\(0, expected_count\)/);
+const normalizedSprintQuestionOrder = sprintQuestionOrderMigration.replaceAll('"', '').toLowerCase().replace(/\s+/g, ' ');
+assert.match(normalizedSprintQuestionOrder, /when 'sprint_pole_position' then 1/);
+assert.match(normalizedSprintQuestionOrder, /when 'sprint_race_winner' then 2/);
+assert.match(normalizedSprintQuestionOrder, /\('1', 'sprint_pole_position', 'driver'\)/);
+assert.match(normalizedSprintQuestionOrder, /\('2', 'sprint_race_winner', 'driver'\)/);
 
 assert.match(predictionClient, /race\.opens_at/);
 assert.match(predictionClient, /race\.closes_at/);
