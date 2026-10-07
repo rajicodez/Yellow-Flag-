@@ -11,7 +11,7 @@ import PredictionSuccess from './PredictionSuccess';
 import BackgroundEffects from '../ui/BackgroundEffects';
 import { getAuthorizedHostProfile, signInWithGoogle, supabase } from '../../lib/supabase';
 
-const PODIUM_QUESTION_IDS = [2, 3, 4];
+const PODIUM_QUESTION_KEYS = new Set(['race_winner', 'p2_finisher', 'p3_finisher']);
 const shortTitles = {
   pole_position: 'POLE POSITION',
   race_winner: 'RACE WINNER',
@@ -53,12 +53,12 @@ const sanitizeAnswers = (savedAnswers, questions) => {
 
   // Keep the first saved podium position and discard later duplicates.
   const usedPodiumDrivers = new Set();
-  PODIUM_QUESTION_IDS.forEach(questionId => {
-    const driver = sanitized[questionId];
+  questions.filter(question => PODIUM_QUESTION_KEYS.has(question.databaseKey)).forEach(question => {
+    const driver = sanitized[question.id];
     if (!driver) return;
 
     if (usedPodiumDrivers.has(driver)) {
-      delete sanitized[questionId];
+      delete sanitized[question.id];
     } else {
       usedPodiumDrivers.add(driver);
     }
@@ -145,12 +145,16 @@ function getSubmissionErrorMessage(error) {
   return 'Unable to submit your prediction. Please try again.';
 }
 
-const findDuplicatePodiumSelection = (candidateAnswers) => {
-  for (const questionId of PODIUM_QUESTION_IDS) {
+const findDuplicatePodiumSelection = (candidateAnswers, questions) => {
+  const podiumQuestionIds = questions
+    .filter(question => PODIUM_QUESTION_KEYS.has(question.databaseKey))
+    .map(question => question.id);
+
+  for (const questionId of podiumQuestionIds) {
     const answer = candidateAnswers[questionId];
     if (!answer) continue;
 
-    const duplicateQuestionId = PODIUM_QUESTION_IDS.find(
+    const duplicateQuestionId = podiumQuestionIds.find(
       otherQuestionId => otherQuestionId !== questionId && candidateAnswers[otherQuestionId] === answer
     );
 
@@ -463,14 +467,16 @@ export default function DutchGrandPrixPrediction() {
   }, [authenticatedUserId, isAuthLoading, isHostMode, raceSlug, requestedCompetition]);
 
   const handleAnswer = (questionId, answer) => {
-    if (PODIUM_QUESTION_IDS.includes(questionId)) {
-      const duplicateQuestionId = PODIUM_QUESTION_IDS.find(
-        otherQuestionId => otherQuestionId !== questionId && answers[otherQuestionId] === answer
+    const currentQuestion = raceQuestions.find(question => question.id === questionId);
+
+    if (PODIUM_QUESTION_KEYS.has(currentQuestion?.databaseKey)) {
+      const duplicateQuestion = raceQuestions.find(
+        question => question.id !== questionId
+          && PODIUM_QUESTION_KEYS.has(question.databaseKey)
+          && answers[question.id] === answer
       );
 
-      if (duplicateQuestionId) {
-        const duplicateQuestion = raceQuestions.find(question => question.id === duplicateQuestionId);
-        const currentQuestion = raceQuestions.find(question => question.id === questionId);
+      if (duplicateQuestion) {
         setValidationError(
           `${answer} is already selected for ${duplicateQuestion.shortTitle}. Choose a different driver for ${currentQuestion.shortTitle}.`
         );
@@ -486,7 +492,7 @@ export default function DutchGrandPrixPrediction() {
   };
 
   const validatePodium = (candidateAnswers = answers) => {
-    const duplicate = findDuplicatePodiumSelection(candidateAnswers);
+    const duplicate = findDuplicatePodiumSelection(candidateAnswers, raceQuestions);
 
     if (duplicate) {
       setValidationError('You cannot select the same driver for multiple podium positions.');
