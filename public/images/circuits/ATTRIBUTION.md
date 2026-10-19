@@ -1,5 +1,13 @@
 # Circuit photo attribution
 
+`united-states-grand-prix.jpg` shows the downtown Austin, Texas skyline at
+dusk. The photograph is by
+[Jonathan Cutrer](https://commons.wikimedia.org/wiki/User:Jcutrer), downloaded
+at 1280 px from [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Austin_Skyline_at_Dusk_(10555259063).jpg).
+
+Licensed under [Creative Commons Attribution 2.0 Generic](https://creativecommons.org/licenses/by/2.0/).
+The website displays a cropped presentation through CSS; the source image file is otherwise unchanged.
+
 `singapore-grand-prix.jpg` shows the Singapore Formula One night race around
 Marina Bay and the city skyline. The photograph is by
 [chensiyuan](https://commons.wikimedia.org/wiki/User:Chensiyuan), downloaded at

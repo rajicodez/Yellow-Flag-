@@ -62,6 +62,15 @@ const SINGAPORE_PHOTO = {
   objectPosition: 'center 58%',
 };
 
+const UNITED_STATES_PHOTO = {
+  src: '/images/circuits/united-states-grand-prix.jpg',
+  alt: 'Downtown Austin, Texas skyline at dusk',
+  credit: 'Jonathan Cutrer / Wikimedia Commons',
+  sourceUrl: 'https://commons.wikimedia.org/wiki/File:Austin_Skyline_at_Dusk_(10555259063).jpg',
+  license: 'CC BY 2.0',
+  objectPosition: 'center 58%',
+};
+
 const CIRCUIT_PHOTOS = {
   'dutch-grand-prix': ZANDVOORT_PHOTO,
   '2026-dutch-grand-prix': ZANDVOORT_PHOTO,
@@ -87,6 +96,12 @@ const CIRCUIT_PHOTOS = {
   '2026-singapore-grand-prix': SINGAPORE_PHOTO,
   singapore: SINGAPORE_PHOTO,
   '2026-singapore': SINGAPORE_PHOTO,
+  'united-states-grand-prix': UNITED_STATES_PHOTO,
+  '2026-united-states-grand-prix': UNITED_STATES_PHOTO,
+  'united-states-gp': UNITED_STATES_PHOTO,
+  '2026-united-states-gp': UNITED_STATES_PHOTO,
+  austin: UNITED_STATES_PHOTO,
+  '2026-austin': UNITED_STATES_PHOTO,
 };
 
 function getCircuitPhoto(race) {
@@ -99,6 +114,12 @@ function getCircuitPhoto(race) {
   }
   if (/singapore/i.test(race.race_name ?? '') || /marina bay/i.test(race.circuit_name ?? '')) {
     return SINGAPORE_PHOTO;
+  }
+  if (
+    /united states|american/i.test(race.race_name ?? '') ||
+    /circuit of the americas|austin/i.test(race.circuit_name ?? '')
+  ) {
+    return UNITED_STATES_PHOTO;
   }
   return CIRCUIT_PHOTOS[race.slug] ?? null;
 }
