@@ -71,6 +71,15 @@ const UNITED_STATES_PHOTO = {
   objectPosition: 'center 58%',
 };
 
+const MEXICO_CITY_PHOTO = {
+  src: '/images/circuits/mexico-city-grand-prix.jpg',
+  alt: 'Palacio de Bellas Artes illuminated at night in Mexico City',
+  credit: 'Angierodr / Wikimedia Commons',
+  sourceUrl: 'https://commons.wikimedia.org/wiki/File:Vista_panor%C3%A1mica_del_Palacio_de_las_Bellas_Artes.jpg',
+  license: 'CC BY-SA 4.0',
+  objectPosition: 'center 54%',
+};
+
 const CIRCUIT_PHOTOS = {
   'dutch-grand-prix': ZANDVOORT_PHOTO,
   '2026-dutch-grand-prix': ZANDVOORT_PHOTO,
@@ -102,6 +111,14 @@ const CIRCUIT_PHOTOS = {
   '2026-united-states-gp': UNITED_STATES_PHOTO,
   austin: UNITED_STATES_PHOTO,
   '2026-austin': UNITED_STATES_PHOTO,
+  'mexico-city-grand-prix': MEXICO_CITY_PHOTO,
+  '2026-mexico-city-grand-prix': MEXICO_CITY_PHOTO,
+  'mexico-city-gp': MEXICO_CITY_PHOTO,
+  '2026-mexico-city-gp': MEXICO_CITY_PHOTO,
+  'mexican-grand-prix': MEXICO_CITY_PHOTO,
+  '2026-mexican-grand-prix': MEXICO_CITY_PHOTO,
+  mexico: MEXICO_CITY_PHOTO,
+  '2026-mexico': MEXICO_CITY_PHOTO,
 };
 
 function getCircuitPhoto(race) {
@@ -120,6 +137,12 @@ function getCircuitPhoto(race) {
     /circuit of the americas|austin/i.test(race.circuit_name ?? '')
   ) {
     return UNITED_STATES_PHOTO;
+  }
+  if (
+    /mexico|mexican/i.test(race.race_name ?? '') ||
+    /hermanos rodriguez|mexico city/i.test(race.circuit_name ?? '')
+  ) {
+    return MEXICO_CITY_PHOTO;
   }
   return CIRCUIT_PHOTOS[race.slug] ?? null;
 }
