@@ -1,5 +1,13 @@
 # Circuit photo attribution
 
+`mexico-city-grand-prix.jpg` shows Mexico City's Palacio de Bellas Artes
+illuminated at night. The photograph is by
+[Angierodr](https://commons.wikimedia.org/wiki/User:Angierodr), downloaded at
+1280 px from [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Vista_panor%C3%A1mica_del_Palacio_de_las_Bellas_Artes.jpg).
+
+Licensed under [Creative Commons Attribution-ShareAlike 4.0 International](https://creativecommons.org/licenses/by-sa/4.0/).
+The website displays a cropped presentation through CSS; the source image file is otherwise unchanged.
+
 `united-states-grand-prix.jpg` shows the downtown Austin, Texas skyline at
 dusk. The photograph is by
 [Jonathan Cutrer](https://commons.wikimedia.org/wiki/User:Jcutrer), downloaded
