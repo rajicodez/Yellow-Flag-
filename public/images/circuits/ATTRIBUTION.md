@@ -1,5 +1,13 @@
 # Circuit photo attribution
 
+`sao-paulo-grand-prix.jpg` shows São Paulo's Octávio Frias de Oliveira Bridge
+illuminated at night. The photograph is by
+[Marcosleal](https://commons.wikimedia.org/wiki/User:Marcosleal), downloaded at
+1280 px from [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Ponte_estaiada_Octavio_Frias_-_Sao_Paulo.jpg).
+
+Licensed under [Creative Commons Attribution-ShareAlike 3.0 Unported](https://creativecommons.org/licenses/by-sa/3.0/).
+The website displays a cropped presentation through CSS; the source image file is otherwise unchanged.
+
 `mexico-city-grand-prix.jpg` shows Mexico City's Palacio de Bellas Artes
 illuminated at night. The photograph is by
 [Angierodr](https://commons.wikimedia.org/wiki/User:Angierodr), downloaded at
