@@ -80,6 +80,15 @@ const MEXICO_CITY_PHOTO = {
   objectPosition: 'center 54%',
 };
 
+const SAO_PAULO_PHOTO = {
+  src: '/images/circuits/sao-paulo-grand-prix.jpg',
+  alt: 'Octavio Frias de Oliveira Bridge illuminated at night in Sao Paulo',
+  credit: 'Marcosleal / Wikimedia Commons',
+  sourceUrl: 'https://commons.wikimedia.org/wiki/File:Ponte_estaiada_Octavio_Frias_-_Sao_Paulo.jpg',
+  license: 'CC BY-SA 3.0',
+  objectPosition: 'center 52%',
+};
+
 const CIRCUIT_PHOTOS = {
   'dutch-grand-prix': ZANDVOORT_PHOTO,
   '2026-dutch-grand-prix': ZANDVOORT_PHOTO,
@@ -119,6 +128,14 @@ const CIRCUIT_PHOTOS = {
   '2026-mexican-grand-prix': MEXICO_CITY_PHOTO,
   mexico: MEXICO_CITY_PHOTO,
   '2026-mexico': MEXICO_CITY_PHOTO,
+  'sao-paulo-grand-prix': SAO_PAULO_PHOTO,
+  '2026-sao-paulo-grand-prix': SAO_PAULO_PHOTO,
+  'sao-paulo-gp': SAO_PAULO_PHOTO,
+  '2026-sao-paulo-gp': SAO_PAULO_PHOTO,
+  'brazilian-grand-prix': SAO_PAULO_PHOTO,
+  '2026-brazilian-grand-prix': SAO_PAULO_PHOTO,
+  brazil: SAO_PAULO_PHOTO,
+  '2026-brazil': SAO_PAULO_PHOTO,
 };
 
 function getCircuitPhoto(race) {
@@ -143,6 +160,12 @@ function getCircuitPhoto(race) {
     /hermanos rodriguez|mexico city/i.test(race.circuit_name ?? '')
   ) {
     return MEXICO_CITY_PHOTO;
+  }
+  if (
+    /sao paulo|são paulo|brazil|brazilian/i.test(race.race_name ?? '') ||
+    /jose carlos pace|josé carlos pace|interlagos/i.test(race.circuit_name ?? '')
+  ) {
+    return SAO_PAULO_PHOTO;
   }
   return CIRCUIT_PHOTOS[race.slug] ?? null;
 }
