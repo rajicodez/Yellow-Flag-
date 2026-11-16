@@ -1,5 +1,13 @@
 # Circuit photo attribution
 
+`las-vegas-grand-prix.jpg` shows the Las Vegas Strip illuminated at night with
+traffic light trails. The photograph is by
+[YosemiteYamper](https://commons.wikimedia.org/wiki/User:YosemiteYamper),
+downloaded at 1280 px from [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Las_Vegas_Strip_at_night_2023.jpg).
+
+Licensed under [Creative Commons Attribution-ShareAlike 4.0 International](https://creativecommons.org/licenses/by-sa/4.0/).
+The website displays a cropped presentation through CSS; the source image file is otherwise unchanged.
+
 `sao-paulo-grand-prix.jpg` shows São Paulo's Octávio Frias de Oliveira Bridge
 illuminated at night. The photograph is by
 [Marcosleal](https://commons.wikimedia.org/wiki/User:Marcosleal), downloaded at

@@ -89,6 +89,15 @@ const SAO_PAULO_PHOTO = {
   objectPosition: 'center 52%',
 };
 
+const LAS_VEGAS_PHOTO = {
+  src: '/images/circuits/las-vegas-grand-prix.jpg',
+  alt: 'Las Vegas Strip illuminated at night with traffic light trails',
+  credit: 'YosemiteYamper / Wikimedia Commons',
+  sourceUrl: 'https://commons.wikimedia.org/wiki/File:Las_Vegas_Strip_at_night_2023.jpg',
+  license: 'CC BY-SA 4.0',
+  objectPosition: 'center 50%',
+};
+
 const CIRCUIT_PHOTOS = {
   'dutch-grand-prix': ZANDVOORT_PHOTO,
   '2026-dutch-grand-prix': ZANDVOORT_PHOTO,
@@ -136,6 +145,12 @@ const CIRCUIT_PHOTOS = {
   '2026-brazilian-grand-prix': SAO_PAULO_PHOTO,
   brazil: SAO_PAULO_PHOTO,
   '2026-brazil': SAO_PAULO_PHOTO,
+  'las-vegas-grand-prix': LAS_VEGAS_PHOTO,
+  '2026-las-vegas-grand-prix': LAS_VEGAS_PHOTO,
+  'las-vegas-gp': LAS_VEGAS_PHOTO,
+  '2026-las-vegas-gp': LAS_VEGAS_PHOTO,
+  'las-vegas': LAS_VEGAS_PHOTO,
+  '2026-las-vegas': LAS_VEGAS_PHOTO,
 };
 
 function getCircuitPhoto(race) {
@@ -166,6 +181,9 @@ function getCircuitPhoto(race) {
     /jose carlos pace|josé carlos pace|interlagos/i.test(race.circuit_name ?? '')
   ) {
     return SAO_PAULO_PHOTO;
+  }
+  if (/las vegas/i.test(race.race_name ?? '') || /las vegas strip/i.test(race.circuit_name ?? '')) {
+    return LAS_VEGAS_PHOTO;
   }
   return CIRCUIT_PHOTOS[race.slug] ?? null;
 }
