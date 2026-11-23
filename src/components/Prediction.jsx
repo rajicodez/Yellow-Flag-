@@ -98,6 +98,15 @@ const LAS_VEGAS_PHOTO = {
   objectPosition: 'center 50%',
 };
 
+const QATAR_PHOTO = {
+  src: '/images/circuits/qatar-grand-prix.jpg',
+  alt: 'Doha skyline illuminated at night across the bay',
+  credit: 'Francesco Bini / Wikimedia Commons',
+  sourceUrl: 'https://commons.wikimedia.org/wiki/File:Doha,_skyline_by_night_01.jpg',
+  license: 'CC BY-SA 4.0',
+  objectPosition: 'center 54%',
+};
+
 const CIRCUIT_PHOTOS = {
   'dutch-grand-prix': ZANDVOORT_PHOTO,
   '2026-dutch-grand-prix': ZANDVOORT_PHOTO,
@@ -151,6 +160,14 @@ const CIRCUIT_PHOTOS = {
   '2026-las-vegas-gp': LAS_VEGAS_PHOTO,
   'las-vegas': LAS_VEGAS_PHOTO,
   '2026-las-vegas': LAS_VEGAS_PHOTO,
+  'qatar-grand-prix': QATAR_PHOTO,
+  '2026-qatar-grand-prix': QATAR_PHOTO,
+  'qatar-gp': QATAR_PHOTO,
+  '2026-qatar-gp': QATAR_PHOTO,
+  qatar: QATAR_PHOTO,
+  '2026-qatar': QATAR_PHOTO,
+  lusail: QATAR_PHOTO,
+  '2026-lusail': QATAR_PHOTO,
 };
 
 function getCircuitPhoto(race) {
@@ -184,6 +201,9 @@ function getCircuitPhoto(race) {
   }
   if (/las vegas/i.test(race.race_name ?? '') || /las vegas strip/i.test(race.circuit_name ?? '')) {
     return LAS_VEGAS_PHOTO;
+  }
+  if (/qatar/i.test(race.race_name ?? '') || /lusail/i.test(race.circuit_name ?? '')) {
+    return QATAR_PHOTO;
   }
   return CIRCUIT_PHOTOS[race.slug] ?? null;
 }

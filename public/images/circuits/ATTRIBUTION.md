@@ -1,5 +1,13 @@
 # Circuit photo attribution
 
+`qatar-grand-prix.jpg` shows Doha's illuminated skyline across the bay at
+night. The photograph is by
+[Francesco Bini](https://commons.wikimedia.org/wiki/User:Sailko), downloaded at
+1280 px from [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Doha,_skyline_by_night_01.jpg).
+
+Licensed under [Creative Commons Attribution-ShareAlike 4.0 International](https://creativecommons.org/licenses/by-sa/4.0/).
+The website displays a cropped presentation through CSS; the source image file is otherwise unchanged.
+
 `las-vegas-grand-prix.jpg` shows the Las Vegas Strip illuminated at night with
 traffic light trails. The photograph is by
 [YosemiteYamper](https://commons.wikimedia.org/wiki/User:YosemiteYamper),
